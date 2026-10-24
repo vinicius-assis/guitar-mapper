@@ -8,6 +8,7 @@ import {
   type SessionSummary,
 } from '../../domain/session';
 import { useAppState } from '../../state/AppState';
+import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
 import { describeFocus } from '../focusSummary';
 import { MODES, MODE_DESCRIPTIONS } from '../modeLabels';
@@ -26,6 +27,7 @@ interface StudyProps {
 
 export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyProps) {
   const { data, recordAnswer, updateSettings, recordSession } = useAppState();
+  const confirm = useConfirm();
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
 
@@ -64,8 +66,13 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
     setPhase('summary');
   }
 
-  function confirmFinish() {
-    if (window.confirm('Finalizar a sessão?')) finish();
+  async function confirmFinish() {
+    const ok = await confirm({
+      title: 'Finalizar a sessão?',
+      message: 'O resultado até aqui será salvo no histórico.',
+      confirmLabel: 'Finalizar',
+    });
+    if (ok) finish();
   }
 
   function handleAnswer(correct: boolean) {

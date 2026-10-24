@@ -1,4 +1,5 @@
 import type { Notation } from '../../domain/notes';
+import { useConfirm } from '../ConfirmDialog';
 import { useAppState } from '../../state/AppState';
 
 const NOTATIONS: { value: Notation; label: string }[] = [
@@ -9,6 +10,7 @@ const NOTATIONS: { value: Notation; label: string }[] = [
 
 export function Settings() {
   const { data, updateSettings, resetProgress } = useAppState();
+  const confirm = useConfirm();
   const { settings } = data;
 
   return (
@@ -42,10 +44,13 @@ export function Settings() {
       <button
         type="button"
         className="danger"
-        onClick={() => {
-          if (window.confirm('Apagar todo o progresso? Isso não pode ser desfeito.')) {
-            resetProgress();
-          }
+        onClick={async () => {
+          const ok = await confirm({
+            title: 'Zerar o progresso?',
+            message: "Todas as posições voltam a ser 'nunca vistas'. Isso não pode ser desfeito.",
+            confirmLabel: 'Zerar',
+          });
+          if (ok) resetProgress();
         }}
       >
         Zerar progresso

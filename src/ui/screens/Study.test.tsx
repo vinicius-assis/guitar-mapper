@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
 import { readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
+import { ConfirmProvider } from '../ConfirmDialog';
 import { Study } from './Study';
 
 // Uma única posição candidata: corda 6, casa 12 (nota E).
@@ -19,26 +20,28 @@ function setup(
   const storage = seededStorage({ settings: { notation: 'cifra', filter: SINGLE, ...settings } });
   render(
     <AppProvider storage={storage}>
-      <Study forced={forced ?? null} onChangeFocus={onChangeFocus} onSessionChange={onSessionChange} />
+      <ConfirmProvider>
+        <Study forced={forced ?? null} onChangeFocus={onChangeFocus} onSessionChange={onSessionChange} />
+      </ConfirmProvider>
     </AppProvider>,
   );
   return storage;
 }
 
 const start = () => fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
+/** Toca no ■ e confirma no diálogo. */
+async function finalize() {
+  fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Finalizar' }));
+  await act(async () => {});
+}
 const tick = (ms: number) => act(() => void vi.setSystemTime(Date.now() + ms));
 
-let confirm: ReturnType<typeof vi.spyOn>;
-
 beforeEach(() => {
-  confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(1_000_000);
 });
-afterEach(() => {
-  vi.useRealTimers();
-  confirm.mockRestore();
-});
+afterEach(() => vi.useRealTimers());
 
 describe('Study: before the session', () => {
   it('waits for the Iniciar button and says how many questions there will be', () => {
@@ -215,21 +218,24 @@ describe('Study: a session', () => {
     expect(entry.at).toBe(1_006_000);
   });
 
-  it('Finalizar ends early and summarizes only what was answered', () => {
+  it('Finalizar ends early and summarizes only what was answered', async () => {
     const storage = setup({ mode: 'flashcard', filter: THREE });
     start();
     flash(1000, 'Acertei');
-    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    await finalize();
     expect(screen.getByText('Acertos: 1 de 1 (100%)')).toBeInTheDocument();
     expect(readSaved(storage).history[0]).toMatchObject({ total: 1, correct: 1 });
   });
 
-  it('Finalizar asks for confirmation and keeps the session going when cancelled', () => {
+  it('Finalizar asks for confirmation in a dialog and keeps the session going when cancelled', async () => {
     setup({ mode: 'flashcard', filter: THREE });
     start();
-    confirm.mockReturnValue(false);
     fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
-    expect(confirm).toHaveBeenCalledWith('Finalizar a sessão?');
+    const dialog = screen.getByRole('alertdialog', { name: 'Finalizar a sessão?' });
+    expect(dialog).toHaveTextContent('O resultado até aqui será salvo no histórico.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    await act(async () => {});
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(screen.queryByText('Sessão concluída')).not.toBeInTheDocument();
     expect(screen.getByText(/Pergunta 1 de 3/)).toBeInTheDocument();
   });
@@ -257,25 +263,25 @@ describe('Study: a session', () => {
     expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
-  it('hides the mode bar while a question is running and brings it back in the summary', () => {
+  it('hides the mode bar while a question is running and brings it back in the summary', async () => {
     setup({ mode: 'flashcard', filter: THREE });
     const modeBar = () => screen.queryByRole('group', { name: 'Modo de estudo' });
     expect(modeBar()).toBeInTheDocument();
     start();
     expect(modeBar()).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    await finalize();
     expect(modeBar()).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
     expect(modeBar()).toBeInTheDocument();
   });
 
-  it('tells the app when a session starts and ends', () => {
+  it('tells the app when a session starts and ends', async () => {
     const onSessionChange = vi.fn();
     setup({ mode: 'flashcard', filter: THREE }, undefined, undefined, onSessionChange);
     expect(onSessionChange).toHaveBeenLastCalledWith(false);
     start();
     expect(onSessionChange).toHaveBeenLastCalledWith(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    await finalize();
     expect(onSessionChange).toHaveBeenLastCalledWith(false);
   });
 
@@ -304,38 +310,38 @@ describe('Study: a session', () => {
     expect(screen.getByRole('button', { name: 'Acertei' }).closest('.quiz-actions')).not.toBeNull();
   });
 
-  it('Finalizar with no answers shows an empty summary and saves nothing', () => {
+  it('Finalizar with no answers shows an empty summary and saves nothing', async () => {
     const storage = setup({ mode: 'flashcard', filter: THREE });
     start();
-    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    await finalize();
     expect(screen.getByText('Nenhuma pergunta respondida.')).toBeInTheDocument();
     expect(readSaved(storage).history).toEqual([]);
   });
 
-  it('Reiniciar restarts the exercise from the first question', () => {
+  it('Reiniciar restarts the exercise from the first question', async () => {
     setup({ mode: 'flashcard', filter: THREE });
     start();
     flash(1000, 'Acertei');
-    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    await finalize();
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar' }));
     expect(screen.getByText(/Pergunta 1 de 3/)).toBeInTheDocument();
     expect(screen.getByLabelText('Acertos: 0')).toBeInTheDocument();
   });
 
-  it('Reiniciar has a decorative icon and both summary buttons share a size class', () => {
+  it('Reiniciar has a decorative icon and both summary buttons share a size class', async () => {
     setup({ mode: 'flashcard', filter: THREE });
     start();
-    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    await finalize();
     const restart = screen.getByRole('button', { name: 'Reiniciar' });
     expect(restart.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
     expect(restart).toHaveClass('summary-button');
     expect(screen.getByRole('button', { name: 'Encerrar' })).toHaveClass('summary-button');
   });
 
-  it('Encerrar goes back to the start screen of the exercise', () => {
+  it('Encerrar goes back to the start screen of the exercise', async () => {
     setup({ mode: 'flashcard', filter: THREE });
     start();
-    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    await finalize();
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');

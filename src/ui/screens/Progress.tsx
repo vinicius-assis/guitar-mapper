@@ -9,6 +9,7 @@ import {
 import { masteryOf, type Mastery } from '../../domain/scheduler';
 import { useAppState } from '../../state/AppState';
 import { Fretboard, type Mark } from '../Fretboard';
+import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
 import { modeLabel } from '../modeLabels';
 import { stringLabels } from '../stringLabels';
@@ -22,6 +23,7 @@ const LEGEND: { mastery: Mastery; label: string }[] = [
 
 export function Progress({ onSelect }: { onSelect(position: Position): void }) {
   const { data, clearHistory } = useAppState();
+  const confirm = useConfirm();
   const { progress, settings, history } = data;
 
   const { marks, counts } = useMemo(() => {
@@ -84,10 +86,13 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
           <button
             type="button"
             className="danger"
-            onClick={() => {
-              if (window.confirm('Limpar o histórico de sessões? Isso não pode ser desfeito.')) {
-                clearHistory();
-              }
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Limpar o histórico?',
+                message: 'As últimas sessões serão apagadas. Isso não pode ser desfeito.',
+                confirmLabel: 'Limpar',
+              });
+              if (ok) clearHistory();
             }}
           >
             Limpar histórico

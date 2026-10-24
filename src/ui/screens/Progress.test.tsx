@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
 import { seededStorage } from '../../test-utils';
+import { ConfirmProvider } from '../ConfirmDialog';
 import { Progress } from './Progress';
 
 const entry = (box: 1 | 2 | 3 | 4 | 5) => ({
@@ -19,7 +20,9 @@ describe('Progress', () => {
     });
     render(
       <AppProvider storage={storage}>
-        <Progress onSelect={() => {}} />
+        <ConfirmProvider>
+          <Progress onSelect={() => {}} />
+        </ConfirmProvider>
       </AppProvider>,
     );
     expect(screen.getByText('Dominadas: 1')).toBeInTheDocument();
@@ -31,7 +34,9 @@ describe('Progress', () => {
   it('does not draw the open-string column', () => {
     const { container } = render(
       <AppProvider storage={seededStorage()}>
-        <Progress onSelect={() => {}} />
+        <ConfirmProvider>
+          <Progress onSelect={() => {}} />
+        </ConfirmProvider>
       </AppProvider>,
     );
     expect(container.querySelector('[data-testid="cell-6-0"]')).toBeNull();
@@ -43,7 +48,9 @@ describe('Progress', () => {
     const storage = seededStorage({ progress: { '6-1': entry(5) } });
     const { container } = render(
       <AppProvider storage={storage}>
-        <Progress onSelect={onSelect} />
+        <ConfirmProvider>
+          <Progress onSelect={onSelect} />
+        </ConfirmProvider>
       </AppProvider>,
     );
     expect(container.querySelectorAll('.mark--mastered')).toHaveLength(1);
@@ -61,7 +68,9 @@ describe('Progress', () => {
       const storage = seededStorage({ history: h });
       render(
         <AppProvider storage={storage}>
-          <Progress onSelect={() => {}} />
+          <ConfirmProvider>
+            <Progress onSelect={() => {}} />
+          </ConfirmProvider>
         </AppProvider>,
       );
       return storage;
@@ -85,18 +94,24 @@ describe('Progress', () => {
       expect(items[1]).toHaveTextContent('33%');
     });
 
-    it('clears the history only after confirmation, keeping the progress', () => {
+    it('clears the history only after confirming in the dialog, keeping the progress', async () => {
       const storage = seededStorage({ history, progress: { '6-1': entry(5) } });
       render(
         <AppProvider storage={storage}>
-          <Progress onSelect={() => {}} />
+          <ConfirmProvider>
+            <Progress onSelect={() => {}} />
+          </ConfirmProvider>
         </AppProvider>,
       );
-      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
       fireEvent.click(screen.getByRole('button', { name: 'Limpar histórico' }));
+      const dialog = screen.getByRole('alertdialog', { name: 'Limpar o histórico?' });
+      expect(dialog).toHaveTextContent('Isso não pode ser desfeito.');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+      await act(async () => {});
       expect(JSON.parse(storage.dump()['guitar-mapper:v1']).history).toHaveLength(2);
-      confirm.mockReturnValue(true);
       fireEvent.click(screen.getByRole('button', { name: 'Limpar histórico' }));
+      fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Limpar' }));
+      await act(async () => {});
       const saved = JSON.parse(storage.dump()['guitar-mapper:v1']);
       expect(saved.history).toEqual([]);
       expect(Object.keys(saved.progress)).toEqual(['6-1']);

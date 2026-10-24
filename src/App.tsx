@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Position } from './domain/fretboard';
 import { AppProvider, useAppState } from './state/AppState';
 import type { StorageLike } from './state/storage';
+import { ConfirmProvider } from './ui/ConfirmDialog';
 import { Focus } from './ui/screens/Focus';
 import { Progress } from './ui/screens/Progress';
 import { Settings } from './ui/screens/Settings';
@@ -85,7 +86,9 @@ function Shell() {
 export function App({ storage }: { storage?: StorageLike | null }) {
   return (
     <AppProvider storage={storage}>
-      <Shell />
+      <ConfirmProvider>
+        <Shell />
+      </ConfirmProvider>
     </AppProvider>
   );
 }

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { App } from './App';
 import { STORAGE_KEY } from './state/storage';
 import { createMemoryStorage, createThrowingStorage, seededStorage } from './test-utils';
@@ -53,14 +53,15 @@ describe('App', () => {
     expect(screen.queryByText(/dados salvos estavam corrompidos/i)).not.toBeInTheDocument();
   });
 
-  it('hides the tab bar while a session is running and shows it again after', () => {
+  it('hides the tab bar while a session is running and shows it again after', async () => {
     render(<App storage={seededStorage({ settings: { notation: 'cifra' } })} />);
     const nav = () => screen.queryByRole('navigation', { name: 'Principal' });
     expect(nav()).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
     expect(nav()).not.toBeInTheDocument();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Finalizar' }));
+    await act(async () => {});
     expect(nav()).toBeInTheDocument();
   });
 
