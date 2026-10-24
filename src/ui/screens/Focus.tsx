@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
-import { MAX_FRET, positionsInFilter, type Filter } from '../../domain/fretboard';
+import { FIRST_QUIZ_FRET, MAX_FRET, positionsInFilter, type Filter } from '../../domain/fretboard';
 import { useAppState } from '../../state/AppState';
 
 const PRESETS = [
-  { label: 'Casas 0–5', min: 0, max: 5 },
+  { label: `Casas ${FIRST_QUIZ_FRET}–5`, min: FIRST_QUIZ_FRET, max: 5 },
   { label: 'Casas 5–12', min: 5, max: 12 },
   { label: 'Casas 12–24', min: 12, max: 24 },
 ];
-const FRET_OPTIONS = Array.from({ length: MAX_FRET + 1 }, (_, i) => i);
+const FRET_OPTIONS = Array.from({ length: MAX_FRET - FIRST_QUIZ_FRET + 1 }, (_, i) => FIRST_QUIZ_FRET + i);
 
 export function Focus() {
   const { data, updateSettings } = useAppState();

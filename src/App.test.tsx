@@ -25,10 +25,10 @@ describe('App', () => {
   it('tapping a position in Progresso opens it in Estudar', () => {
     render(<App storage={seededStorage({ settings: { notation: 'cifra' } })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Progresso' }));
-    fireEvent.click(screen.getByTestId('cell-6-0'));
+    fireEvent.click(screen.getByTestId('cell-6-12'));
     expect(screen.getByRole('button', { name: 'Estudar' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
-    // a nota da posição 6-0 (E) está entre as opções
+    // a nota da posição 6-12 (E) está entre as opções
     expect(screen.getByRole('button', { name: 'E' })).toBeInTheDocument();
   });
 

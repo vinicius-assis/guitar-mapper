@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  FIRST_QUIZ_FRET,
   MAX_FRET,
   allPositions,
   noteAt,
@@ -52,9 +53,9 @@ describe('positions', () => {
 
 describe('positionsInFilter', () => {
   it('respects strings and fret range, naturals only', () => {
-    // string 6, frets 0..5 → E F F# G G# A → naturals at frets 0,1,3,5
+    // string 6, frets 1..5 → F F# G G# A → naturals at frets 1,3,5
     const result = positionsInFilter(filter({ strings: [6], fretMax: 5, naturalsOnly: true }));
-    expect(result.map((p) => p.fret)).toEqual([0, 1, 3, 5]);
+    expect(result.map((p) => p.fret)).toEqual([1, 3, 5]);
   });
 
   it('returns nothing when no string is selected', () => {
@@ -68,13 +69,20 @@ describe('positionsInFilter', () => {
 
   it('ignores invalid strings and clamps the fret range', () => {
     const f = filter({ strings: [0, 7, 6], fretMin: -3, fretMax: 99 });
-    expect(positionsInFilter(f)).toHaveLength(25);
+    expect(positionsInFilter(f)).toHaveLength(24);
+  });
+
+  it('never returns open-string positions (fret 0), even when the range asks for them', () => {
+    expect(FIRST_QUIZ_FRET).toBe(1);
+    const result = positionsInFilter(filter({ fretMin: 0, fretMax: 3 }));
+    expect(result.some((p) => p.fret === 0)).toBe(false);
+    expect(result).toHaveLength(18);
   });
 });
 
 describe('positionsOfNote', () => {
-  it('finds the repeated E on the low string at frets 0, 12 and 24', () => {
+  it('finds the repeated E on the low string at frets 12 and 24 (open string excluded)', () => {
     const result = positionsOfNote(4, filter({ strings: [6] }));
-    expect(result.map((p) => p.fret)).toEqual([0, 12, 24]);
+    expect(result.map((p) => p.fret)).toEqual([12, 24]);
   });
 });

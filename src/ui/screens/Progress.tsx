@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
-import { MAX_FRET, allPositions, positionKey, type Position } from '../../domain/fretboard';
+import {
+  FIRST_QUIZ_FRET,
+  MAX_FRET,
+  allPositions,
+  positionKey,
+  type Position,
+} from '../../domain/fretboard';
 import { masteryOf, type Mastery } from '../../domain/scheduler';
 import { useAppState } from '../../state/AppState';
 import { Fretboard, type Mark } from '../Fretboard';
@@ -18,11 +24,13 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
 
   const { marks, counts } = useMemo(() => {
     const counts: Record<Mastery, number> = { unseen: 0, wrong: 0, learning: 0, mastered: 0 };
-    const marks: Mark[] = allPositions().map((position) => {
-      const kind = masteryOf(progress[positionKey(position)]);
-      counts[kind] += 1;
-      return { position, kind };
-    });
+    const marks: Mark[] = allPositions()
+      .filter((position) => position.fret >= FIRST_QUIZ_FRET)
+      .map((position) => {
+        const kind = masteryOf(progress[positionKey(position)]);
+        counts[kind] += 1;
+        return { position, kind };
+      });
     return { marks, counts };
   }, [progress]);
 
@@ -30,7 +38,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
     <section className="screen">
       <h2>Progresso</h2>
       <Fretboard
-        fretMin={0}
+        fretMin={FIRST_QUIZ_FRET}
         fretMax={MAX_FRET}
         marks={marks}
         onTap={onSelect}

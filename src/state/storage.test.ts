@@ -65,6 +65,22 @@ describe('loadData', () => {
     expect(data.settings.filter.naturalsOnly).toBe(true);
   });
 
+  it('moves a saved filter that started at the open string to fret 1', () => {
+    const raw = JSON.stringify({
+      version: 1,
+      settings: { filter: { strings: [6], fretMin: 0, fretMax: 5, naturalsOnly: true } },
+      progress: {},
+    });
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: raw }));
+    expect(data.settings.filter.fretMin).toBe(1);
+    expect(data.settings.filter.fretMax).toBe(5);
+  });
+
+  it('defaults to frets 1..5', () => {
+    const { fretMin, fretMax } = createDefaultData().settings.filter;
+    expect([fretMin, fretMax]).toEqual([1, 5]);
+  });
+
   it('keeps an explicitly empty string selection', () => {
     const raw = JSON.stringify({
       version: 1,

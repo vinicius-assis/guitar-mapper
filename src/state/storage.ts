@@ -1,4 +1,10 @@
-import { MAX_FRET, STRING_COUNT, parsePositionKey, type Filter } from '../domain/fretboard';
+import {
+  FIRST_QUIZ_FRET,
+  MAX_FRET,
+  STRING_COUNT,
+  parsePositionKey,
+  type Filter,
+} from '../domain/fretboard';
 import type { Notation } from '../domain/notes';
 import type { QuizMode } from '../domain/quiz';
 import type { Box, PositionProgress, ProgressMap } from '../domain/scheduler';
@@ -21,7 +27,7 @@ export const BACKUP_KEY = 'guitar-mapper:v1:backup';
 
 export const DEFAULT_FILTER: Filter = {
   strings: [1, 2, 3, 4, 5, 6],
-  fretMin: 0,
+  fretMin: FIRST_QUIZ_FRET,
   fretMax: 5,
   naturalsOnly: true,
 };
@@ -61,7 +67,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function clampFret(value: unknown, fallback: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
-  return Math.min(MAX_FRET, Math.max(0, Math.round(value)));
+  return Math.min(MAX_FRET, Math.max(FIRST_QUIZ_FRET, Math.round(value)));
 }
 
 function sanitizeFilter(raw: unknown): Filter {

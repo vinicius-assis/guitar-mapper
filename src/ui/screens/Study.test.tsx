@@ -5,8 +5,8 @@ import { readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
 import { Study } from './Study';
 
-// Uma única posição candidata: corda 6, casa 0 (nota E) → sorteio determinístico.
-const SINGLE: Settings['filter'] = { strings: [6], fretMin: 0, fretMax: 0, naturalsOnly: true };
+// Uma única posição candidata: corda 6, casa 12 (nota E) → sorteio determinístico.
+const SINGLE: Settings['filter'] = { strings: [6], fretMin: 12, fretMax: 12, naturalsOnly: true };
 
 function setup(settings: Partial<Settings> = {}, forced?: { string: number; fret: number }) {
   const storage = seededStorage({ settings: { notation: 'cifra', filter: SINGLE, ...settings } });
@@ -34,7 +34,7 @@ describe('Study', () => {
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'E' }));
     expect(screen.getByText('Correto!')).toBeInTheDocument();
-    expect(readSaved(storage).progress['6-0'].box).toBe(2);
+    expect(readSaved(storage).progress['6-12'].box).toBe(2);
     expect(screen.getByText(/Acertos 1\/1/)).toBeInTheDocument();
   });
 
@@ -45,7 +45,7 @@ describe('Study', () => {
       .find((b) => b.classList.contains('option') && b.textContent !== 'E')!;
     fireEvent.click(wrong);
     expect(screen.getByText('Era E')).toBeInTheDocument();
-    expect(readSaved(storage).progress['6-0'].box).toBe(1);
+    expect(readSaved(storage).progress['6-12'].box).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
     expect(screen.queryByText('Era E')).not.toBeInTheDocument();
@@ -54,23 +54,23 @@ describe('Study', () => {
   it('find mode: tapping the right cell is correct, another cell is wrong', () => {
     const storage = setup({ mode: 'note-to-position' });
     expect(screen.getByText('Encontre E na corda 6')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('cell-6-0'));
+    fireEvent.click(screen.getByTestId('cell-6-12'));
     expect(screen.getByText('Correto!')).toBeInTheDocument();
-    expect(readSaved(storage).progress['6-0'].box).toBe(2);
+    expect(readSaved(storage).progress['6-12'].box).toBe(2);
   });
 
   it('find mode: a wrong tap saves a miss', () => {
     const storage = setup({ mode: 'note-to-position' });
-    fireEvent.click(screen.getByTestId('cell-5-0'));
+    fireEvent.click(screen.getByTestId('cell-5-12'));
     expect(screen.getByRole('button', { name: 'Próxima' })).toBeInTheDocument();
-    expect(readSaved(storage).progress['6-0'].box).toBe(1);
+    expect(readSaved(storage).progress['6-12'].box).toBe(1);
   });
 
   it('flashcard: reveal then self-grade', () => {
     const storage = setup({ mode: 'flashcard' });
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' }));
     fireEvent.click(screen.getByRole('button', { name: 'Acertei' }));
-    expect(readSaved(storage).progress['6-0'].box).toBe(2);
+    expect(readSaved(storage).progress['6-12'].box).toBe(2);
     expect(screen.getByRole('button', { name: 'Mostrar nota' })).toBeInTheDocument();
   });
 

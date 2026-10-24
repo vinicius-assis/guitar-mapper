@@ -52,6 +52,15 @@ describe('Focus', () => {
     expect(screen.getByLabelText('Casa final')).toHaveValue('2');
   });
 
+  it('offers frets from 1 and a 1–5 preset (no open string)', () => {
+    setup();
+    expect(screen.getByRole('button', { name: 'Casas 1–5' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Casas 0–5' })).not.toBeInTheDocument();
+    const options = [...screen.getByLabelText('Casa inicial').querySelectorAll('option')].map((o) => o.value);
+    expect(options[0]).toBe('1');
+    expect(options).not.toContain('0');
+  });
+
   it('toggles naturals-only', () => {
     const storage = setup();
     fireEvent.click(screen.getByLabelText('Só notas naturais'));

@@ -3,6 +3,8 @@ import { STANDARD_TUNING } from './tuning';
 
 export const STRING_COUNT = 6;
 export const MAX_FRET = 24;
+/** Primeira casa usada nas perguntas. 1 = sem corda solta; mude para 0 para voltar a incluí-la. */
+export const FIRST_QUIZ_FRET = 1;
 
 export interface Position {
   /** 1 (E agudo) … 6 (E grave) */
@@ -49,7 +51,7 @@ export function positionsInFilter(
   const strings = [...new Set(filter.strings)]
     .filter((s) => Number.isInteger(s) && s >= 1 && s <= STRING_COUNT)
     .sort((a, b) => a - b);
-  const fretMin = Math.max(0, filter.fretMin);
+  const fretMin = Math.max(FIRST_QUIZ_FRET, filter.fretMin);
   const fretMax = Math.min(MAX_FRET, filter.fretMax);
   const out: Position[] = [];
   for (const string of strings) {

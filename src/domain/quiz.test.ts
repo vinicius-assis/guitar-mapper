@@ -36,17 +36,18 @@ describe('buildChoiceQuestion', () => {
 describe('buildFindQuestion', () => {
   const filter: Filter = { strings: [6], fretMin: 0, fretMax: 24, naturalsOnly: true };
 
-  it('accepts every position of the note on that string (0, 12 and 24)', () => {
-    const q = buildFindQuestion({ string: 6, fret: 0 }, filter);
+  it('accepts every position of the note on that string (12 and 24; open string excluded)', () => {
+    const q = buildFindQuestion({ string: 6, fret: 12 }, filter);
     expect(q.string).toBe(6);
     expect(q.target).toBe(4);
-    expect(q.validPositions.map((p) => p.fret)).toEqual([0, 12, 24]);
+    expect(q.validPositions.map((p) => p.fret)).toEqual([12, 24]);
     expect(isCorrectFind(q, { string: 6, fret: 12 })).toBe(true);
     expect(isCorrectFind(q, { string: 6, fret: 24 })).toBe(true);
+    expect(isCorrectFind(q, { string: 6, fret: 0 })).toBe(false);
   });
 
   it('rejects other frets and the same note on another string', () => {
-    const q = buildFindQuestion({ string: 6, fret: 0 }, filter);
+    const q = buildFindQuestion({ string: 6, fret: 12 }, filter);
     expect(isCorrectFind(q, { string: 6, fret: 5 })).toBe(false);
     expect(isCorrectFind(q, { string: 5, fret: 7 })).toBe(false); // também é E, outra corda
   });
