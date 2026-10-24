@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
 import { readSaved, seededStorage } from '../../test-utils';
@@ -434,5 +434,71 @@ describe('Study: sound', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' })),
     ).not.toThrow();
     expect(screen.getByRole('button', { name: 'Acertei' })).toBeInTheDocument();
+  });
+});
+
+describe('Study: Ouvido', () => {
+  const WIDE: Settings['filter'] = { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 5, naturalsOnly: true };
+
+  it('has the Ouvido mode with a level picker and a description per level', () => {
+    const storage = setup({ mode: 'ear' });
+    const picker = screen.getByRole('group', { name: 'Nível' });
+    const level = (name: string) => within(picker).getByRole('button', { name });
+    expect(level('Fácil')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('2 opções, com notas bem diferentes. Para começar a reconhecer o som.')).toBeInTheDocument();
+    fireEvent.click(level('Médio'));
+    expect(level('Médio')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('4 opções, incluindo notas vizinhas. Pede mais atenção ao ouvir.')).toBeInTheDocument();
+    fireEvent.click(level('Difícil'));
+    expect(screen.getByText('Sem dicas: todas as notas do seu foco são opções.')).toBeInTheDocument();
+    expect(readSaved(storage).settings.earLevel).toBe('hard');
+  });
+
+  it('the Ouvido button is in the mode bar and the level picker only shows in that mode', () => {
+    setup();
+    expect(screen.queryByRole('group', { name: 'Nível' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvido' }));
+    expect(screen.getByRole('group', { name: 'Nível' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+  });
+
+  it('plays the first question on start, hides the board, saves no position progress, and records the level', async () => {
+    const { storage, player } = setupWithPlayer({ mode: 'ear', earLevel: 'medium' });
+    start();
+    expect(player.unlock).toHaveBeenCalled();
+    expect(player.play).toHaveBeenCalledWith(52); // corda 6 casa 12 = E3
+    expect(screen.queryByRole('group', { name: 'Braço da guitarra' })).not.toBeInTheDocument();
+    const wrong = screen
+      .getAllByRole('button')
+      .find((b) => b.classList.contains('option') && b.textContent !== 'E')!;
+    fireEvent.click(wrong);
+    expect(readSaved(storage).progress).toEqual({});
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
+    await act(async () => {});
+    expect(screen.getByText('Sessão concluída')).toBeInTheDocument();
+    expect(readSaved(storage).history[0]).toMatchObject({ mode: 'ear', level: 'medium', total: 1, correct: 0 });
+  });
+
+  it('without sound the exercise cannot start and says why', () => {
+    setup({ mode: 'ear', soundEnabled: false });
+    expect(screen.getByText('Ligue o Som em Ajustes para treinar de ouvido.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+  });
+
+  it('a position opened from Progresso does not start an ear session without sound', () => {
+    setup({ mode: 'ear', soundEnabled: false }, { string: 3, fret: 7 });
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+  });
+
+  it('never repeats the same note twice in a row in the queue', () => {
+    for (let run = 0; run < 8; run++) {
+      const { player } = setupWithPlayer({ mode: 'ear', filter: WIDE });
+      start();
+      const queue = vi.mocked(player.prepare).mock.calls[0][0];
+      expect(queue.length).toBeGreaterThan(10);
+      for (let i = 1; i < queue.length; i++) expect(queue[i] % 12).not.toBe(queue[i - 1] % 12);
+      cleanup();
+    }
   });
 });

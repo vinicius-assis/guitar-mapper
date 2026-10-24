@@ -12,8 +12,9 @@ import { useAppState } from '../../state/AppState';
 import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
 import { describeFocus } from '../focusSummary';
-import { MODES, MODE_DESCRIPTIONS } from '../modeLabels';
+import { EAR_LEVELS, MODES, MODE_DESCRIPTIONS } from '../modeLabels';
 import { ChoiceQuiz } from './ChoiceQuiz';
+import { EarQuiz } from './EarQuiz';
 import { Flashcard } from './Flashcard';
 import { FindQuiz } from './FindQuiz';
 
@@ -33,9 +34,16 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
 
-  const [phase, setPhase] = useState<Phase>(forced ? 'running' : 'idle');
+  // Ouvido precisa de som: sem ele, uma posição vinda do Progresso não inicia a sessão.
+  const earWithoutSound = settings.mode === 'ear' && !settings.soundEnabled;
+  const startsRunning = Boolean(forced) && !earWithoutSound;
+  const [phase, setPhase] = useState<Phase>(startsRunning ? 'running' : 'idle');
   const [queue, setQueue] = useState<Position[]>(() =>
-    forced ? buildQueue(positionsInFilter(settings.filter), Math.random, forced) : [],
+    startsRunning
+      ? buildQueue(positionsInFilter(settings.filter), Math.random, forced, {
+          avoidSameNote: settings.mode === 'ear',
+        })
+      : [],
   );
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<SessionResult[]>([]);
@@ -51,12 +59,16 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
 
   // Posição vinda do Progresso: a sessão já começa, então carrega o som dela logo.
   useEffect(() => {
-    if (forced) sound.prepare(queue);
+    if (startsRunning) sound.prepare(queue);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const canStart = candidates.length > 0 && !earWithoutSound;
+
   function begin() {
-    if (candidates.length === 0) return;
-    const nextQueue = buildQueue(candidates, Math.random);
+    if (!canStart) return;
+    const nextQueue = buildQueue(candidates, Math.random, null, {
+      avoidSameNote: settings.mode === 'ear',
+    });
     sound.unlock(); // dentro do toque em Iniciar: libera o áudio no iPhone
     sound.prepare(nextQueue);
     setQueue(nextQueue);
@@ -70,7 +82,7 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
 
   function finish() {
     const done = resultsRef.current;
-    const entry = makeHistoryEntry(settings.mode, Date.now(), done);
+    const entry = makeHistoryEntry(settings.mode, Date.now(), done, settings.earLevel);
     if (entry) recordSession(entry);
     setSummary(summarize(done));
     setPhase('summary');
@@ -88,7 +100,7 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
   function handleAnswer(correct: boolean) {
     const position = queue[index];
     if (!position) return;
-    recordAnswer(position, correct);
+    if (settings.mode !== 'ear') recordAnswer(position, correct); // ouvido não mexe no mapa
     resultsRef.current = [...resultsRef.current, { correct, ms: Date.now() - questionStart.current }];
     setResults(resultsRef.current);
   }
@@ -134,6 +146,28 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
       {phase === 'idle' && (
         <div className="session-start">
           <p className="mode-description">{MODE_DESCRIPTIONS[settings.mode]}</p>
+          {settings.mode === 'ear' && (
+            <>
+              <div className="level-bar" role="group" aria-label="Nível">
+                {EAR_LEVELS.map(({ level, label }) => (
+                  <button
+                    key={level}
+                    type="button"
+                    aria-pressed={settings.earLevel === level}
+                    onClick={() => updateSettings({ earLevel: level })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mode-description">
+                {EAR_LEVELS.find((l) => l.level === settings.earLevel)!.description}
+              </p>
+              {earWithoutSound && (
+                <p className="empty">Ligue o Som em Ajustes para treinar de ouvido.</p>
+              )}
+            </>
+          )}
           <div className="focus-card" role="group" aria-label="Foco">
             <div className="focus-card__head">
               <h3>Foco</h3>
@@ -170,7 +204,7 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
           <button
             type="button"
             className="primary start"
-            disabled={candidates.length === 0}
+            disabled={!canStart}
             onClick={begin}
           >
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
@@ -218,7 +252,9 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
             </span>
             <span className="stat">Sequência {streak}</span>
           </p>
-          {settings.mode === 'position-to-note' ? (
+          {settings.mode === 'ear' ? (
+            <EarQuiz key={index} position={position} {...quizProps} />
+          ) : settings.mode === 'position-to-note' ? (
             <ChoiceQuiz key={index} position={position} {...quizProps} />
           ) : settings.mode === 'note-to-position' ? (
             <FindQuiz key={index} position={position} {...quizProps} />

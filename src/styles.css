@@ -246,3 +246,10 @@ main { display: flex; flex-direction: column; }
 .confirm-card p { margin: 0 0 16px; color: var(--muted); line-height: 1.4; }
 .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .summary-button.confirm-danger { background: var(--bad); border-color: var(--bad); color: #1c0905; }
+
+.ear-play { width: 100%; min-height: 96px; margin: 8px 0; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 1.125rem; font-weight: 700; border-radius: 16px; border: 1px solid var(--accent); background: var(--surface); color: var(--accent); }
+.options--many { grid-template-columns: repeat(3, 1fr); }
+.options--many .option { min-height: 48px; font-size: 0.9375rem; padding: 0 4px; }
+.level-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 4px; }
+.level-bar button { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.level-bar button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #1a1408; font-weight: 700; }
