@@ -36,7 +36,7 @@ afterEach(() => vi.useRealTimers());
 describe('Study: before the session', () => {
   it('waits for the Iniciar button and says how many questions there will be', () => {
     setup({ filter: THREE });
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('3 perguntas');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
     expect(screen.queryByText('Qual é esta nota?')).not.toBeInTheDocument();
     start();
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
@@ -59,13 +59,21 @@ describe('Study: before the session', () => {
     expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
-  it('shows the focus as badges next to the start button', () => {
+  it('shows each focus label on the left and its value in a badge on the right', () => {
     setup({ filter: THREE });
     const card = screen.getByRole('group', { name: 'Foco' });
-    expect(within(card).getByText('3 perguntas')).toHaveClass('badge');
-    expect(within(card).getByText('Cordas: 6')).toHaveClass('badge');
-    expect(within(card).getByText('Casas 1–5')).toHaveClass('badge');
-    expect(within(card).getByText('Só naturais')).toHaveClass('badge');
+    const rows: [string, string][] = [
+      ['Perguntas', '3'],
+      ['Cordas', '6'],
+      ['Casas', '1–5'],
+      ['Notas', 'Naturais'],
+    ];
+    for (const [label, value] of rows) {
+      const term = within(card).getByText(label);
+      expect(term.tagName).toBe('DT');
+      expect(term.nextElementSibling).toHaveTextContent(new RegExp(`^${value}$`));
+      expect(term.nextElementSibling!.querySelector('.badge')).not.toBeNull();
+    }
   });
 
   it('Alterar foco calls back, also when the focus is empty', () => {
@@ -77,7 +85,7 @@ describe('Study: before the session', () => {
 
   it('uses the singular for one question', () => {
     setup();
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('1 pergunta');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas1');
   });
 
   it('explains what is missing when the filter has no positions, and cannot start', () => {
@@ -238,7 +246,7 @@ describe('Study: a session', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('3 perguntas');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
   });
 
   it('changing mode in the middle abandons the session without saving it', () => {

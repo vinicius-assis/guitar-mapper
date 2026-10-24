@@ -116,14 +116,24 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
                 nível de notas em Foco.
               </p>
             ) : (
-              <ul className="badges">
-                <li className="badge badge--accent">
-                  {candidates.length} {candidates.length === 1 ? 'pergunta' : 'perguntas'}
-                </li>
-                <li className="badge">Cordas: {focus.strings}</li>
-                <li className="badge">Casas {focus.frets}</li>
-                <li className="badge">{focus.notes}</li>
-              </ul>
+              <dl className="focus-rows">
+                <dt>Perguntas</dt>
+                <dd>
+                  <span className="badge badge--accent">{candidates.length}</span>
+                </dd>
+                <dt>Cordas</dt>
+                <dd>
+                  <span className="badge">{focus.strings}</span>
+                </dd>
+                <dt>Casas</dt>
+                <dd>
+                  <span className="badge">{focus.frets}</span>
+                </dd>
+                <dt>Notas</dt>
+                <dd>
+                  <span className="badge">{focus.notes}</span>
+                </dd>
+              </dl>
             )}
           </div>
           <button

@@ -6,7 +6,7 @@ const base: Filter = { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 5, natu
 
 describe('describeFocus', () => {
   it('summarises the default focus', () => {
-    expect(describeFocus(base)).toEqual({ strings: 'todas', frets: '1–5', notes: 'Só naturais' });
+    expect(describeFocus(base)).toEqual({ strings: 'Todas', frets: '1–5', notes: 'Naturais' });
   });
 
   it('lists a subset of strings', () => {
