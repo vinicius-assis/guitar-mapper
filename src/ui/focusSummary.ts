@@ -15,7 +15,8 @@ function joinList(items: number[]): string {
 export function describeFocus(filter: Filter): FocusSummary {
   const strings = [...filter.strings].sort((a, b) => a - b);
   return {
-    strings: strings.length === STRING_COUNT ? 'Todas' : joinList(strings),
+    strings:
+      strings.length === STRING_COUNT ? 'Todas' : strings.length === 0 ? 'Nenhuma' : joinList(strings),
     frets:
       filter.fretMin === filter.fretMax ? `${filter.fretMin}` : `${filter.fretMin}–${filter.fretMax}`,
     notes: filter.naturalsOnly ? 'Naturais' : 'Com acidentais',

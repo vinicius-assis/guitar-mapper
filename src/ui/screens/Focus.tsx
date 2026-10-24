@@ -1,36 +1,8 @@
-import { useMemo } from 'react';
-import { FIRST_QUIZ_FRET, MAX_FRET, positionsInFilter, type Filter } from '../../domain/fretboard';
-import { useAppState } from '../../state/AppState';
-
-const PRESETS = [
-  { label: `Casas ${FIRST_QUIZ_FRET}–5`, min: FIRST_QUIZ_FRET, max: 5 },
-  { label: 'Casas 5–12', min: 5, max: 12 },
-  { label: 'Casas 12–24', min: 12, max: 24 },
-];
-const FRET_OPTIONS = Array.from({ length: MAX_FRET - FIRST_QUIZ_FRET + 1 }, (_, i) => FIRST_QUIZ_FRET + i);
+import { useFocusFilter, FRET_OPTIONS, FRET_PRESETS } from '../useFocusFilter';
 
 export function Focus() {
-  const { data, updateSettings } = useAppState();
-  const { filter } = data.settings;
-  const count = useMemo(() => positionsInFilter(filter).length, [filter]);
-
-  const setFilter = (patch: Partial<Filter>) => updateSettings({ filter: { ...filter, ...patch } });
-
-  const toggleString = (s: number) =>
-    setFilter({
-      strings: filter.strings.includes(s)
-        ? filter.strings.filter((x) => x !== s)
-        : [...filter.strings, s].sort((a, b) => a - b),
-    });
-
-  const setMin = (value: string) => {
-    const n = Number(value);
-    setFilter({ fretMin: n, fretMax: Math.max(n, filter.fretMax) });
-  };
-  const setMax = (value: string) => {
-    const n = Number(value);
-    setFilter({ fretMax: n, fretMin: Math.min(n, filter.fretMin) });
-  };
+  const { filter, count, toggleString, setRange, setMin, setMax, setNaturalsOnly } =
+    useFocusFilter();
 
   return (
     <section className="screen">
@@ -54,15 +26,15 @@ export function Focus() {
 
       <h3>Casas</h3>
       <div className="chips">
-        {PRESETS.map((p) => (
+        {FRET_PRESETS.map((p) => (
           <button
             key={p.label}
             type="button"
             className="chip chip--wide"
             aria-pressed={filter.fretMin === p.min && filter.fretMax === p.max}
-            onClick={() => setFilter({ fretMin: p.min, fretMax: p.max })}
+            onClick={() => setRange(p.min, p.max)}
           >
-            {p.label}
+            Casas {p.label}
           </button>
         ))}
       </div>
@@ -93,7 +65,7 @@ export function Focus() {
         <input
           type="checkbox"
           checked={filter.naturalsOnly}
-          onChange={(e) => setFilter({ naturalsOnly: e.target.checked })}
+          onChange={(e) => setNaturalsOnly(e.target.checked)}
         />
         Só notas naturais
       </label>

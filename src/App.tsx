@@ -50,7 +50,6 @@ function Shell() {
         {tab === 'study' && (
           <Study
             forced={forced}
-            onChangeFocus={() => go('focus')}
             onSessionChange={setSessionRunning}
           />
         )}

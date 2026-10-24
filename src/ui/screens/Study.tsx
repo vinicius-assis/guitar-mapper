@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { QuizMode } from '../../domain/quiz';
 import { useSound } from '../../audio/SoundProvider';
 import { positionsInFilter, type Position } from '../../domain/fretboard';
 import {
@@ -11,23 +12,23 @@ import {
 import { useAppState } from '../../state/AppState';
 import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
-import { describeFocus } from '../focusSummary';
-import { EAR_LEVELS, MODES, MODE_DESCRIPTIONS } from '../modeLabels';
+import { EAR_LEVELS, MODE_DESCRIPTIONS } from '../modeLabels';
 import { ChoiceQuiz } from './ChoiceQuiz';
 import { EarQuiz } from './EarQuiz';
 import { Flashcard } from './Flashcard';
 import { FindQuiz } from './FindQuiz';
+import { FocusSheet } from './FocusSheet';
+import { StudyHeader } from './StudyHeader';
 
 type Phase = 'idle' | 'running' | 'summary';
 
 interface StudyProps {
   forced?: Position | null;
-  onChangeFocus(): void;
   /** Avisa o app quando uma pergunta está em andamento (para esconder as abas). */
   onSessionChange?(running: boolean): void;
 }
 
-export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyProps) {
+export function Study({ forced = null, onSessionChange }: StudyProps) {
   const { data, recordAnswer, updateSettings, recordSession } = useAppState();
   const confirm = useConfirm();
   const sound = useSound();
@@ -37,6 +38,8 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
   // Ouvido precisa de som: sem ele, uma posição vinda do Progresso não inicia a sessão.
   const earWithoutSound = settings.mode === 'ear' && !settings.soundEnabled;
   const startsRunning = Boolean(forced) && !earWithoutSound;
+  // Só um painel por vez: o menu de exercícios ou o cartão de Foco.
+  const [openPanel, setOpenPanel] = useState<'menu' | 'focus' | null>(null);
   const [phase, setPhase] = useState<Phase>(startsRunning ? 'running' : 'idle');
   const [queue, setQueue] = useState<Position[]>(() =>
     startsRunning
@@ -114,12 +117,22 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
     setIndex(index + 1);
   }
 
-  function changeMode(mode: typeof settings.mode) {
+  function changeMode(mode: QuizMode) {
     updateSettings({ mode });
     setPhase('idle');
+    setOpenPanel(null);
   }
 
-  const focus = describeFocus(settings.filter);
+  // Esc fecha o painel aberto.
+  useEffect(() => {
+    if (!openPanel) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenPanel(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [openPanel]);
+
   const position = queue[index];
   const quizProps = { settings, onAnswer: handleAnswer, onNext: handleNext };
   const hits = results.filter((r) => r.correct).length;
@@ -129,18 +142,19 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
   return (
     <section className="screen screen--study">
       {phase !== 'running' && (
-      <div className="mode-bar" role="group" aria-label="Modo de estudo">
-        {MODES.map(({ mode, label }) => (
-          <button
-            key={mode}
-            type="button"
-            aria-pressed={settings.mode === mode}
-            onClick={() => changeMode(mode)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        <StudyHeader
+          mode={settings.mode}
+          menuOpen={openPanel === 'menu'}
+          onMenuOpenChange={(open) => setOpenPanel(open ? 'menu' : null)}
+          onSelectMode={changeMode}
+        />
+      )}
+      {phase !== 'running' && openPanel && (
+        <div
+          className="overlay-backdrop"
+          data-testid={`${openPanel}-backdrop`}
+          onClick={() => setOpenPanel(null)}
+        />
       )}
 
       {phase === 'idle' && (
@@ -168,39 +182,16 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
               )}
             </>
           )}
-          <div className="focus-card" role="group" aria-label="Foco">
-            <div className="focus-card__head">
-              <h3>Foco</h3>
-              <button type="button" onClick={onChangeFocus}>
-                Alterar foco
-              </button>
-            </div>
-            {candidates.length === 0 ? (
-              <p className="empty">
-                Nenhuma posição no foco atual. Selecione ao menos uma corda ou ajuste as casas e o
-                nível de notas em Foco.
-              </p>
-            ) : (
-              <dl className="focus-rows">
-                <dt>Perguntas</dt>
-                <dd>
-                  <span className="badge badge--accent">{candidates.length}</span>
-                </dd>
-                <dt>Cordas</dt>
-                <dd>
-                  <span className="badge">{focus.strings}</span>
-                </dd>
-                <dt>Casas</dt>
-                <dd>
-                  <span className="badge">{focus.frets}</span>
-                </dd>
-                <dt>Notas</dt>
-                <dd>
-                  <span className="badge">{focus.notes}</span>
-                </dd>
-              </dl>
-            )}
-          </div>
+          {candidates.length === 0 && (
+            <p className="empty">
+              Nenhuma posição no foco atual. Abra o Foco abaixo e selecione ao menos uma corda ou
+              inclua notas com acidentais.
+            </p>
+          )}
+          <FocusSheet
+            open={openPanel === 'focus'}
+            onOpenChange={(open) => setOpenPanel(open ? 'focus' : null)}
+          />
           <button
             type="button"
             className="primary start"

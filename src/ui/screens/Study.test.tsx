@@ -11,6 +11,12 @@ import { Study } from './Study';
 // Uma única posição candidata: corda 6, casa 12 (nota E).
 const SINGLE: Settings['filter'] = { strings: [6], fretMin: 12, fretMax: 12, naturalsOnly: true };
 // Três posições naturais na corda 6: casa 1 (F), casa 3 (G), casa 5 (A).
+const WIDE_FILTER: Settings['filter'] = {
+  strings: [1, 2, 3, 4, 5, 6],
+  fretMin: 1,
+  fretMax: 5,
+  naturalsOnly: true,
+};
 const THREE: Settings['filter'] = { strings: [6], fretMin: 1, fretMax: 5, naturalsOnly: true };
 
 const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn() });
@@ -18,7 +24,6 @@ const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play:
 function setup(
   settings: Partial<Settings> = {},
   forced?: { string: number; fret: number },
-  onChangeFocus: () => void = () => {},
   onSessionChange: (running: boolean) => void = () => {},
   player: NotePlayer = fakePlayer(),
 ) {
@@ -27,7 +32,7 @@ function setup(
     <AppProvider storage={storage}>
       <ConfirmProvider>
         <SoundProvider player={player}>
-          <Study forced={forced ?? null} onChangeFocus={onChangeFocus} onSessionChange={onSessionChange} />
+          <Study forced={forced ?? null} onSessionChange={onSessionChange} />
         </SoundProvider>
       </ConfirmProvider>
     </AppProvider>,
@@ -40,8 +45,13 @@ function setupWithPlayer(
   forced?: { string: number; fret: number },
   player: NotePlayer = fakePlayer(),
 ) {
-  const storage = setup(settings, forced, undefined, undefined, player);
+  const storage = setup(settings, forced, undefined, player);
   return { storage, player };
+}
+
+function chooseMode(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: 'Menu de exercícios' }));
+  fireEvent.click(screen.getByRole('menuitemradio', { name: label }));
 }
 
 const start = () => fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
@@ -62,7 +72,7 @@ afterEach(() => vi.useRealTimers());
 describe('Study: before the session', () => {
   it('waits for the Iniciar button and says how many questions there will be', () => {
     setup({ filter: THREE });
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('3 perguntas');
     expect(screen.queryByText('Qual é esta nota?')).not.toBeInTheDocument();
     start();
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
@@ -71,10 +81,10 @@ describe('Study: before the session', () => {
   it('describes the selected exercise and follows the mode', () => {
     setup({ mode: 'position-to-note' });
     expect(screen.getByText(/escolha a nota entre 4 opções/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Nota → posição' }));
+    chooseMode('Nota → posição');
     expect(screen.queryByText(/escolha a nota entre 4 opções/)).not.toBeInTheDocument();
     expect(screen.getByText(/toca no braço onde ela está/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Flashcard' }));
+    chooseMode('Flashcard');
     expect(screen.getByText(/lembrar a nota de cabeça antes de revelar/)).toBeInTheDocument();
   });
 
@@ -85,33 +95,9 @@ describe('Study: before the session', () => {
     expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
-  it('shows each focus label on the left and its value in a badge on the right', () => {
-    setup({ filter: THREE });
-    const card = screen.getByRole('group', { name: 'Foco' });
-    const rows: [string, string][] = [
-      ['Perguntas', '3'],
-      ['Cordas', '6'],
-      ['Casas', '1–5'],
-      ['Notas', 'Naturais'],
-    ];
-    for (const [label, value] of rows) {
-      const term = within(card).getByText(label);
-      expect(term.tagName).toBe('DT');
-      expect(term.nextElementSibling).toHaveTextContent(new RegExp(`^${value}$`));
-      expect(term.nextElementSibling!.querySelector('.badge')).not.toBeNull();
-    }
-  });
-
-  it('Alterar foco calls back, also when the focus is empty', () => {
-    const onChangeFocus = vi.fn();
-    setup({ filter: { ...SINGLE, strings: [] } }, undefined, onChangeFocus);
-    fireEvent.click(screen.getByRole('button', { name: 'Alterar foco' }));
-    expect(onChangeFocus).toHaveBeenCalledTimes(1);
-  });
-
   it('uses the singular for one question', () => {
     setup();
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas1');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('1 pergunta');
   });
 
   it('explains what is missing when the filter has no positions, and cannot start', () => {
@@ -127,7 +113,7 @@ describe('Study: before the session', () => {
 
   it('switching mode shows that mode start screen and remembers the mode', () => {
     const storage = setup();
-    fireEvent.click(screen.getByRole('button', { name: 'Flashcard' }));
+    chooseMode('Flashcard');
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mostrar nota' })).not.toBeInTheDocument();
     expect(readSaved(storage).settings.mode).toBe('flashcard');
@@ -279,9 +265,9 @@ describe('Study: a session', () => {
     expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
-  it('hides the mode bar while a question is running and brings it back in the summary', async () => {
+  it('hides the header while a question is running and brings it back in the summary', async () => {
     setup({ mode: 'flashcard', filter: THREE });
-    const modeBar = () => screen.queryByRole('group', { name: 'Modo de estudo' });
+    const modeBar = () => screen.queryByRole('group', { name: 'Exercício' });
     expect(modeBar()).toBeInTheDocument();
     start();
     expect(modeBar()).not.toBeInTheDocument();
@@ -293,7 +279,7 @@ describe('Study: a session', () => {
 
   it('tells the app when a session starts and ends', async () => {
     const onSessionChange = vi.fn();
-    setup({ mode: 'flashcard', filter: THREE }, undefined, undefined, onSessionChange);
+    setup({ mode: 'flashcard', filter: THREE }, undefined, onSessionChange);
     expect(onSessionChange).toHaveBeenLastCalledWith(false);
     start();
     expect(onSessionChange).toHaveBeenLastCalledWith(true);
@@ -303,7 +289,7 @@ describe('Study: a session', () => {
 
   it('a forced position reports a running session right away', () => {
     const onSessionChange = vi.fn();
-    setup({ mode: 'flashcard' }, { string: 3, fret: 7 }, undefined, onSessionChange);
+    setup({ mode: 'flashcard' }, { string: 3, fret: 7 }, onSessionChange);
     expect(onSessionChange).toHaveBeenLastCalledWith(true);
   });
 
@@ -360,7 +346,7 @@ describe('Study: a session', () => {
     await finalize();
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('3 perguntas');
   });
 
   it('a forced position starts a session right away, asking it first', () => {
@@ -457,7 +443,7 @@ describe('Study: Ouvido', () => {
   it('the Ouvido button is in the mode bar and the level picker only shows in that mode', () => {
     setup();
     expect(screen.queryByRole('group', { name: 'Nível' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ouvido' }));
+    chooseMode('Ouvido');
     expect(screen.getByRole('group', { name: 'Nível' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
   });
@@ -500,5 +486,164 @@ describe('Study: Ouvido', () => {
       for (let i = 1; i < queue.length; i++) expect(queue[i] % 12).not.toBe(queue[i - 1] % 12);
       cleanup();
     }
+  });
+});
+
+describe('Study: focus sheet', () => {
+  const sheet = () => screen.getByRole('group', { name: 'Foco' });
+  const bar = () => within(sheet()).getByRole('button', { name: /^Foco/ });
+  const open = () => fireEvent.click(bar());
+
+  it('has no Alterar foco button (the values are edited right here)', () => {
+    setup({ filter: THREE });
+    expect(screen.queryByRole('button', { name: 'Alterar foco' })).not.toBeInTheDocument();
+  });
+
+  it('starts closed, with the count and a one-line summary', () => {
+    setup({ filter: THREE });
+    expect(bar()).toHaveAttribute('aria-expanded', 'false');
+    expect(sheet()).toHaveTextContent('3 perguntas');
+    expect(sheet()).toHaveTextContent('Cordas 6 · Casas 1–5 · Naturais');
+    expect(screen.queryByRole('button', { name: 'Corda 6' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('focus-backdrop')).not.toBeInTheDocument();
+  });
+
+  it('summarises all strings and accidentals', () => {
+    setup({ filter: { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 5, naturalsOnly: false } });
+    expect(sheet()).toHaveTextContent('Todas as cordas · Casas 1–5 · Com acidentais');
+  });
+
+  it('opens on tap with the editable values and a dimmed backdrop', () => {
+    setup({ filter: THREE });
+    open();
+    expect(bar()).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('focus-backdrop')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Corda 6' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Corda 1' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByLabelText('Casa inicial')).toHaveValue('1');
+    expect(screen.getByLabelText('Casa final')).toHaveValue('5');
+    expect(screen.getByRole('button', { name: 'Naturais' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('closes with the backdrop, the bar again, and Escape', () => {
+    setup({ filter: THREE });
+    open();
+    fireEvent.click(screen.getByTestId('focus-backdrop'));
+    expect(bar()).toHaveAttribute('aria-expanded', 'false');
+    open();
+    fireEvent.click(bar());
+    expect(bar()).toHaveAttribute('aria-expanded', 'false');
+    open();
+    fireEvent.keyDown(sheet(), { key: 'Escape' });
+    expect(bar()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('edits the strings, saves them and updates the count', () => {
+    const storage = setup({ filter: WIDE_FILTER });
+    expect(sheet()).toHaveTextContent('18 perguntas');
+    open();
+    fireEvent.click(screen.getByRole('button', { name: 'Corda 6' }));
+    expect(readSaved(storage).settings.filter.strings).toEqual([1, 2, 3, 4, 5]);
+    expect(sheet()).toHaveTextContent('15 perguntas');
+    fireEvent.click(screen.getByRole('button', { name: 'Todas' }));
+    expect(readSaved(storage).settings.filter.strings).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(sheet()).toHaveTextContent('18 perguntas');
+  });
+
+  it('edits the frets with the presets and the selects, keeping the range ordered', () => {
+    const storage = setup({ filter: WIDE_FILTER });
+    open();
+    fireEvent.click(screen.getByRole('button', { name: 'Casas 5–12' }));
+    expect(readSaved(storage).settings.filter).toMatchObject({ fretMin: 5, fretMax: 12 });
+    expect(screen.getByLabelText('Casa inicial')).toHaveValue('5');
+    fireEvent.change(screen.getByLabelText('Casa final'), { target: { value: '2' } });
+    expect(screen.getByLabelText('Casa inicial')).toHaveValue('2');
+    expect(readSaved(storage).settings.filter).toMatchObject({ fretMin: 2, fretMax: 2 });
+  });
+
+  it('switches between naturals and accidentals', () => {
+    const storage = setup({ filter: WIDE_FILTER });
+    open();
+    fireEvent.click(screen.getByRole('button', { name: 'Com acidentais' }));
+    expect(readSaved(storage).settings.filter.naturalsOnly).toBe(false);
+    expect(screen.getByRole('button', { name: 'Com acidentais' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Naturais' })).toHaveAttribute('aria-pressed', 'false');
+    expect(sheet()).toHaveTextContent('30 perguntas');
+  });
+
+  it('with no position left it explains and blocks Iniciar, even while closed', () => {
+    setup({ filter: { ...WIDE_FILTER, strings: [] } });
+    expect(screen.getByText(/Nenhuma posição no foco/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+  });
+
+  it('Iniciar stays usable with the sheet open and starts the session', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    open();
+    start();
+    expect(screen.getByText(/Pergunta 1 de 3/)).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Study: header menu', () => {
+  const header = () => screen.getByRole('group', { name: 'Exercício' });
+  const menuButton = () => within(header()).getByRole('button', { name: 'Menu de exercícios' });
+
+  it('shows the app logo on the left, the current exercise, and the menu button on the right', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    const logo = within(header()).getByRole('img', { name: 'Guitar Mapper' });
+    expect(header()).toHaveTextContent('Flashcard');
+    expect(menuButton()).toHaveAttribute('aria-expanded', 'false');
+    expect(menuButton()).toHaveAttribute('aria-haspopup', 'menu');
+    expect(logo.compareDocumentPosition(menuButton()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('lists the 4 exercises with the current one checked', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    fireEvent.click(menuButton());
+    expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
+    const items = within(screen.getByRole('menu')).getAllByRole('menuitemradio');
+    expect(items.map((i) => i.textContent?.replace('✓', ''))).toEqual([
+      'Posição → nota',
+      'Nota → posição',
+      'Flashcard',
+      'Ouvido',
+    ]);
+    expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false']);
+  });
+
+  it('choosing an exercise switches mode, saves it, updates the title and closes the menu', () => {
+    const storage = setup({ filter: THREE });
+    chooseMode('Ouvido');
+    expect(readSaved(storage).settings.mode).toBe('ear');
+    expect(header()).toHaveTextContent('Ouvido');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Nível' })).toBeInTheDocument();
+  });
+
+  it('closes with the backdrop, the button again, and Escape', () => {
+    setup({ filter: THREE });
+    fireEvent.click(menuButton());
+    fireEvent.click(screen.getByTestId('menu-backdrop'));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    fireEvent.click(menuButton());
+    fireEvent.click(menuButton());
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    fireEvent.click(menuButton());
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('the menu and the focus sheet never stay open together', () => {
+    setup({ filter: THREE });
+    fireEvent.click(menuButton());
+    fireEvent.click(within(screen.getByRole('group', { name: 'Foco' })).getByRole('button', { name: /^Foco/ }));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Corda 6' })).toBeInTheDocument();
+    fireEvent.click(menuButton());
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Corda 6' })).not.toBeInTheDocument();
   });
 });

@@ -9,6 +9,10 @@ describe('describeFocus', () => {
     expect(describeFocus(base)).toEqual({ strings: 'Todas', frets: '1–5', notes: 'Naturais' });
   });
 
+  it('says Nenhuma when no string is selected', () => {
+    expect(describeFocus({ ...base, strings: [] }).strings).toBe('Nenhuma');
+  });
+
   it('lists a subset of strings', () => {
     expect(describeFocus({ ...base, strings: [6] }).strings).toBe('6');
     expect(describeFocus({ ...base, strings: [5, 6] }).strings).toBe('5 e 6');

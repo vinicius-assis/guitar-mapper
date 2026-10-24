@@ -74,9 +74,4 @@ describe('App', () => {
     expect(screen.queryByRole('navigation', { name: 'Principal' })).not.toBeInTheDocument();
   });
 
-  it('Alterar foco goes to the Foco tab', () => {
-    render(<App storage={seededStorage()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Alterar foco' }));
-    expect(screen.getByRole('button', { name: 'Foco' })).toHaveAttribute('aria-current', 'page');
-  });
 });
