@@ -38,6 +38,24 @@ export function Settings() {
         />
         Mão esquerda
       </label>
+
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={settings.soundEnabled}
+          onChange={(e) => updateSettings({ soundEnabled: e.target.checked })}
+        />
+        Som
+      </label>
+      <p className="hint">No iPhone, o som não toca com o aparelho no modo silencioso.</p>
+
+      <section aria-labelledby="credits-title">
+        <h3 id="credits-title">Créditos</h3>
+        <p className="hint">
+          Sons de violão de nylon: FluidR3 GM, licença MIT (autor original do FluidR3) e Creative
+          Commons Attribution 3.0, empacotado por midi-js-soundfonts (Benjamin Gleitzman).
+        </p>
+      </section>
     </section>
   );
 }

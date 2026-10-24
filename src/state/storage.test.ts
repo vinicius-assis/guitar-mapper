@@ -142,6 +142,23 @@ describe('history', () => {
   });
 });
 
+describe('soundEnabled', () => {
+  const load = (settings: unknown) =>
+    loadData(
+      createMemoryStorage({ [STORAGE_KEY]: JSON.stringify({ version: 1, settings, progress: {} }) }),
+    ).data.settings.soundEnabled;
+
+  it('defaults to on, also for data saved before the option existed', () => {
+    expect(DEFAULT_SETTINGS.soundEnabled).toBe(true);
+    expect(load({})).toBe(true);
+  });
+
+  it('keeps a saved off, and treats invalid values as on', () => {
+    expect(load({ soundEnabled: false })).toBe(false);
+    expect(load({ soundEnabled: 'no' })).toBe(true);
+  });
+});
+
 describe('saveData', () => {
   it('returns false when storage is missing or throws', () => {
     expect(saveData(null, createDefaultData())).toBe(false);

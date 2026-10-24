@@ -15,6 +15,7 @@ export interface Settings {
   leftHanded: boolean;
   mode: QuizMode;
   filter: Filter;
+  soundEnabled: boolean;
 }
 
 export interface AppData {
@@ -39,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   leftHanded: false,
   mode: 'position-to-note',
   filter: DEFAULT_FILTER,
+  soundEnabled: true,
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -103,6 +105,10 @@ function sanitizeSettings(raw: unknown): Settings {
       ? (source.mode as QuizMode)
       : DEFAULT_SETTINGS.mode,
     filter: sanitizeFilter(source.filter),
+    soundEnabled:
+      typeof source.soundEnabled === 'boolean'
+        ? source.soundEnabled
+        : DEFAULT_SETTINGS.soundEnabled,
   };
 }
 

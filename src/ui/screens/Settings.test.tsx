@@ -38,4 +38,20 @@ describe('Settings', () => {
     setup();
     expect(screen.queryByRole('button', { name: 'Zerar progresso' })).not.toBeInTheDocument();
   });
+
+  it('toggles the sound and keeps it saved', () => {
+    const storage = setup();
+    const toggle = screen.getByLabelText('Som');
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(readSaved(storage).settings.soundEnabled).toBe(false);
+  });
+
+  it('explains the iPhone silent switch and credits the sound license', () => {
+    setup();
+    expect(screen.getByText(/modo silencioso/)).toBeInTheDocument();
+    const credits = screen.getByRole('heading', { name: 'Créditos' }).parentElement!;
+    expect(credits).toHaveTextContent('FluidR3');
+    expect(credits).toHaveTextContent('Creative Commons Attribution 3.0');
+  });
 });
