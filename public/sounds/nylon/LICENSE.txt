@@ -1,0 +1,43 @@
+Sons de violão de nylon (acoustic_guitar_nylon), notas E2 a E6
+=============================================================
+
+Origem das amostras
+-------------------
+Fluid (R3) GM SoundFont, "acoustic_guitar_nylon", extraído do projeto midi-js-soundfonts
+(https://github.com/gleitz/midi-js-soundfonts, FluidR3_GM/acoustic_guitar_nylon-mp3.js) e
+dividido em um MP3 por nota por scripts/extract-nylon.mjs.
+
+Licenças declaradas
+-------------------
+1) Autor original do FluidR3 (MIT):
+
+   Fluid (R3) GM SoundFont (MIT)
+   Copyright (c) 2000-2002, 2008 Frank Wen <getfrank@gmail.com>
+
+   Fluid was constructed in part from samples found in the public domain that I [Frank Wen]
+   edited/cleaned/remixed/programmed and largely from recordings of my own and in conjunction
+   with the people below who helped along the way: Suren M. Seron, Scott Hanan, Steve Aupperle,
+   Chris Gillman, Alex Taubr, Chris Prola, Andrew Klenk, Winfried Hubbe, Dylan, Tim, Gort,
+   Uros Katic, Ethan Winer (http://www.ethanwiner.com)
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+   and associated documentation files (the "Software"), to deal in the Software without
+   restriction, including without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+   Software is furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all copies or
+   substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+2) Empacotamento midi-js-soundfonts (Copyright (C) 2012 Benjamin Gleitzman, gleitz@mit.edu):
+   o README do projeto declara o soundfont Fluid "Released under Creative Commons Attribution 3.0
+   license" (https://creativecommons.org/licenses/by/3.0/us/). Crédito exigido: Benjamin Gleitzman,
+   midi-js-soundfonts, a partir do FluidR3_GM de Frank Wen.
+
+As duas licenças são permissivas e permitem este uso, mantendo os avisos acima.
