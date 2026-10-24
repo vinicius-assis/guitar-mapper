@@ -18,8 +18,10 @@ describe('App', () => {
     render(<App storage={createMemoryStorage()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Foco' }));
     expect(screen.getByTestId('count')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Progresso' }));
     expect(screen.getByRole('button', { name: 'Zerar progresso' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    expect(screen.getByLabelText('Mão esquerda')).toBeInTheDocument();
   });
 
   it('tapping a position in Progresso opens it in Estudar', () => {

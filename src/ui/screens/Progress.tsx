@@ -22,7 +22,7 @@ const LEGEND: { mastery: Mastery; label: string }[] = [
 ];
 
 export function Progress({ onSelect }: { onSelect(position: Position): void }) {
-  const { data, clearHistory } = useAppState();
+  const { data, clearHistory, resetProgress } = useAppState();
   const confirm = useConfirm();
   const { progress, settings, history } = data;
 
@@ -58,6 +58,20 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
         ))}
       </ul>
       <p className="hint">Toque numa posição para estudá-la.</p>
+      <button
+        type="button"
+        className="danger"
+        onClick={async () => {
+          const ok = await confirm({
+            title: 'Zerar o progresso?',
+            message: "Todas as posições voltam a ser 'nunca vistas'. Isso não pode ser desfeito.",
+            confirmLabel: 'Zerar',
+          });
+          if (ok) resetProgress();
+        }}
+      >
+        Zerar progresso
+      </button>
 
       <h2>Histórico</h2>
       {history.length === 0 ? (

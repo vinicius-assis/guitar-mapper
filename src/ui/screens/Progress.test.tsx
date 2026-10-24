@@ -59,6 +59,50 @@ describe('Progress', () => {
     expect(onSelect).toHaveBeenCalledWith({ string: 6, fret: 1 });
   });
 
+  describe('reset', () => {
+    const renderWith = () => {
+      const storage = seededStorage({
+        progress: { '6-1': entry(5), '5-1': entry(1) },
+        history: [{ mode: 'flashcard', at: 5, total: 2, correct: 1, averageMs: 1000 }],
+      });
+      render(
+        <AppProvider storage={storage}>
+          <ConfirmProvider>
+            <Progress onSelect={() => {}} />
+          </ConfirmProvider>
+        </AppProvider>,
+      );
+      return storage;
+    };
+
+    it('puts Zerar progresso right below the map and its legend, before the history', () => {
+      renderWith();
+      const button = screen.getByRole('button', { name: 'Zerar progresso' });
+      const legend = document.querySelector('.legend')!;
+      const historyTitle = screen.getByRole('heading', { name: 'Histórico' });
+      expect(legend.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(button.compareDocumentPosition(historyTitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('resets the progress only after confirming, keeping the history', async () => {
+      const storage = renderWith();
+      const saved = () => JSON.parse(storage.dump()['guitar-mapper:v1']);
+      fireEvent.click(screen.getByRole('button', { name: 'Zerar progresso' }));
+      const dialog = screen.getByRole('alertdialog', { name: 'Zerar o progresso?' });
+      expect(dialog).toHaveTextContent('Isso não pode ser desfeito.');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+      await act(async () => {});
+      expect(Object.keys(saved().progress)).toHaveLength(2);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Zerar progresso' }));
+      fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Zerar' }));
+      await act(async () => {});
+      expect(saved().progress).toEqual({});
+      expect(saved().history).toHaveLength(1);
+      expect(screen.getByText('Nunca vistas: 144')).toBeInTheDocument();
+    });
+  });
+
   describe('history', () => {
     const history = [
       { mode: 'flashcard' as const, at: new Date(2026, 9, 24, 19, 5).getTime(), total: 18, correct: 14, averageMs: 4200 },
