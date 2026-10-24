@@ -56,6 +56,10 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
     setPhase('summary');
   }
 
+  function confirmFinish() {
+    if (window.confirm('Finalizar a sessão?')) finish();
+  }
+
   function handleAnswer(correct: boolean) {
     const position = queue[index];
     if (!position) return;
@@ -153,14 +157,40 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
       {phase === 'running' && position && (
         <>
           <div className="session-bar">
-            <p className="session">
-              Pergunta {index + 1}/{queue.length} · Acertos {hits}/{results.length} · Sequência{' '}
-              {streak}
+            <p className="session-title">
+              Pergunta {index + 1} de {queue.length}
             </p>
-            <button type="button" onClick={finish}>
-              Finalizar
+            <button
+              type="button"
+              className="stop-button"
+              aria-label="Finalizar"
+              title="Finalizar"
+              onClick={confirmFinish}
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                <rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" />
+              </svg>
             </button>
           </div>
+          <div
+            className="progress-bar"
+            role="progressbar"
+            aria-label="Progresso da sessão"
+            aria-valuemin={0}
+            aria-valuemax={queue.length}
+            aria-valuenow={results.length}
+          >
+            <span style={{ width: `${(results.length / queue.length) * 100}%` }} />
+          </div>
+          <p className="session-stats">
+            <span className="stat stat--ok" aria-label={`Acertos: ${hits}`}>
+              ✓ {hits}
+            </span>
+            <span className="stat stat--bad" aria-label={`Erros: ${results.length - hits}`}>
+              ✗ {results.length - hits}
+            </span>
+            <span className="stat">Sequência {streak}</span>
+          </p>
           {settings.mode === 'position-to-note' ? (
             <ChoiceQuiz key={index} position={position} {...quizProps} />
           ) : settings.mode === 'note-to-position' ? (

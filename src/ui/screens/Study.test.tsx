@@ -27,11 +27,17 @@ function setup(
 const start = () => fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
 const tick = (ms: number) => act(() => void vi.setSystemTime(Date.now() + ms));
 
+let confirm: ReturnType<typeof vi.spyOn>;
+
 beforeEach(() => {
+  confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(1_000_000);
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  confirm.mockRestore();
+});
 
 describe('Study: before the session', () => {
   it('waits for the Iniciar button and says how many questions there will be', () => {
@@ -117,7 +123,8 @@ describe('Study: answering', () => {
     fireEvent.click(screen.getByRole('button', { name: 'E' }));
     expect(screen.getByText('Correto!')).toBeInTheDocument();
     expect(readSaved(storage).progress['6-12'].box).toBe(2);
-    expect(screen.getByText(/Acertos 1\/1/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Acertos: 1')).toHaveTextContent('1');
+    expect(screen.getByLabelText('Erros: 0')).toBeInTheDocument();
   });
 
   it('multiple choice: a wrong answer shows the right note and a Próxima button', () => {
@@ -182,9 +189,9 @@ describe('Study: a session', () => {
   it('shows hits, percentage and the average answer time', () => {
     setup({ mode: 'flashcard', filter: THREE });
     start();
-    expect(screen.getByText(/Pergunta 1\/3/)).toBeInTheDocument();
+    expect(screen.getByText(/Pergunta 1 de 3/)).toBeInTheDocument();
     flash(2000, 'Acertei');
-    expect(screen.getByText(/Pergunta 2\/3/)).toBeInTheDocument();
+    expect(screen.getByText(/Pergunta 2 de 3/)).toBeInTheDocument();
     flash(4000, 'Errei');
     flash(3000, 'Acertei');
     expect(screen.getByText('Sessão concluída')).toBeInTheDocument();
@@ -212,6 +219,39 @@ describe('Study: a session', () => {
     expect(readSaved(storage).history[0]).toMatchObject({ total: 1, correct: 1 });
   });
 
+  it('Finalizar asks for confirmation and keeps the session going when cancelled', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    confirm.mockReturnValue(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(confirm).toHaveBeenCalledWith('Finalizar a sessão?');
+    expect(screen.queryByText('Sessão concluída')).not.toBeInTheDocument();
+    expect(screen.getByText(/Pergunta 1 de 3/)).toBeInTheDocument();
+  });
+
+  it('shows hits, misses, streak and a progress bar while running', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    const bar = screen.getByRole('progressbar', { name: 'Progresso da sessão' });
+    expect(bar).toHaveAttribute('aria-valuenow', '0');
+    expect(bar).toHaveAttribute('aria-valuemax', '3');
+    flash(1000, 'Acertei');
+    flash(1000, 'Errei');
+    expect(bar).toHaveAttribute('aria-valuenow', '2');
+    expect(screen.getByLabelText('Acertos: 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Erros: 1')).toBeInTheDocument();
+    expect(screen.getByText('Sequência 0')).toBeInTheDocument();
+  });
+
+  it('the Finalizar button is an icon-only button with a stop icon', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    const button = screen.getByRole('button', { name: 'Finalizar' });
+    expect(button).toHaveClass('stop-button');
+    expect(button.textContent).toBe('');
+    expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
   it('Finalizar with no answers shows an empty summary and saves nothing', () => {
     const storage = setup({ mode: 'flashcard', filter: THREE });
     start();
@@ -226,8 +266,8 @@ describe('Study: a session', () => {
     flash(1000, 'Acertei');
     fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar' }));
-    expect(screen.getByText(/Pergunta 1\/3/)).toBeInTheDocument();
-    expect(screen.getByText(/Acertos 0\/0/)).toBeInTheDocument();
+    expect(screen.getByText(/Pergunta 1 de 3/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Acertos: 0')).toBeInTheDocument();
   });
 
   it('Reiniciar has a decorative icon and both summary buttons share a size class', () => {
