@@ -14,11 +14,12 @@ function setup(
   settings: Partial<Settings> = {},
   forced?: { string: number; fret: number },
   onChangeFocus: () => void = () => {},
+  onSessionChange: (running: boolean) => void = () => {},
 ) {
   const storage = seededStorage({ settings: { notation: 'cifra', filter: SINGLE, ...settings } });
   render(
     <AppProvider storage={storage}>
-      <Study forced={forced ?? null} onChangeFocus={onChangeFocus} />
+      <Study forced={forced ?? null} onChangeFocus={onChangeFocus} onSessionChange={onSessionChange} />
     </AppProvider>,
   );
   return storage;
@@ -252,6 +253,53 @@ describe('Study: a session', () => {
     expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
+  it('hides the mode bar while a question is running and brings it back in the summary', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    const modeBar = () => screen.queryByRole('group', { name: 'Modo de estudo' });
+    expect(modeBar()).toBeInTheDocument();
+    start();
+    expect(modeBar()).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(modeBar()).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
+    expect(modeBar()).toBeInTheDocument();
+  });
+
+  it('tells the app when a session starts and ends', () => {
+    const onSessionChange = vi.fn();
+    setup({ mode: 'flashcard', filter: THREE }, undefined, undefined, onSessionChange);
+    expect(onSessionChange).toHaveBeenLastCalledWith(false);
+    start();
+    expect(onSessionChange).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(onSessionChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('a forced position reports a running session right away', () => {
+    const onSessionChange = vi.fn();
+    setup({ mode: 'flashcard' }, { string: 3, fret: 7 }, undefined, onSessionChange);
+    expect(onSessionChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('keeps the answer feedback and the main action pinned to the bottom', () => {
+    setup(); // uma só posição: E, então qualquer outra opção erra
+    start();
+    const wrong = screen
+      .getAllByRole('button')
+      .find((b) => b.classList.contains('option') && b.textContent !== 'E')!;
+    fireEvent.click(wrong);
+    expect(screen.getByRole('button', { name: 'Próxima' }).closest('.quiz-actions')).not.toBeNull();
+  });
+
+  it('flashcard pins Mostrar nota and the grading buttons to the bottom', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    const reveal = screen.getByRole('button', { name: 'Mostrar nota' });
+    expect(reveal.closest('.quiz-actions')).not.toBeNull();
+    fireEvent.click(reveal);
+    expect(screen.getByRole('button', { name: 'Acertei' }).closest('.quiz-actions')).not.toBeNull();
+  });
+
   it('Finalizar with no answers shows an empty summary and saves nothing', () => {
     const storage = setup({ mode: 'flashcard', filter: THREE });
     start();
@@ -287,15 +335,6 @@ describe('Study: a session', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
-  });
-
-  it('changing mode in the middle abandons the session without saving it', () => {
-    const storage = setup({ mode: 'flashcard', filter: THREE });
-    start();
-    flash(1000, 'Acertei');
-    fireEvent.click(screen.getByRole('button', { name: 'Posição → nota' }));
-    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
-    expect(readSaved(storage).history).toEqual([]);
   });
 
   it('a forced position starts a session right away, asking it first', () => {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { positionsInFilter, type Position } from '../../domain/fretboard';
 import {
   buildQueue,
@@ -20,9 +20,11 @@ type Phase = 'idle' | 'running' | 'summary';
 interface StudyProps {
   forced?: Position | null;
   onChangeFocus(): void;
+  /** Avisa o app quando uma pergunta está em andamento (para esconder as abas). */
+  onSessionChange?(running: boolean): void;
 }
 
-export function Study({ forced = null, onChangeFocus }: StudyProps) {
+export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyProps) {
   const { data, recordAnswer, updateSettings, recordSession } = useAppState();
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
@@ -36,6 +38,12 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const resultsRef = useRef<SessionResult[]>([]);
   const questionStart = useRef(Date.now());
+
+  useEffect(() => {
+    onSessionChange?.(phase === 'running');
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => onSessionChange?.(false), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function begin() {
     if (candidates.length === 0) return;
@@ -91,6 +99,7 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
 
   return (
     <section className="screen screen--study">
+      {phase !== 'running' && (
       <div className="mode-bar" role="group" aria-label="Modo de estudo">
         {MODES.map(({ mode, label }) => (
           <button
@@ -103,6 +112,7 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
           </button>
         ))}
       </div>
+      )}
 
       {phase === 'idle' && (
         <div className="session-start">

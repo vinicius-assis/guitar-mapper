@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { App } from './App';
 import { STORAGE_KEY } from './state/storage';
 import { createMemoryStorage, createThrowingStorage, seededStorage } from './test-utils';
@@ -26,7 +26,6 @@ describe('App', () => {
     render(<App storage={seededStorage({ settings: { notation: 'cifra' } })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Progresso' }));
     fireEvent.click(screen.getByTestId('cell-6-12'));
-    expect(screen.getByRole('button', { name: 'Estudar' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
     // a nota da posição 6-12 (E) está entre as opções
     expect(screen.getByRole('button', { name: 'E' })).toBeInTheDocument();
@@ -52,5 +51,29 @@ describe('App', () => {
     expect(screen.getByText(/dados salvos estavam corrompidos/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Fechar aviso' }));
     expect(screen.queryByText(/dados salvos estavam corrompidos/i)).not.toBeInTheDocument();
+  });
+
+  it('hides the tab bar while a session is running and shows it again after', () => {
+    render(<App storage={seededStorage({ settings: { notation: 'cifra' } })} />);
+    const nav = () => screen.queryByRole('navigation', { name: 'Principal' });
+    expect(nav()).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
+    expect(nav()).not.toBeInTheDocument();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(nav()).toBeInTheDocument();
+  });
+
+  it('opening a position from Progresso starts a session without the tab bar', () => {
+    render(<App storage={seededStorage({ settings: { notation: 'cifra' } })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Progresso' }));
+    fireEvent.click(screen.getByTestId('cell-6-12'));
+    expect(screen.queryByRole('navigation', { name: 'Principal' })).not.toBeInTheDocument();
+  });
+
+  it('Alterar foco goes to the Foco tab', () => {
+    render(<App storage={seededStorage()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Alterar foco' }));
+    expect(screen.getByRole('button', { name: 'Foco' })).toHaveAttribute('aria-current', 'page');
   });
 });

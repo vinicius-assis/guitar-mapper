@@ -233,3 +233,8 @@ main { display: flex; flex-direction: column; }
 .mode-description { margin: 0 auto; max-width: 32ch; color: var(--muted); line-height: 1.4; text-align: center; text-wrap: balance; }
 .primary.start { background: var(--ok); color: #08140d; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .primary.start:disabled { opacity: 0.5; }
+
+.app--session main { padding-bottom: 0; }
+.quiz-actions { position: sticky; bottom: 0; z-index: 2; background: var(--bg); padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); margin-top: 0; }
+.quiz-actions.options { margin-top: 0; }
+.quiz-actions .primary { margin-top: 0; }

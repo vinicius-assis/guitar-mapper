@@ -20,6 +20,7 @@ function Shell() {
   const { storageAvailable, recovered } = useAppState();
   const [tab, setTab] = useState<Tab>('study');
   const [forced, setForced] = useState<Position | null>(null);
+  const [sessionRunning, setSessionRunning] = useState(false);
   const [recoveredDismissed, setRecoveredDismissed] = useState(false);
 
   const go = (next: Tab) => {
@@ -28,7 +29,7 @@ function Shell() {
   };
 
   return (
-    <div className="app">
+    <div className={sessionRunning ? 'app app--session' : 'app'}>
       <header className="banners">
         {!storageAvailable && (
           <p className="banner">O progresso não será salvo neste navegador (armazenamento indisponível).</p>
@@ -44,7 +45,13 @@ function Shell() {
       </header>
 
       <main>
-        {tab === 'study' && <Study forced={forced} onChangeFocus={() => go('focus')} />}
+        {tab === 'study' && (
+          <Study
+            forced={forced}
+            onChangeFocus={() => go('focus')}
+            onSessionChange={setSessionRunning}
+          />
+        )}
         {tab === 'progress' && (
           <Progress
             onSelect={(position) => {
@@ -57,18 +64,20 @@ function Shell() {
         {tab === 'settings' && <Settings />}
       </main>
 
-      <nav className="tabs" aria-label="Principal">
-        {TABS.map(({ tab: t, label }) => (
-          <button
-            key={t}
-            type="button"
-            aria-current={tab === t ? 'page' : undefined}
-            onClick={() => go(t)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+      {!sessionRunning && (
+        <nav className="tabs" aria-label="Principal">
+          {TABS.map(({ tab: t, label }) => (
+            <button
+              key={t}
+              type="button"
+              aria-current={tab === t ? 'page' : undefined}
+              onClick={() => go(t)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }

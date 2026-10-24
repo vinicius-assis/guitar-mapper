@@ -56,7 +56,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
         onTap={tapped ? undefined : tap}
       />
       {tapped && (
-        <div className="feedback" role="status">
+        <div className="feedback quiz-actions" role="status">
           <p>{correct ? 'Correto!' : `Errou. ${noteLabel(question.target, notation)} está marcada no braço.`}</p>
           {!correct && (
             <button type="button" className="primary" onClick={onNext}>

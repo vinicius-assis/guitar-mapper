@@ -34,7 +34,7 @@ export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
         ]}
       />
       {revealed ? (
-        <div className="options options--two">
+        <div className="options options--two quiz-actions">
           <button type="button" className="option option--wrong" onClick={() => grade(false)}>
             Errei
           </button>
@@ -43,9 +43,11 @@ export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
           </button>
         </div>
       ) : (
-        <button type="button" className="primary" onClick={() => setRevealed(true)}>
-          Mostrar nota
-        </button>
+        <div className="quiz-actions">
+          <button type="button" className="primary" onClick={() => setRevealed(true)}>
+            Mostrar nota
+          </button>
+        </div>
       )}
     </div>
   );
