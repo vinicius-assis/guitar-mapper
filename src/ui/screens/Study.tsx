@@ -9,6 +9,7 @@ import {
 } from '../../domain/session';
 import { useAppState } from '../../state/AppState';
 import { formatSeconds } from '../format';
+import { describeFocus } from '../focusSummary';
 import { MODES, MODE_DESCRIPTIONS } from '../modeLabels';
 import { ChoiceQuiz } from './ChoiceQuiz';
 import { Flashcard } from './Flashcard';
@@ -16,7 +17,12 @@ import { FindQuiz } from './FindQuiz';
 
 type Phase = 'idle' | 'running' | 'summary';
 
-export function Study({ forced = null }: { forced?: Position | null }) {
+interface StudyProps {
+  forced?: Position | null;
+  onChangeFocus(): void;
+}
+
+export function Study({ forced = null, onChangeFocus }: StudyProps) {
   const { data, recordAnswer, updateSettings, recordSession } = useAppState();
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
@@ -72,6 +78,7 @@ export function Study({ forced = null }: { forced?: Position | null }) {
     setPhase('idle');
   }
 
+  const focus = describeFocus(settings.filter);
   const position = queue[index];
   const quizProps = { settings, onAnswer: handleAnswer, onNext: handleNext };
   const hits = results.filter((r) => r.correct).length;
@@ -79,7 +86,7 @@ export function Study({ forced = null }: { forced?: Position | null }) {
   for (let i = results.length - 1; i >= 0 && results[i].correct; i--) streak++;
 
   return (
-    <section className="screen">
+    <section className="screen screen--study">
       <div className="mode-bar" role="group" aria-label="Modo de estudo">
         {MODES.map(({ mode, label }) => (
           <button
@@ -96,16 +103,31 @@ export function Study({ forced = null }: { forced?: Position | null }) {
       {phase === 'idle' && (
         <div className="session-start">
           <p className="mode-description">{MODE_DESCRIPTIONS[settings.mode]}</p>
-          {candidates.length === 0 ? (
-            <p className="empty">
-              Nenhuma posição no foco atual. Selecione ao menos uma corda ou ajuste as casas e o
-              nível de notas em Foco.
-            </p>
-          ) : (
-            <p>
-              {candidates.length} {candidates.length === 1 ? 'pergunta' : 'perguntas'}
-            </p>
-          )}
+          <div className="focus-card" role="group" aria-label="Foco">
+            <div className="focus-card__head">
+              <h3>Foco</h3>
+              <button type="button" onClick={onChangeFocus}>
+                Alterar foco
+              </button>
+            </div>
+            {candidates.length === 0 ? (
+              <p className="empty">
+                Nenhuma posição no foco atual. Selecione ao menos uma corda ou ajuste as casas e o
+                nível de notas em Foco.
+              </p>
+            ) : (
+              <dl>
+                <dt>Perguntas</dt>
+                <dd>{candidates.length}</dd>
+                <dt>Cordas</dt>
+                <dd>{focus.strings}</dd>
+                <dt>Casas</dt>
+                <dd>{focus.frets}</dd>
+                <dt>Notas</dt>
+                <dd>{focus.notes}</dd>
+              </dl>
+            )}
+          </div>
           <button
             type="button"
             className="primary start"

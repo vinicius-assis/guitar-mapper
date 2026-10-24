@@ -44,7 +44,7 @@ function Shell() {
       </header>
 
       <main>
-        {tab === 'study' && <Study forced={forced} />}
+        {tab === 'study' && <Study forced={forced} onChangeFocus={() => go('focus')} />}
         {tab === 'progress' && (
           <Progress
             onSelect={(position) => {

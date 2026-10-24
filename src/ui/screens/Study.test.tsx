@@ -10,11 +10,15 @@ const SINGLE: Settings['filter'] = { strings: [6], fretMin: 12, fretMax: 12, nat
 // Três posições naturais na corda 6: casa 1 (F), casa 3 (G), casa 5 (A).
 const THREE: Settings['filter'] = { strings: [6], fretMin: 1, fretMax: 5, naturalsOnly: true };
 
-function setup(settings: Partial<Settings> = {}, forced?: { string: number; fret: number }) {
+function setup(
+  settings: Partial<Settings> = {},
+  forced?: { string: number; fret: number },
+  onChangeFocus: () => void = () => {},
+) {
   const storage = seededStorage({ settings: { notation: 'cifra', filter: SINGLE, ...settings } });
   render(
     <AppProvider storage={storage}>
-      <Study forced={forced ?? null} />
+      <Study forced={forced ?? null} onChangeFocus={onChangeFocus} />
     </AppProvider>,
   );
   return storage;
@@ -32,7 +36,7 @@ afterEach(() => vi.useRealTimers());
 describe('Study: before the session', () => {
   it('waits for the Iniciar button and says how many questions there will be', () => {
     setup({ filter: THREE });
-    expect(screen.getByText('3 perguntas')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
     expect(screen.queryByText('Qual é esta nota?')).not.toBeInTheDocument();
     start();
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
@@ -55,9 +59,25 @@ describe('Study: before the session', () => {
     expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
+  it('summarises the focus next to the start button', () => {
+    setup({ filter: THREE });
+    const card = screen.getByRole('group', { name: 'Foco' });
+    expect(card).toHaveTextContent('Perguntas3');
+    expect(card).toHaveTextContent('Cordas6');
+    expect(card).toHaveTextContent('Casas1–5');
+    expect(card).toHaveTextContent('Notassó naturais');
+  });
+
+  it('Alterar foco calls back, also when the focus is empty', () => {
+    const onChangeFocus = vi.fn();
+    setup({ filter: { ...SINGLE, strings: [] } }, undefined, onChangeFocus);
+    fireEvent.click(screen.getByRole('button', { name: 'Alterar foco' }));
+    expect(onChangeFocus).toHaveBeenCalledTimes(1);
+  });
+
   it('uses the singular for one question', () => {
     setup();
-    expect(screen.getByText('1 pergunta')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas1');
   });
 
   it('explains what is missing when the filter has no positions, and cannot start', () => {
@@ -208,7 +228,7 @@ describe('Study: a session', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
-    expect(screen.getByText('3 perguntas')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
   });
 
   it('changing mode in the middle abandons the session without saving it', () => {
