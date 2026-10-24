@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { positionKey, type Position } from '../domain/fretboard';
+import { addToHistory, type HistoryEntry } from '../domain/session';
 import { applyAnswer } from '../domain/scheduler';
 import {
   getBrowserStorage,
@@ -25,6 +26,8 @@ interface AppStateValue {
   recordAnswer(position: Position, correct: boolean): void;
   updateSettings(patch: Partial<Settings>): void;
   resetProgress(): void;
+  recordSession(entry: HistoryEntry): void;
+  clearHistory(): void;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -78,6 +81,18 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
     commit({ ...dataRef.current, progress: {} });
   }, [commit]);
 
+  const recordSession = useCallback(
+    (entry: HistoryEntry) => {
+      const current = dataRef.current;
+      commit({ ...current, history: addToHistory(current.history, entry) });
+    },
+    [commit],
+  );
+
+  const clearHistory = useCallback(() => {
+    commit({ ...dataRef.current, history: [] });
+  }, [commit]);
+
   const value = useMemo<AppStateValue>(
     () => ({
       data,
@@ -86,8 +101,19 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       recordAnswer,
       updateSettings,
       resetProgress,
+      recordSession,
+      clearHistory,
     }),
-    [data, storageAvailable, init.recovered, recordAnswer, updateSettings, resetProgress],
+    [
+      data,
+      storageAvailable,
+      init.recovered,
+      recordAnswer,
+      updateSettings,
+      resetProgress,
+      recordSession,
+      clearHistory,
+    ],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

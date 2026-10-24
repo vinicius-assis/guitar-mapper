@@ -7,6 +7,7 @@ import {
 } from '../domain/fretboard';
 import type { Notation } from '../domain/notes';
 import type { QuizMode } from '../domain/quiz';
+import { HISTORY_LIMIT, type HistoryEntry } from '../domain/session';
 import type { Box, PositionProgress, ProgressMap } from '../domain/scheduler';
 
 export interface Settings {
@@ -20,6 +21,7 @@ export interface AppData {
   version: 1;
   settings: Settings;
   progress: ProgressMap;
+  history: HistoryEntry[];
 }
 
 export const STORAGE_KEY = 'guitar-mapper:v1';
@@ -58,6 +60,7 @@ export function createDefaultData(): AppData {
     version: 1,
     settings: { ...DEFAULT_SETTINGS, filter: { ...DEFAULT_FILTER, strings: [...DEFAULT_FILTER.strings] } },
     progress: {},
+    history: [],
   };
 }
 
@@ -130,6 +133,29 @@ function sanitizeProgress(raw: unknown): ProgressMap {
   return out;
 }
 
+function sanitizeHistory(raw: unknown): HistoryEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: HistoryEntry[] = [];
+  for (const entry of raw) {
+    if (!isRecord(entry)) continue;
+    const { mode, at, total, correct, averageMs } = entry;
+    if (
+      MODES.includes(mode as QuizMode) &&
+      isCount(at) &&
+      isCount(total) &&
+      Number.isInteger(total) &&
+      total > 0 &&
+      isCount(correct) &&
+      Number.isInteger(correct) &&
+      correct <= total &&
+      isCount(averageMs)
+    ) {
+      out.push({ mode: mode as QuizMode, at, total, correct, averageMs });
+    }
+  }
+  return out.slice(0, HISTORY_LIMIT);
+}
+
 export interface LoadResult {
   data: AppData;
   storageAvailable: boolean;
@@ -155,6 +181,7 @@ export function loadData(storage: StorageLike | null): LoadResult {
           version: 1,
           settings: sanitizeSettings(parsed.settings),
           progress: sanitizeProgress(parsed.progress),
+          history: sanitizeHistory(parsed.history),
         },
         storageAvailable: true,
         recovered: false,

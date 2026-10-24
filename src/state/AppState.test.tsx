@@ -15,6 +15,11 @@ function Probe() {
       <button onClick={() => s.recordAnswer({ string: 6, fret: 0 }, false)}>wrong</button>
       <button onClick={() => s.updateSettings({ leftHanded: true })}>lefty</button>
       <button onClick={() => s.resetProgress()}>reset</button>
+      <button onClick={() => s.recordSession({ mode: 'flashcard', at: 7, total: 2, correct: 1, averageMs: 900 })}>
+        session
+      </button>
+      <button onClick={() => s.clearHistory()}>clear history</button>
+      <output data-testid="history">{s.data.history.length}</output>
       <output data-testid="box">{s.data.progress['6-0']?.box ?? 'none'}</output>
       <output data-testid="avail">{String(s.storageAvailable)}</output>
       <output data-testid="left">{String(s.data.settings.leftHanded)}</output>
@@ -81,5 +86,26 @@ describe('AppProvider', () => {
     fireEvent.click(screen.getByText('right'));
     expect(screen.getByTestId('avail')).toHaveTextContent('false');
     expect(screen.getByTestId('box')).toHaveTextContent('2');
+  });
+
+  it('records sessions into the history, persists them, and clears them without touching progress', () => {
+    const storage = createMemoryStorage();
+    renderWith(storage);
+    fireEvent.click(screen.getByText('right'));
+    fireEvent.click(screen.getByText('session'));
+    fireEvent.click(screen.getByText('session'));
+    expect(screen.getByTestId('history')).toHaveTextContent('2');
+    expect(readSaved(storage).history).toHaveLength(2);
+    fireEvent.click(screen.getByText('clear history'));
+    expect(screen.getByTestId('history')).toHaveTextContent('0');
+    expect(readSaved(storage).history).toEqual([]);
+    expect(screen.getByTestId('box')).toHaveTextContent('2');
+  });
+
+  it('resetting progress keeps the history', () => {
+    renderWith(createMemoryStorage());
+    fireEvent.click(screen.getByText('session'));
+    fireEvent.click(screen.getByText('reset'));
+    expect(screen.getByTestId('history')).toHaveTextContent('1');
   });
 });

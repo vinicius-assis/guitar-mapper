@@ -113,6 +113,35 @@ describe('loadData', () => {
   });
 });
 
+describe('history', () => {
+  const entry = { mode: 'flashcard', at: 5, total: 4, correct: 3, averageMs: 1500 };
+  const load = (history: unknown) =>
+    loadData(
+      createMemoryStorage({ [STORAGE_KEY]: JSON.stringify({ version: 1, settings: {}, progress: {}, history }) }),
+    ).data.history;
+
+  it('defaults to an empty history, also for data saved before it existed', () => {
+    expect(createDefaultData().history).toEqual([]);
+    const old = JSON.stringify({ version: 1, settings: {}, progress: {} });
+    const result = loadData(createMemoryStorage({ [STORAGE_KEY]: old }));
+    expect(result.recovered).toBe(false);
+    expect(result.data.history).toEqual([]);
+  });
+
+  it('round-trips valid entries', () => {
+    expect(load([entry])).toEqual([entry]);
+  });
+
+  it('drops invalid entries and keeps only the 20 newest', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ ...entry, at: i }));
+    expect(load([entry, { ...entry, mode: 'nope' }, { ...entry, total: 0 }, { ...entry, correct: 9 }, 'x'])).toEqual([
+      entry,
+    ]);
+    expect(load(many)).toHaveLength(20);
+    expect(load('garbage')).toEqual([]);
+  });
+});
+
 describe('saveData', () => {
   it('returns false when storage is missing or throws', () => {
     expect(saveData(null, createDefaultData())).toBe(false);

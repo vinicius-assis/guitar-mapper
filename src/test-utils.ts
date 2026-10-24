@@ -5,6 +5,7 @@ import {
   type Settings,
   type StorageLike,
 } from './state/storage';
+import type { HistoryEntry } from './domain/session';
 import type { ProgressMap } from './domain/scheduler';
 
 /** RNG determinístico para testes. */
@@ -51,13 +52,14 @@ export function createThrowingStorage(failOn: 'read' | 'write' | 'all'): Storage
 }
 
 export function seededStorage(
-  overrides: { settings?: Partial<Settings>; progress?: ProgressMap } = {},
+  overrides: { settings?: Partial<Settings>; progress?: ProgressMap; history?: HistoryEntry[] } = {},
 ) {
   const base = createDefaultData();
   const data: AppData = {
     version: 1,
     settings: { ...base.settings, ...overrides.settings },
     progress: overrides.progress ?? {},
+    history: overrides.history ?? [],
   };
   return createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(data) });
 }
