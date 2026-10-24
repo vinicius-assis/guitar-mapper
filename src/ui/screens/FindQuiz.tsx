@@ -52,7 +52,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
         // Não rolar até a resposta: isso a entregaria. Canhoto começa no lado da pestana (fretMin).
         scrollToFret={leftHanded ? fretMin : undefined}
         marks={marks}
-        stringLabels={stringLabels(notation)}
+        stringLabels={stringLabels()}
         onTap={tapped ? undefined : tap}
       />
       {tapped && (

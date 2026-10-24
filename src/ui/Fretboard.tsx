@@ -74,9 +74,7 @@ export function Fretboard({
               data-testid={`string-label-${i + 1}`}
               style={{ height: STRING_GAP }}
             >
-              {label.split(' · ').map((line) => (
-                <span key={line}>{line}</span>
-              ))}
+              {label}
             </div>
           ))}
         </div>

@@ -35,7 +35,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
         marks={marks}
         onTap={onSelect}
         leftHanded={settings.leftHanded}
-        stringLabels={stringLabels(settings.notation)}
+        stringLabels={stringLabels()}
       />
       <ul className="legend">
         {LEGEND.map(({ mastery, label }) => (

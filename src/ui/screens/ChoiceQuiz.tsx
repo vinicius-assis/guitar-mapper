@@ -41,7 +41,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
         fretMax={fretMax}
         leftHanded={leftHanded}
         scrollToFret={position.fret}
-        stringLabels={stringLabels(notation)}
+        stringLabels={stringLabels()}
         marks={[
           {
             position,

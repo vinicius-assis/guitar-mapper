@@ -79,13 +79,5 @@ describe('Fretboard', () => {
       );
       expect(container.querySelector('.fretboard-frame--mirrored')).not.toBeNull();
     });
-
-    it('stacks a combined label on two lines', () => {
-      render(
-        <Fretboard fretMin={0} fretMax={4} marks={[]} stringLabels={['E · Mi', 'B · Si', 'G · Sol', 'D · Ré', 'A · Lá', 'E · Mi']} />,
-      );
-      expect(screen.getByTestId('string-label-1')).toHaveTextContent('EMi');
-      expect(screen.getByTestId('string-label-1').querySelectorAll('span')).toHaveLength(2);
-    });
   });
 });
