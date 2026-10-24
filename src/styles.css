@@ -211,10 +211,10 @@ main { display: flex; flex-direction: column; }
 .focus-card__head { display: flex; align-items: center; justify-content: space-between; }
 .focus-card__head h3 { margin: 0; }
 .focus-card__head button { min-height: var(--tap); padding: 0 12px; background: none; border: 0; color: var(--accent); font-weight: 600; }
-.focus-rows { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 16px; margin: 4px 0; }
+.focus-rows { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 16px; margin: 4px 0; }
 .focus-rows dt { color: var(--muted); }
 .focus-rows dd { margin: 0; justify-self: end; }
-.badge { padding: 6px 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 0.875rem; font-weight: 600; }
+.badge { display: inline-block; line-height: 1.2; padding: 6px 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 0.875rem; font-weight: 600; }
 .badge--accent { background: var(--accent); border-color: var(--accent); color: #1a1408; }
 .summary-button { min-height: 52px; margin: 0; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-weight: 700; }
 .primary.summary-button { border: 0; }
