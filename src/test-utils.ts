@@ -1,3 +1,12 @@
+import {
+  STORAGE_KEY,
+  createDefaultData,
+  type AppData,
+  type Settings,
+  type StorageLike,
+} from './state/storage';
+import type { ProgressMap } from './domain/scheduler';
+
 /** RNG determinístico para testes. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -14,4 +23,45 @@ export function mulberry32(seed: number): () => number {
 export function sequence(...values: number[]): () => number {
   let i = 0;
   return () => values[Math.min(i++, values.length - 1)];
+}
+
+export function createMemoryStorage(initial: Record<string, string> = {}) {
+  const map = new Map(Object.entries(initial));
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+    removeItem: (key: string) => {
+      map.delete(key);
+    },
+    dump: () => Object.fromEntries(map),
+  };
+}
+
+export function createThrowingStorage(failOn: 'read' | 'write' | 'all'): StorageLike {
+  const boom = () => {
+    throw new Error('storage unavailable');
+  };
+  return {
+    getItem: failOn === 'write' ? () => null : boom,
+    setItem: failOn === 'read' ? () => {} : boom,
+    removeItem: () => {},
+  };
+}
+
+export function seededStorage(
+  overrides: { settings?: Partial<Settings>; progress?: ProgressMap } = {},
+) {
+  const base = createDefaultData();
+  const data: AppData = {
+    version: 1,
+    settings: { ...base.settings, ...overrides.settings },
+    progress: overrides.progress ?? {},
+  };
+  return createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(data) });
+}
+
+export function readSaved(storage: { dump(): Record<string, string> }): AppData {
+  return JSON.parse(storage.dump()[STORAGE_KEY]) as AppData;
 }
