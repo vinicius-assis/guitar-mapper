@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSound } from '../../audio/SoundProvider';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
-import { buildEarQuestion } from '../../domain/quiz';
+import { EAR_LISTEN_LIMIT, buildEarQuestion } from '../../domain/quiz';
 import { Fretboard } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
@@ -16,6 +16,7 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
     [position, earLevel, filter.naturalsOnly],
   );
   const [picked, setPicked] = useState<NoteIndex | null>(null);
+  const [listens, setListens] = useState(1); // a que toca sozinha já conta
   const answered = picked !== null;
   const correct = answered && picked === question.answer;
   useAutoAdvance(correct, onNext);
@@ -25,24 +26,42 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
     sound.playPosition(position);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const limit = EAR_LISTEN_LIMIT[earLevel];
+
+  function listenAgain() {
+    setListens((n) => n + 1);
+    sound.playPosition(position);
+  }
+
   function choose(note: NoteIndex) {
     if (answered) return;
     setPicked(note);
     onAnswer(note === question.answer);
   }
 
+  // Depois de responder, o limite deixa de valer: ouvir a nota certa com o braço à vista reforça.
+  const repeatsLeft = limit === null ? null : Math.max(0, limit - listens);
   const { fretMin, fretMax } = windowFor(filter, position);
   return (
     <div className="quiz">
       <p className="prompt">Qual nota você ouviu?</p>
-      <button type="button" className="ear-play" onClick={() => sound.playPosition(position)}>
+      <button
+        type="button"
+        className="ear-play"
+        disabled={!answered && repeatsLeft === 0}
+        onClick={listenAgain}
+      >
         <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false">
           <path
             d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"
             fill="currentColor"
           />
         </svg>
-        Ouvir de novo
+        {answered || repeatsLeft === null
+          ? 'Ouvir de novo'
+          : repeatsLeft > 0
+            ? `Ouvir de novo (${repeatsLeft})`
+            : 'Sem mais repetições'}
       </button>
       <div className={`options${question.options.length > 4 ? ' options--many' : ''}`}>
         {question.options.map((note) => (

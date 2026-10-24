@@ -70,6 +70,13 @@ export function buildChoiceQuestion(
   return { position, answer, options };
 }
 
+/** Quantas vezes o aluno pode ouvir cada nota (a que toca sozinha conta). `null` = sem limite. */
+export const EAR_LISTEN_LIMIT: Record<EarLevel, number | null> = {
+  easy: null,
+  medium: 5,
+  hard: 2,
+};
+
 const EASY_MIN_DISTANCE = 3;
 const circularDistance = (a: NoteIndex, b: NoteIndex) =>
   Math.min((a - b + 12) % 12, (b - a + 12) % 12);

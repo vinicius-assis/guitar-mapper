@@ -1,4 +1,4 @@
-import type { EarLevel, QuizMode } from '../domain/quiz';
+import { EAR_LISTEN_LIMIT, type EarLevel, type QuizMode } from '../domain/quiz';
 
 export const MODES: { mode: QuizMode; label: string }[] = [
   { mode: 'position-to-note', label: 'Posição → nota' },
@@ -26,12 +26,12 @@ export const EAR_LEVELS: { level: EarLevel; label: 'Fácil' | 'Médio' | 'Difíc
   {
     level: 'medium',
     label: 'Médio',
-    description: '4 opções, incluindo notas vizinhas. Pede mais atenção ao ouvir.',
+    description: `4 opções, incluindo notas vizinhas. Você pode ouvir ${EAR_LISTEN_LIMIT.medium} vezes cada nota.`,
   },
   {
     level: 'hard',
     label: 'Difícil',
-    description: 'Sem dicas: todas as notas do seu foco são opções.',
+    description: `Sem dicas: todas as notas do seu foco são opções. Você pode ouvir ${EAR_LISTEN_LIMIT.hard} vezes cada nota.`,
   },
 ];
 

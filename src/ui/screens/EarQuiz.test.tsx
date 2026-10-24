@@ -66,6 +66,42 @@ describe('EarQuiz', () => {
     }
   });
 
+  it('easy has no limit and no counter', () => {
+    const { player } = setup('easy');
+    for (let i = 0; i < 8; i++) fireEvent.click(screen.getByRole('button', { name: 'Ouvir de novo' }));
+    expect(player.play).toHaveBeenCalledTimes(9);
+  });
+
+  it('medium allows 5 listens in total (4 repeats), then the button is disabled', () => {
+    const { player } = setup('medium');
+    expect(screen.getByRole('button', { name: 'Ouvir de novo (4)' })).toBeEnabled();
+    for (const left of [4, 3, 2, 1]) {
+      fireEvent.click(screen.getByRole('button', { name: `Ouvir de novo (${left})` }));
+    }
+    expect(player.play).toHaveBeenCalledTimes(5);
+    expect(screen.getByRole('button', { name: 'Sem mais repetições' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Sem mais repetições' }));
+    expect(player.play).toHaveBeenCalledTimes(5);
+  });
+
+  it('hard allows 2 listens in total (1 repeat)', () => {
+    const { player } = setup('hard');
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvir de novo (1)' }));
+    expect(player.play).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: 'Sem mais repetições' })).toBeDisabled();
+  });
+
+  it('after answering, the limit is lifted and the button plays again', () => {
+    const { player } = setup('hard');
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvir de novo (1)' }));
+    fireEvent.click(options().find((b) => b.textContent !== 'E')!);
+    const again = screen.getByRole('button', { name: 'Ouvir de novo' });
+    expect(again).toBeEnabled();
+    fireEvent.click(again);
+    fireEvent.click(again);
+    expect(player.play).toHaveBeenCalledTimes(4);
+  });
+
   it('a right answer reports it, shows Correto! and reveals the board without replaying', () => {
     const { player, onAnswer } = setup('medium');
     fireEvent.click(options().find((b) => b.textContent === 'E')!);

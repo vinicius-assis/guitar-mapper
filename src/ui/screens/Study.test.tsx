@@ -448,9 +448,9 @@ describe('Study: Ouvido', () => {
     expect(screen.getByText('2 opções, com notas bem diferentes. Para começar a reconhecer o som.')).toBeInTheDocument();
     fireEvent.click(level('Médio'));
     expect(level('Médio')).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('4 opções, incluindo notas vizinhas. Pede mais atenção ao ouvir.')).toBeInTheDocument();
+    expect(screen.getByText('4 opções, incluindo notas vizinhas. Você pode ouvir 5 vezes cada nota.')).toBeInTheDocument();
     fireEvent.click(level('Difícil'));
-    expect(screen.getByText('Sem dicas: todas as notas do seu foco são opções.')).toBeInTheDocument();
+    expect(screen.getByText('Sem dicas: todas as notas do seu foco são opções. Você pode ouvir 2 vezes cada nota.')).toBeInTheDocument();
     expect(readSaved(storage).settings.earLevel).toBe('hard');
   });
 

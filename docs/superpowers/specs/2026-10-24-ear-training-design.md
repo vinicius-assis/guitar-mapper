@@ -9,8 +9,8 @@ Treinar o reconhecimento de notas de ouvido: o app toca uma nota de violão e o 
 - Quarta aba na barra de modos: **Ouvido** (ao lado de Posição → nota, Nota → posição e Flashcard).
 - **Três níveis**, escolhidos na tela de início do modo, cada um com um descritivo curto:
   - **Fácil:** 2 opções, com notas bem diferentes entre si. *"2 opções, com notas bem diferentes. Para começar a reconhecer o som."*
-  - **Médio:** 4 opções, incluindo notas vizinhas. *"4 opções, incluindo notas vizinhas. Pede mais atenção ao ouvir."*
-  - **Difícil:** todas as notas do foco como opções (7 só com naturais, 12 com acidentais). *"Sem dicas: todas as notas do seu foco são opções."*
+  - **Médio:** 4 opções, incluindo notas vizinhas. *"4 opções, incluindo notas vizinhas. Você pode ouvir 5 vezes cada nota."*
+  - **Difícil:** todas as notas do foco como opções (7 só com naturais, 12 com acidentais). *"Sem dicas: todas as notas do seu foco são opções. Você pode ouvir 2 vezes cada nota."*
 - A pergunta é só o som. O braço **não** aparece antes da resposta; aparece depois, com o ponto da posição tocada.
 - A nota tocada é a altura real de uma posição do **Foco** atual (cordas, casas, naturais ou acidentais).
 - O exercício **não** conta no mapa de progresso (caixas e cores das posições). Ele aparece só no histórico de sessões.
@@ -19,7 +19,7 @@ Treinar o reconhecimento de notas de ouvido: o app toca uma nota de violão e o 
 ## Comportamento
 
 - O som toca sozinho quando a pergunta aparece. O primeiro sai do toque em Iniciar, que libera o áudio no iPhone. Os seguintes tocam sem novo toque.
-- Botão grande de alto-falante **"Ouvir de novo"**, sem limite de repetições, em todos os níveis.
+- Botão grande de alto-falante **"Ouvir de novo"**. Limite de audições por pergunta (a que toca sozinha conta): **Fácil** sem limite; **Médio** 5 (4 repetições); **Difícil** 2 (1 repetição). O botão mostra as repetições que restam ("Ouvir de novo (3)"), e ao zerar fica desabilitado como "Sem mais repetições". O limite recomeça a cada pergunta e deixa de valer depois de responder (o botão volta a tocar sempre). Os descritivos de Médio e Difícil dizem o limite.
 - O tempo da resposta conta do início do som até a escolha.
 - Ao responder: a opção certa fica verde, a errada vermelha, o braço mostra a posição (como no modo Posição → nota) e o avanço segue igual (automático ao acertar, botão Próxima ao errar). Nada toca de novo ao responder.
 - **Som desligado em Ajustes:** o modo Ouvido não pode iniciar. A tela de início mostra "Ligue o Som em Ajustes" e o Iniciar fica desabilitado.
@@ -66,4 +66,4 @@ Respeitam o Foco (`naturalsOnly`): o conjunto de notas possíveis é o das 7 nat
 
 ## Fora do escopo
 
-Intervalos, acordes, notas de oitavas diferentes como resposta, limite de repetições do som e contar Ouvido no mapa de progresso.
+Intervalos, acordes, notas de oitavas diferentes como resposta, contar Ouvido no mapa de progresso.
