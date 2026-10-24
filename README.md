@@ -17,3 +17,7 @@ App web (PWA) para memorizar as notas do braço da guitarra, casas 0–24, com q
 - `src/ui/`: componente do braço (SVG) e telas.
 
 Spec e plano em `docs/superpowers/`.
+
+## Deploy (GitHub Pages)
+
+O workflow `.github/workflows/deploy.yml` roda os testes, gera o build e publica `dist/` a cada push na `main`. Ative uma única vez em *Settings → Pages → Source: GitHub Actions*. O app fica em `https://vinicius-assis.github.io/guitar-mapper/` (o `base` do Vite está configurado para esse subcaminho).
