@@ -1,24 +1,31 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { allPositions } from '../domain/fretboard';
 import { pitchOf } from '../domain/pitch';
 
-const DIR = 'public/sounds/nylon';
+// import.meta.glob (do Vite) evita depender de tipos do Node só para listar arquivos.
+const mp3 = Object.keys(
+  import.meta.glob('/public/sounds/nylon/*.mp3', { query: '?url', import: 'default' }),
+);
+const license = Object.values(
+  import.meta.glob('/public/sounds/nylon/LICENSE.txt', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+)[0] as string | undefined;
 
 describe('nylon guitar assets', () => {
   it('has an MP3 for every pitch on the fretboard', () => {
     const pitches = new Set(allPositions().map(pitchOf));
     for (const midi of pitches) {
-      const file = `${DIR}/${midi}.mp3`;
-      expect(existsSync(file), file).toBe(true);
-      expect(statSync(file).size, file).toBeGreaterThan(1000);
+      expect(mp3, `${midi}.mp3`).toContain(`/public/sounds/nylon/${midi}.mp3`);
     }
   });
 
   it('ships the license notices', () => {
-    const text = readFileSync(`${DIR}/LICENSE.txt`, 'utf8');
-    expect(text).toMatch(/FluidR3/);
-    expect(text).toMatch(/MIT/);
-    expect(text).toMatch(/Creative Commons Attribution 3\.0/);
+    expect(license).toBeDefined();
+    expect(license).toMatch(/FluidR3/);
+    expect(license).toMatch(/MIT/);
+    expect(license).toMatch(/Creative Commons Attribution 3\.0/);
   });
 });
