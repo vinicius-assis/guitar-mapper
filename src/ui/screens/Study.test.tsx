@@ -135,7 +135,11 @@ describe('Study: answering', () => {
       .getAllByRole('button')
       .find((b) => b.classList.contains('option') && b.textContent !== 'E')!;
     fireEvent.click(wrong);
-    expect(screen.getByText('Era E')).toBeInTheDocument();
+    expect(screen.queryByText('Era E')).not.toBeInTheDocument();
+    // a resposta certa é marcada nas opções e anunciada só para leitores de tela
+    expect(screen.getByRole('button', { name: 'E' })).toHaveClass('option--correct');
+    expect(screen.getByRole('status')).toHaveClass('sr-only');
+    expect(screen.getByRole('status')).toHaveTextContent('Errado. A resposta certa é E.');
     expect(readSaved(storage).progress['6-12'].box).toBe(1);
     expect(screen.getByRole('button', { name: 'Próxima' })).toBeInTheDocument();
   });

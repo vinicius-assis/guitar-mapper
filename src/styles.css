@@ -238,3 +238,4 @@ main { display: flex; flex-direction: column; }
 .quiz-actions { position: sticky; bottom: 0; z-index: 2; background: var(--bg); padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); margin-top: 0; }
 .quiz-actions.options { margin-top: 0; }
 .quiz-actions .primary { margin-top: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

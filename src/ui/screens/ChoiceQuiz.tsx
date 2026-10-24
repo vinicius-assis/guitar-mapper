@@ -68,8 +68,12 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
         ))}
       </div>
       {answered && (
-        <div className="feedback quiz-actions" role="status">
-          <p>{correct ? 'Correto!' : `Era ${noteLabel(question.answer, notation)}`}</p>
+        <div className="feedback quiz-actions">
+          <p role="status" className={correct ? undefined : 'sr-only'}>
+            {correct
+              ? 'Correto!'
+              : `Errado. A resposta certa é ${noteLabel(question.answer, notation)}.`}
+          </p>
           {!correct && (
             <button type="button" className="primary" onClick={onNext}>
               Próxima
