@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
 import { readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
+import { SoundProvider } from '../../audio/SoundProvider';
+import type { NotePlayer } from '../../audio/player';
 import { ConfirmProvider } from '../ConfirmDialog';
 import { Study } from './Study';
 
@@ -11,21 +13,35 @@ const SINGLE: Settings['filter'] = { strings: [6], fretMin: 12, fretMax: 12, nat
 // Três posições naturais na corda 6: casa 1 (F), casa 3 (G), casa 5 (A).
 const THREE: Settings['filter'] = { strings: [6], fretMin: 1, fretMax: 5, naturalsOnly: true };
 
+const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn() });
+
 function setup(
   settings: Partial<Settings> = {},
   forced?: { string: number; fret: number },
   onChangeFocus: () => void = () => {},
   onSessionChange: (running: boolean) => void = () => {},
+  player: NotePlayer = fakePlayer(),
 ) {
   const storage = seededStorage({ settings: { notation: 'cifra', filter: SINGLE, ...settings } });
   render(
     <AppProvider storage={storage}>
       <ConfirmProvider>
-        <Study forced={forced ?? null} onChangeFocus={onChangeFocus} onSessionChange={onSessionChange} />
+        <SoundProvider player={player}>
+          <Study forced={forced ?? null} onChangeFocus={onChangeFocus} onSessionChange={onSessionChange} />
+        </SoundProvider>
       </ConfirmProvider>
     </AppProvider>,
   );
   return storage;
+}
+
+function setupWithPlayer(
+  settings: Partial<Settings> = {},
+  forced?: { string: number; fret: number },
+  player: NotePlayer = fakePlayer(),
+) {
+  const storage = setup(settings, forced, undefined, undefined, player);
+  return { storage, player };
 }
 
 const start = () => fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
@@ -351,5 +367,72 @@ describe('Study: a session', () => {
     setup({ mode: 'note-to-position' }, { string: 3, fret: 7 });
     expect(screen.getByText('Encontre D na corda 3')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Iniciar/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Study: sound', () => {
+  it('multiple choice plays the real pitch of the asked position, even on a wrong answer', () => {
+    const { player } = setupWithPlayer();
+    start();
+    const wrong = screen
+      .getAllByRole('button')
+      .find((b) => b.classList.contains('option') && b.textContent !== 'E')!;
+    fireEvent.click(wrong);
+    expect(player.play).toHaveBeenCalledTimes(1);
+    expect(player.play).toHaveBeenCalledWith(52); // corda 6 casa 12 = E3
+  });
+
+  it('find mode plays the cell that was tapped', () => {
+    const { player } = setupWithPlayer({ mode: 'note-to-position' });
+    start();
+    fireEvent.click(screen.getByTestId('cell-5-12')); // errada: corda 5 casa 12 = A3
+    expect(player.play).toHaveBeenCalledTimes(1);
+    expect(player.play).toHaveBeenCalledWith(57);
+  });
+
+  it('flashcard plays on Mostrar nota only, not on Acertei', () => {
+    const { player } = setupWithPlayer({ mode: 'flashcard' });
+    start();
+    expect(player.play).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' }));
+    expect(player.play).toHaveBeenCalledTimes(1);
+    expect(player.play).toHaveBeenCalledWith(52);
+    fireEvent.click(screen.getByRole('button', { name: 'Acertei' }));
+    expect(player.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('starting a session unlocks the audio and preloads the queue pitches', () => {
+    const { player } = setupWithPlayer({ filter: THREE });
+    expect(player.prepare).not.toHaveBeenCalled();
+    start();
+    expect(player.unlock).toHaveBeenCalled();
+    const prepared = vi.mocked(player.prepare).mock.calls[0][0];
+    expect([...prepared].sort()).toEqual([41, 43, 45]); // F2, G2, A2
+  });
+
+  it('a forced position preloads its pitch right away', () => {
+    const { player } = setupWithPlayer({ mode: 'flashcard' }, { string: 3, fret: 7 });
+    expect(vi.mocked(player.prepare).mock.calls[0][0][0]).toBe(62); // a forçada abre a fila: corda 3 casa 7 = D4
+  });
+
+  it('no sound is requested when the sound is off', () => {
+    const { player } = setupWithPlayer({ soundEnabled: false, mode: 'flashcard' });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' }));
+    expect(player.play).not.toHaveBeenCalled();
+    expect(player.prepare).not.toHaveBeenCalled();
+  });
+
+  it('keeps working when the player blows up', () => {
+    const player = fakePlayer();
+    vi.mocked(player.play).mockImplementation(() => {
+      throw new Error('boom');
+    });
+    setupWithPlayer({ mode: 'flashcard' }, undefined, player);
+    start();
+    expect(() =>
+      fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' })),
+    ).not.toThrow();
+    expect(screen.getByRole('button', { name: 'Acertei' })).toBeInTheDocument();
   });
 });

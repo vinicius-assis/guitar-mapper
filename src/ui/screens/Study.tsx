@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSound } from '../../audio/SoundProvider';
 import { positionsInFilter, type Position } from '../../domain/fretboard';
 import {
   buildQueue,
@@ -28,6 +29,7 @@ interface StudyProps {
 export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyProps) {
   const { data, recordAnswer, updateSettings, recordSession } = useAppState();
   const confirm = useConfirm();
+  const sound = useSound();
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
 
@@ -47,9 +49,17 @@ export function Study({ forced = null, onChangeFocus, onSessionChange }: StudyPr
 
   useEffect(() => () => onSessionChange?.(false), []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Posição vinda do Progresso: a sessão já começa, então carrega o som dela logo.
+  useEffect(() => {
+    if (forced) sound.prepare(queue);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function begin() {
     if (candidates.length === 0) return;
-    setQueue(buildQueue(candidates, Math.random));
+    const nextQueue = buildQueue(candidates, Math.random);
+    sound.unlock(); // dentro do toque em Iniciar: libera o áudio no iPhone
+    sound.prepare(nextQueue);
+    setQueue(nextQueue);
     setIndex(0);
     resultsRef.current = [];
     setResults([]);

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Position } from '../../domain/fretboard';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
 import { buildChoiceQuestion } from '../../domain/quiz';
+import { useSound } from '../../audio/SoundProvider';
 import type { Settings } from '../../state/storage';
 import { Fretboard } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
@@ -17,6 +18,7 @@ export interface QuizProps {
 
 export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
+  const sound = useSound();
   const question = useMemo(
     () => buildChoiceQuestion(position, filter.naturalsOnly, Math.random),
     [position, filter.naturalsOnly],
@@ -30,6 +32,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
     if (answered) return;
     setPicked(note);
     onAnswer(note === question.answer);
+    sound.playPosition(position);
   }
 
   const { fretMin, fretMax } = windowFor(filter, position);

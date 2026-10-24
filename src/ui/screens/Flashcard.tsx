@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { noteAt } from '../../domain/fretboard';
 import { noteLabel } from '../../domain/notes';
+import { useSound } from '../../audio/SoundProvider';
 import { Fretboard } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
 import type { QuizProps } from './ChoiceQuiz';
@@ -8,6 +9,7 @@ import { windowFor } from './window';
 
 export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
+  const sound = useSound();
   const [revealed, setRevealed] = useState(false);
   const { fretMin, fretMax } = windowFor(filter, position);
 
@@ -44,7 +46,14 @@ export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
         </div>
       ) : (
         <div className="quiz-actions">
-          <button type="button" className="primary" onClick={() => setRevealed(true)}>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              setRevealed(true);
+              sound.playPosition(position);
+            }}
+          >
             Mostrar nota
           </button>
         </div>

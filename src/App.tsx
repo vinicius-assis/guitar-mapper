@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Position } from './domain/fretboard';
 import { AppProvider, useAppState } from './state/AppState';
 import type { StorageLike } from './state/storage';
+import { SoundProvider } from './audio/SoundProvider';
 import { ConfirmProvider } from './ui/ConfirmDialog';
 import { Focus } from './ui/screens/Focus';
 import { Progress } from './ui/screens/Progress';
@@ -87,7 +88,9 @@ export function App({ storage }: { storage?: StorageLike | null }) {
   return (
     <AppProvider storage={storage}>
       <ConfirmProvider>
-        <Shell />
+        <SoundProvider>
+          <Shell />
+        </SoundProvider>
       </ConfirmProvider>
     </AppProvider>
   );

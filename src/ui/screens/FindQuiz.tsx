@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { positionsOfNote, type Position } from '../../domain/fretboard';
 import { noteLabel } from '../../domain/notes';
 import { buildFindQuestion, isCorrectFind } from '../../domain/quiz';
+import { useSound } from '../../audio/SoundProvider';
 import { Fretboard, type Mark } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
@@ -10,6 +11,7 @@ import { windowFor } from './window';
 
 export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
+  const sound = useSound();
   const question = useMemo(() => buildFindQuestion(position, filter), [position, filter]);
   const [tapped, setTapped] = useState<Position | null>(null);
   const correct = tapped !== null && isCorrectFind(question, tapped);
@@ -21,6 +23,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
     if (tapped) return;
     setTapped(p);
     onAnswer(isCorrectFind(question, p));
+    sound.playPosition(p);
   }
 
   const marks: Mark[] = [];
