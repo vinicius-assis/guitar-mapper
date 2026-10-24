@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mulberry32 } from '../test-utils';
-import { positionKey } from './fretboard';
+import { noteAt, positionKey } from './fretboard';
 import {
   HISTORY_LIMIT,
   addToHistory,
@@ -89,5 +89,52 @@ describe('history', () => {
     expect(history).toHaveLength(HISTORY_LIMIT);
     expect(history[0].at).toBe(HISTORY_LIMIT + 3);
     expect(history[HISTORY_LIMIT - 1].at).toBe(4);
+  });
+});
+
+describe('buildQueue avoidSameNote', () => {
+  const positions = [
+    { string: 6, fret: 12 }, // E
+    { string: 6, fret: 24 }, // E
+    { string: 1, fret: 12 }, // E
+    { string: 1, fret: 24 }, // E
+    { string: 5, fret: 3 }, // C
+    { string: 4, fret: 5 }, // G
+    { string: 3, fret: 2 }, // A
+    { string: 2, fret: 3 }, // D
+  ]; // E aparece 4 vezes em 8: ainda dá para separar todas
+
+  it('keeps every position once and never puts the same note twice in a row when it can', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const queue = buildQueue(positions, mulberry32(seed), null, { avoidSameNote: true });
+      expect(queue.map(positionKey).sort()).toEqual(positions.map(positionKey).sort());
+      for (let i = 1; i < queue.length; i++) {
+        expect(noteAt(queue[i])).not.toBe(noteAt(queue[i - 1]));
+      }
+    }
+  });
+
+  it('still returns everything when only one note is possible', () => {
+    const same = [
+      { string: 6, fret: 12 },
+      { string: 6, fret: 24 },
+      { string: 1, fret: 12 },
+    ];
+    expect(buildQueue(same, mulberry32(1), null, { avoidSameNote: true })).toHaveLength(3);
+  });
+
+  it('does not change the default behaviour', () => {
+    const a = buildQueue(positions, mulberry32(5));
+    const b = buildQueue(positions, mulberry32(5), null, { avoidSameNote: false });
+    expect(a).toEqual(b);
+  });
+});
+
+describe('history level', () => {
+  it('stores the level only for ear sessions (default easy)', () => {
+    const results = [{ correct: true, ms: 1000 }];
+    expect(makeHistoryEntry('ear', 1, results, 'hard')?.level).toBe('hard');
+    expect(makeHistoryEntry('ear', 1, results)?.level).toBe('easy');
+    expect(makeHistoryEntry('flashcard', 1, results, 'hard')).not.toHaveProperty('level');
   });
 });

@@ -1,5 +1,6 @@
-import { positionKey, type Position } from './fretboard';
-import type { QuizMode } from './quiz';
+import { noteAt, positionKey, type Position } from './fretboard';
+import type { NoteIndex } from './notes';
+import type { EarLevel, QuizMode } from './quiz';
 
 export const HISTORY_LIMIT = 20;
 
@@ -22,6 +23,41 @@ export interface HistoryEntry {
   total: number;
   correct: number;
   averageMs: number;
+  /** Só nas sessões de Ouvido. */
+  level?: EarLevel;
+}
+
+/**
+ * Reordena sem repetir a mesma nota em sequência, escolhendo ao acaso entre as posições
+ * que ainda permitem terminar sem repetição. Se não houver como separar, repete o mínimo.
+ */
+function arrangeWithoutRepeats(
+  items: Position[],
+  start: NoteIndex | null,
+  rng: () => number,
+): Position[] {
+  const remaining = [...items];
+  const out: Position[] = [];
+  let last = start;
+  while (remaining.length > 0) {
+    const left = remaining.length - 1;
+    const counts = new Map<NoteIndex, number>();
+    for (const p of remaining) counts.set(noteAt(p), (counts.get(noteAt(p)) ?? 0) + 1);
+    // Depois de escolher `picked`, sobram `left` posições: uma nota que não é a escolhida cabe
+    // em até ceil(left/2) lugares; a própria nota escolhida, em até floor(left/2).
+    const canFinish = (picked: NoteIndex) =>
+      [...counts].every(([note, count]) =>
+        note === picked ? count - 1 <= Math.floor(left / 2) : count <= Math.ceil(left / 2),
+      );
+    const different = remaining.filter((p) => noteAt(p) !== last);
+    const good = different.filter((p) => canFinish(noteAt(p)));
+    const pool = good.length > 0 ? good : different.length > 0 ? different : remaining;
+    const pick = pool[Math.floor(rng() * pool.length)];
+    remaining.splice(remaining.indexOf(pick), 1);
+    out.push(pick);
+    last = noteAt(pick);
+  }
+  return out;
 }
 
 /**
@@ -32,6 +68,7 @@ export function buildQueue(
   positions: Position[],
   rng: () => number,
   first: Position | null = null,
+  options: { avoidSameNote?: boolean } = {},
 ): Position[] {
   const firstKey = first ? positionKey(first) : null;
   const rest = positions.filter((p) => positionKey(p) !== firstKey);
@@ -39,7 +76,10 @@ export function buildQueue(
     const j = Math.floor(rng() * (i + 1));
     [rest[i], rest[j]] = [rest[j], rest[i]];
   }
-  return first ? [first, ...rest] : rest;
+  const ordered = options.avoidSameNote
+    ? arrangeWithoutRepeats(rest, first ? noteAt(first) : null, rng)
+    : rest;
+  return first ? [first, ...ordered] : ordered;
 }
 
 export function summarize(results: SessionResult[]): SessionSummary {
@@ -54,10 +94,11 @@ export function makeHistoryEntry(
   mode: QuizMode,
   at: number,
   results: SessionResult[],
+  level?: EarLevel,
 ): HistoryEntry | null {
   if (results.length === 0) return null;
   const { total, correct, averageMs } = summarize(results);
-  return { mode, at, total, correct, averageMs };
+  return { mode, at, total, correct, averageMs, ...(mode === 'ear' ? { level: level ?? 'easy' } : {}) };
 }
 
 export function addToHistory(history: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {

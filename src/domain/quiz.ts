@@ -9,7 +9,8 @@ import {
 import { ALL_NOTES, NATURAL_NOTES, type NoteIndex } from './notes';
 import { STANDARD_TUNING } from './tuning';
 
-export type QuizMode = 'position-to-note' | 'note-to-position' | 'flashcard';
+export type QuizMode = 'position-to-note' | 'note-to-position' | 'flashcard' | 'ear';
+export type EarLevel = 'easy' | 'medium' | 'hard';
 
 export const OPTION_COUNT = 4;
 
@@ -67,6 +68,30 @@ export function buildChoiceQuestion(
 
   const options = shuffle([answer, ...distractors.slice(0, OPTION_COUNT - 1)], rng);
   return { position, answer, options };
+}
+
+const EASY_MIN_DISTANCE = 3;
+const circularDistance = (a: NoteIndex, b: NoteIndex) =>
+  Math.min((a - b + 12) % 12, (b - a + 12) % 12);
+
+/**
+ * Pergunta de ouvido: o aluno ouve a nota da posição e escolhe o nome.
+ * Fácil: a certa + 1 nota bem diferente. Médio: 4 opções (vizinhas). Difícil: todas as notas do foco.
+ */
+export function buildEarQuestion(
+  position: Position,
+  level: EarLevel,
+  naturalsOnly: boolean,
+  rng: () => number,
+  tuning: readonly NoteIndex[] = STANDARD_TUNING,
+): ChoiceQuestion {
+  if (level === 'medium') return buildChoiceQuestion(position, naturalsOnly, rng, tuning);
+  const answer = noteAt(position, tuning);
+  const pool = naturalsOnly ? NATURAL_NOTES : ALL_NOTES;
+  if (level === 'hard') return { position, answer, options: [...pool] };
+  const far = pool.filter((n) => circularDistance(n, answer) >= EASY_MIN_DISTANCE);
+  const wrong = far[Math.floor(rng() * far.length)];
+  return { position, answer, options: shuffle([answer, wrong], rng) };
 }
 
 export function buildFindQuestion(
