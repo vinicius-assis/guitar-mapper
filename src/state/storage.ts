@@ -6,7 +6,7 @@ import {
   type Filter,
 } from '../domain/fretboard';
 import type { Notation } from '../domain/notes';
-import type { QuizMode } from '../domain/quiz';
+import type { EarLevel, QuizMode } from '../domain/quiz';
 import { HISTORY_LIMIT, type HistoryEntry } from '../domain/session';
 import type { Box, PositionProgress, ProgressMap } from '../domain/scheduler';
 
@@ -16,6 +16,7 @@ export interface Settings {
   mode: QuizMode;
   filter: Filter;
   soundEnabled: boolean;
+  earLevel: EarLevel;
 }
 
 export interface AppData {
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: 'position-to-note',
   filter: DEFAULT_FILTER,
   soundEnabled: true,
+  earLevel: 'easy',
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -91,7 +93,8 @@ function sanitizeFilter(raw: unknown): Filter {
 }
 
 const NOTATIONS: Notation[] = ['cifra', 'solfejo', 'ambos'];
-const MODES: QuizMode[] = ['position-to-note', 'note-to-position', 'flashcard'];
+const MODES: QuizMode[] = ['position-to-note', 'note-to-position', 'flashcard', 'ear'];
+const EAR_LEVELS: EarLevel[] = ['easy', 'medium', 'hard'];
 
 function sanitizeSettings(raw: unknown): Settings {
   const source = isRecord(raw) ? raw : {};
@@ -109,6 +112,9 @@ function sanitizeSettings(raw: unknown): Settings {
       typeof source.soundEnabled === 'boolean'
         ? source.soundEnabled
         : DEFAULT_SETTINGS.soundEnabled,
+    earLevel: EAR_LEVELS.includes(source.earLevel as EarLevel)
+      ? (source.earLevel as EarLevel)
+      : DEFAULT_SETTINGS.earLevel,
   };
 }
 
@@ -156,7 +162,16 @@ function sanitizeHistory(raw: unknown): HistoryEntry[] {
       correct <= total &&
       isCount(averageMs)
     ) {
-      out.push({ mode: mode as QuizMode, at, total, correct, averageMs });
+      out.push({
+        mode: mode as QuizMode,
+        at,
+        total,
+        correct,
+        averageMs,
+        ...(mode === 'ear'
+          ? { level: EAR_LEVELS.includes(entry.level as EarLevel) ? (entry.level as EarLevel) : 'easy' }
+          : {}),
+      });
     }
   }
   return out.slice(0, HISTORY_LIMIT);

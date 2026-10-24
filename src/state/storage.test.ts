@@ -159,6 +159,44 @@ describe('soundEnabled', () => {
   });
 });
 
+describe('earLevel', () => {
+  const load = (settings: unknown) =>
+    loadData(
+      createMemoryStorage({ [STORAGE_KEY]: JSON.stringify({ version: 1, settings, progress: {} }) }),
+    ).data.settings;
+
+  it('defaults to easy, keeps valid levels and fixes invalid ones', () => {
+    expect(DEFAULT_SETTINGS.earLevel).toBe('easy');
+    expect(load({}).earLevel).toBe('easy');
+    expect(load({ earLevel: 'hard' }).earLevel).toBe('hard');
+    expect(load({ earLevel: 'impossible' }).earLevel).toBe('easy');
+  });
+
+  it('accepts the ear mode', () => {
+    expect(load({ mode: 'ear' }).mode).toBe('ear');
+  });
+});
+
+describe('history level', () => {
+  const load = (history: unknown) =>
+    loadData(
+      createMemoryStorage({
+        [STORAGE_KEY]: JSON.stringify({ version: 1, settings: {}, progress: {}, history }),
+      }),
+    ).data.history;
+  const base = { at: 5, total: 4, correct: 3, averageMs: 1500 };
+
+  it('keeps a valid level on ear entries and defaults missing or invalid ones to easy', () => {
+    expect(load([{ ...base, mode: 'ear', level: 'hard' }])[0].level).toBe('hard');
+    expect(load([{ ...base, mode: 'ear' }])[0].level).toBe('easy');
+    expect(load([{ ...base, mode: 'ear', level: 'x' }])[0].level).toBe('easy');
+  });
+
+  it('drops the level on non-ear entries', () => {
+    expect(load([{ ...base, mode: 'flashcard', level: 'hard' }])[0]).not.toHaveProperty('level');
+  });
+});
+
 describe('saveData', () => {
   it('returns false when storage is missing or throws', () => {
     expect(saveData(null, createDefaultData())).toBe(false);

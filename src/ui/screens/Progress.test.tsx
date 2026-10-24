@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import type { HistoryEntry } from '../../domain/session';
 import { AppProvider } from '../../state/AppState';
 import { seededStorage } from '../../test-utils';
 import { ConfirmProvider } from '../ConfirmDialog';
@@ -108,7 +109,7 @@ describe('Progress', () => {
       { mode: 'flashcard' as const, at: new Date(2026, 9, 24, 19, 5).getTime(), total: 18, correct: 14, averageMs: 4200 },
       { mode: 'position-to-note' as const, at: new Date(2026, 9, 23, 8, 30).getTime(), total: 3, correct: 1, averageMs: 2000 },
     ];
-    const renderWith = (h = history) => {
+    const renderWith = (h: HistoryEntry[] = history) => {
       const storage = seededStorage({ history: h });
       render(
         <AppProvider storage={storage}>
@@ -119,6 +120,17 @@ describe('Progress', () => {
       );
       return storage;
     };
+
+    it('shows the level next to Ouvido sessions only', () => {
+      renderWith([
+        { mode: 'ear', level: 'hard', at: 9, total: 4, correct: 2, averageMs: 3000 },
+        { mode: 'flashcard', at: 8, total: 2, correct: 1, averageMs: 1000 },
+      ]);
+      const items = screen.getAllByRole('listitem').filter((li) => li.closest('.history'));
+      expect(items[0]).toHaveTextContent('Ouvido · Difícil');
+      expect(items[1]).toHaveTextContent('Flashcard');
+      expect(items[1].querySelector('strong')!.textContent).toBe('Flashcard');
+    });
 
     it('says there are no sessions yet, with no clear button', () => {
       renderWith([]);

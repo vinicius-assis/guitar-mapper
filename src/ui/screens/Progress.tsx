@@ -11,7 +11,7 @@ import { useAppState } from '../../state/AppState';
 import { Fretboard, type Mark } from '../Fretboard';
 import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
-import { modeLabel } from '../modeLabels';
+import { earLevelLabel, modeLabel } from '../modeLabels';
 import { stringLabels } from '../stringLabels';
 
 const LEGEND: { mastery: Mastery; label: string }[] = [
@@ -81,7 +81,10 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
           <ul className="history">
             {history.map((entry, i) => (
               <li key={`${entry.at}-${i}`}>
-                <strong>{modeLabel(entry.mode)}</strong>
+                <strong>
+                  {modeLabel(entry.mode)}
+                  {entry.level ? ` · ${earLevelLabel(entry.level)}` : ''}
+                </strong>
                 <span>
                   {Math.round((entry.correct / entry.total) * 100)}% · {entry.correct}/{entry.total}{' '}
                   · {formatSeconds(entry.averageMs)}
