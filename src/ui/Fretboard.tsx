@@ -24,6 +24,8 @@ export interface FretboardProps {
   leftHanded?: boolean;
   /** Casa a centralizar na área rolável. */
   scrollToFret?: number;
+  /** Nome de cada corda solta (índice 0 = corda 1), mostrado numa coluna fixa ao lado do braço. */
+  stringLabels?: string[];
 }
 
 const FRET_W = 56;
@@ -40,6 +42,7 @@ export function Fretboard({
   onTap,
   leftHanded = false,
   scrollToFret,
+  stringLabels,
 }: FretboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const count = fretMax - fretMin + 1;
@@ -61,94 +64,112 @@ export function Fretboard({
   const visibleMarks = marks.filter((m) => m.position.fret >= fretMin && m.position.fret <= fretMax);
 
   return (
-    <div className="fretboard" ref={scrollRef} role="group" aria-label="Braço da guitarra">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        {frets.map((f) => (
-          <text key={`n${f}`} className="fret-number" x={cx(f)} y={16} textAnchor="middle">
-            {f}
-          </text>
-        ))}
-        {frets.map((f) => {
-          const x = leftHanded ? colOf(f) * FRET_W : (colOf(f) + 1) * FRET_W;
-          return (
+    <div className={`fretboard-frame${leftHanded ? ' fretboard-frame--mirrored' : ''}`}>
+      {stringLabels && (
+        <div className="string-labels" style={{ paddingTop: TOP }} aria-hidden="true">
+          {stringLabels.map((label, i) => (
+            <div
+              key={i}
+              className="string-label"
+              data-testid={`string-label-${i + 1}`}
+              style={{ height: STRING_GAP }}
+            >
+              {label.split(' · ').map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="fretboard" ref={scrollRef} role="group" aria-label="Braço da guitarra">
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+          {frets.map((f) => (
+            <text key={`n${f}`} className="fret-number" x={cx(f)} y={16} textAnchor="middle">
+              {f}
+            </text>
+          ))}
+          {frets.map((f) => {
+            const x = leftHanded ? colOf(f) * FRET_W : (colOf(f) + 1) * FRET_W;
+            return (
+              <line
+                key={`w${f}`}
+                className={f === 0 ? 'nut' : 'wire'}
+                x1={x}
+                x2={x}
+                y1={TOP}
+                y2={height}
+              />
+            );
+          })}
+          {frets
+            .filter((f) => INLAYS.has(f))
+            .flatMap((f) =>
+              (f % 12 === 0 ? [2, 4] : [3]).map((row) => (
+                <circle
+                  key={`i${f}-${row}`}
+                  className="inlay"
+                  cx={cx(f)}
+                  cy={TOP + row * STRING_GAP}
+                  r={6}
+                />
+              )),
+            )}
+          {STRINGS.map((s) => (
             <line
-              key={`w${f}`}
-              className={f === 0 ? 'nut' : 'wire'}
-              x1={x}
-              x2={x}
-              y1={TOP}
-              y2={height}
+              key={`s${s}`}
+              className="string"
+              x1={0}
+              x2={width}
+              y1={cy(s)}
+              y2={cy(s)}
+              strokeWidth={1 + (s - 1) * 0.4}
             />
-          );
-        })}
-        {frets
-          .filter((f) => INLAYS.has(f))
-          .flatMap((f) =>
-            (f % 12 === 0 ? [2, 4] : [3]).map((row) => (
-              <circle
-                key={`i${f}-${row}`}
-                className="inlay"
-                cx={cx(f)}
-                cy={TOP + row * STRING_GAP}
-                r={6}
+          ))}
+          {STRINGS.flatMap((s) =>
+            frets.map((f) => (
+              <rect
+                key={`c${s}-${f}`}
+                data-testid={`cell-${s}-${f}`}
+                className={onTap ? 'cell cell--tappable' : 'cell'}
+                x={colOf(f) * FRET_W}
+                y={TOP + (s - 1) * STRING_GAP}
+                width={FRET_W}
+                height={STRING_GAP}
+                {...(onTap
+                  ? {
+                      role: 'button',
+                      'aria-label': `Corda ${s}, casa ${f}`,
+                      onClick: () => onTap({ string: s, fret: f }),
+                    }
+                  : {})}
               />
             )),
           )}
-        {STRINGS.map((s) => (
-          <line
-            key={`s${s}`}
-            className="string"
-            x1={0}
-            x2={width}
-            y1={cy(s)}
-            y2={cy(s)}
-            strokeWidth={1 + (s - 1) * 0.4}
-          />
-        ))}
-        {STRINGS.flatMap((s) =>
-          frets.map((f) => (
-            <rect
-              key={`c${s}-${f}`}
-              data-testid={`cell-${s}-${f}`}
-              className={onTap ? 'cell cell--tappable' : 'cell'}
-              x={colOf(f) * FRET_W}
-              y={TOP + (s - 1) * STRING_GAP}
-              width={FRET_W}
-              height={STRING_GAP}
-              {...(onTap
-                ? {
-                    role: 'button',
-                    'aria-label': `Corda ${s}, casa ${f}`,
-                    onClick: () => onTap({ string: s, fret: f }),
-                  }
-                : {})}
-            />
-          )),
-        )}
-        {visibleMarks.map((m) => {
-          const x = cx(m.position.fret);
-          const y = cy(m.position.string);
-          const lines = m.label ? m.label.split(' · ') : [];
-          return (
-            <g
-              key={`m${positionKey(m.position)}-${m.kind}`}
-              className={`mark mark--${m.kind}`}
-              pointerEvents="none"
-            >
-              <circle cx={x} cy={y} r={MARK_R} />
-              {lines.length > 0 && (
-                <text textAnchor="middle">
-                  {lines.map((line, i) => (
-                    <tspan key={i} x={x} y={y + (i - (lines.length - 1) / 2) * 12 + 4}>
-                      {line}
-                    </tspan>
-                  ))}
-                </text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
+          {visibleMarks.map((m) => {
+            const x = cx(m.position.fret);
+            const y = cy(m.position.string);
+            const lines = m.label ? m.label.split(' · ') : [];
+            return (
+              <g
+                key={`m${positionKey(m.position)}-${m.kind}`}
+                className={`mark mark--${m.kind}`}
+                pointerEvents="none"
+              >
+                <circle cx={x} cy={y} r={MARK_R} />
+                {lines.length > 0 && (
+                  <text textAnchor="middle">
+                    {lines.map((line, i) => (
+                      <tspan key={i} x={x} y={y + (i - (lines.length - 1) / 2) * 12 + 4}>
+                        {line}
+                      </tspan>
+                    ))}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
     </div>
   );
 }

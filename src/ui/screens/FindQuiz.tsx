@@ -3,6 +3,7 @@ import { positionsOfNote, type Position } from '../../domain/fretboard';
 import { noteLabel } from '../../domain/notes';
 import { buildFindQuestion, isCorrectFind } from '../../domain/quiz';
 import { Fretboard, type Mark } from '../Fretboard';
+import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
 import type { QuizProps } from './ChoiceQuiz';
 import { windowFor } from './window';
@@ -51,6 +52,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
         // Não rolar até a resposta: isso a entregaria. Canhoto começa no lado da pestana (fretMin).
         scrollToFret={leftHanded ? fretMin : undefined}
         marks={marks}
+        stringLabels={stringLabels(notation)}
         onTap={tapped ? undefined : tap}
       />
       {tapped && (

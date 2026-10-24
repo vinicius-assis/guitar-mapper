@@ -120,11 +120,35 @@ main { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
 .feedback p { margin: 0; font-weight: 600; }
 
 /* Braço */
-.fretboard {
-  overflow-x: auto;
+.fretboard-frame {
+  display: flex;
   background: var(--wood);
   border-radius: 12px;
+  overflow: hidden;
+}
+.fretboard-frame--mirrored { flex-direction: row-reverse; }
+.fretboard {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+.string-labels {
+  flex: none;
+  width: 36px;
+  box-sizing: content-box;
+  border-right: 1px solid var(--line);
+}
+.fretboard-frame--mirrored .string-labels { border-right: 0; border-left: 1px solid var(--line); }
+.string-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text);
 }
 .fretboard svg { display: block; }
 .fret-number { fill: var(--muted); font-size: 11px; }

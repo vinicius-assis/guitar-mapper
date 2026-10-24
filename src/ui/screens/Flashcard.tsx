@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { noteAt } from '../../domain/fretboard';
 import { noteLabel } from '../../domain/notes';
 import { Fretboard } from '../Fretboard';
+import { stringLabels } from '../stringLabels';
 import type { QuizProps } from './ChoiceQuiz';
 import { windowFor } from './window';
 
@@ -23,6 +24,7 @@ export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
         fretMax={fretMax}
         leftHanded={leftHanded}
         scrollToFret={position.fret}
+        stringLabels={stringLabels(notation)}
         marks={[
           {
             position,

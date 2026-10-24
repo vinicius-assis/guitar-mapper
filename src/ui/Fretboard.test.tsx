@@ -58,4 +58,34 @@ describe('Fretboard', () => {
     expect(screen.getByText('E')).toBeInTheDocument();
     expect(screen.getByText('Mi')).toBeInTheDocument();
   });
+
+  describe('string labels', () => {
+    const labels = ['E', 'B', 'G', 'D', 'A', 'E'];
+
+    it('shows one label per string, high E on top', () => {
+      render(<Fretboard fretMin={0} fretMax={4} marks={[]} stringLabels={labels} />);
+      const shown = screen.getAllByTestId(/^string-label-/).map((el) => el.textContent);
+      expect(shown).toEqual(labels);
+    });
+
+    it('shows nothing when no labels are given', () => {
+      render(<Fretboard fretMin={0} fretMax={4} marks={[]} />);
+      expect(screen.queryByTestId('string-label-1')).not.toBeInTheDocument();
+    });
+
+    it('moves the labels next to the nut for left-handed players', () => {
+      const { container } = render(
+        <Fretboard fretMin={0} fretMax={4} marks={[]} stringLabels={labels} leftHanded />,
+      );
+      expect(container.querySelector('.fretboard-frame--mirrored')).not.toBeNull();
+    });
+
+    it('stacks a combined label on two lines', () => {
+      render(
+        <Fretboard fretMin={0} fretMax={4} marks={[]} stringLabels={['E · Mi', 'B · Si', 'G · Sol', 'D · Ré', 'A · Lá', 'E · Mi']} />,
+      );
+      expect(screen.getByTestId('string-label-1')).toHaveTextContent('EMi');
+      expect(screen.getByTestId('string-label-1').querySelectorAll('span')).toHaveLength(2);
+    });
+  });
 });

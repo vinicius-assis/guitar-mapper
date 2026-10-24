@@ -3,6 +3,7 @@ import { MAX_FRET, allPositions, positionKey, type Position } from '../../domain
 import { masteryOf, type Mastery } from '../../domain/scheduler';
 import { useAppState } from '../../state/AppState';
 import { Fretboard, type Mark } from '../Fretboard';
+import { stringLabels } from '../stringLabels';
 
 const LEGEND: { mastery: Mastery; label: string }[] = [
   { mastery: 'mastered', label: 'Dominadas' },
@@ -34,6 +35,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
         marks={marks}
         onTap={onSelect}
         leftHanded={settings.leftHanded}
+        stringLabels={stringLabels(settings.notation)}
       />
       <ul className="legend">
         {LEGEND.map(({ mastery, label }) => (

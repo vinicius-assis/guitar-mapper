@@ -4,6 +4,7 @@ import { noteLabel, type NoteIndex } from '../../domain/notes';
 import { buildChoiceQuestion } from '../../domain/quiz';
 import type { Settings } from '../../state/storage';
 import { Fretboard } from '../Fretboard';
+import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
 import { windowFor } from './window';
 
@@ -40,6 +41,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
         fretMax={fretMax}
         leftHanded={leftHanded}
         scrollToFret={position.fret}
+        stringLabels={stringLabels(notation)}
         marks={[
           {
             position,
