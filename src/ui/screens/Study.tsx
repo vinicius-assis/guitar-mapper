@@ -9,7 +9,7 @@ import {
 } from '../../domain/session';
 import { useAppState } from '../../state/AppState';
 import { formatSeconds } from '../format';
-import { MODES } from '../modeLabels';
+import { MODES, MODE_DESCRIPTIONS } from '../modeLabels';
 import { ChoiceQuiz } from './ChoiceQuiz';
 import { Flashcard } from './Flashcard';
 import { FindQuiz } from './FindQuiz';
@@ -95,6 +95,7 @@ export function Study({ forced = null }: { forced?: Position | null }) {
 
       {phase === 'idle' && (
         <div className="session-start">
+          <p className="mode-description">{MODE_DESCRIPTIONS[settings.mode]}</p>
           {candidates.length === 0 ? (
             <p className="empty">
               Nenhuma posição no foco atual. Selecione ao menos uma corda ou ajuste as casas e o
@@ -105,7 +106,15 @@ export function Study({ forced = null }: { forced?: Position | null }) {
               {candidates.length} {candidates.length === 1 ? 'pergunta' : 'perguntas'}
             </p>
           )}
-          <button type="button" className="primary" disabled={candidates.length === 0} onClick={begin}>
+          <button
+            type="button"
+            className="primary start"
+            disabled={candidates.length === 0}
+            onClick={begin}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+              <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+            </svg>
             Iniciar
           </button>
         </div>

@@ -38,6 +38,23 @@ describe('Study: before the session', () => {
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
   });
 
+  it('describes the selected exercise and follows the mode', () => {
+    setup({ mode: 'position-to-note' });
+    expect(screen.getByText(/escolha a nota entre 4 opções/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Nota → posição' }));
+    expect(screen.queryByText(/escolha a nota entre 4 opções/)).not.toBeInTheDocument();
+    expect(screen.getByText(/toca no braço onde ela está/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Flashcard' }));
+    expect(screen.getByText(/lembrar a nota de cabeça antes de revelar/)).toBeInTheDocument();
+  });
+
+  it('the Iniciar button has a decorative play icon and the plain accessible name', () => {
+    setup();
+    const button = screen.getByRole('button', { name: 'Iniciar' });
+    expect(button).toHaveClass('start');
+    expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
   it('uses the singular for one question', () => {
     setup();
     expect(screen.getByText('1 pergunta')).toBeInTheDocument();
