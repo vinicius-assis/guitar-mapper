@@ -35,12 +35,14 @@ describe('App', () => {
   it('warns when storage is unavailable and still works', () => {
     render(<App storage={null} />);
     expect(screen.getByText(/progresso não será salvo/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
   });
 
   it('warns after the first answer when writes fail', () => {
     const { container } = render(<App storage={createThrowingStorage('write')} />);
     expect(screen.queryByText(/progresso não será salvo/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
     fireEvent.click(container.querySelector('.option')!);
     expect(screen.getByText(/progresso não será salvo/i)).toBeInTheDocument();
   });

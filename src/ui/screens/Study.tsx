@@ -1,56 +1,82 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { positionKey, positionsInFilter, type Position } from '../../domain/fretboard';
-import type { QuizMode } from '../../domain/quiz';
-import { pickNext } from '../../domain/scheduler';
+import { useMemo, useRef, useState } from 'react';
+import { positionsInFilter, type Position } from '../../domain/fretboard';
+import {
+  buildQueue,
+  makeHistoryEntry,
+  summarize,
+  type SessionResult,
+  type SessionSummary,
+} from '../../domain/session';
 import { useAppState } from '../../state/AppState';
+import { formatSeconds } from '../format';
+import { MODES } from '../modeLabels';
 import { ChoiceQuiz } from './ChoiceQuiz';
 import { Flashcard } from './Flashcard';
 import { FindQuiz } from './FindQuiz';
 
-const MODES: { mode: QuizMode; label: string }[] = [
-  { mode: 'position-to-note', label: 'Posição → nota' },
-  { mode: 'note-to-position', label: 'Nota → posição' },
-  { mode: 'flashcard', label: 'Flashcard' },
-];
+type Phase = 'idle' | 'running' | 'summary';
 
 export function Study({ forced = null }: { forced?: Position | null }) {
-  const { data, recordAnswer, updateSettings } = useAppState();
+  const { data, recordAnswer, updateSettings, recordSession } = useAppState();
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
 
-  const [position, setPosition] = useState<Position | null>(null);
-  const [round, setRound] = useState(0);
-  const [session, setSession] = useState({ correct: 0, total: 0, streak: 0 });
-  const lastKey = useRef<string | undefined>(undefined);
+  const [phase, setPhase] = useState<Phase>(forced ? 'running' : 'idle');
+  const [queue, setQueue] = useState<Position[]>(() =>
+    forced ? buildQueue(positionsInFilter(settings.filter), Math.random, forced) : [],
+  );
+  const [index, setIndex] = useState(0);
+  const [results, setResults] = useState<SessionResult[]>([]);
+  const [summary, setSummary] = useState<SessionSummary | null>(null);
+  const resultsRef = useRef<SessionResult[]>([]);
+  const questionStart = useRef(Date.now());
 
-  useEffect(() => {
-    if (forced && round === 0) {
-      setPosition(forced);
-      return;
-    }
-    if (candidates.length === 0) {
-      setPosition(null);
-      return;
-    }
-    setPosition(pickNext(candidates, data.progress, Date.now(), Math.random, lastKey.current));
-  }, [round, candidates]); // eslint-disable-line react-hooks/exhaustive-deps
+  function begin() {
+    if (candidates.length === 0) return;
+    setQueue(buildQueue(candidates, Math.random));
+    setIndex(0);
+    resultsRef.current = [];
+    setResults([]);
+    setSummary(null);
+    questionStart.current = Date.now();
+    setPhase('running');
+  }
+
+  function finish() {
+    const done = resultsRef.current;
+    const entry = makeHistoryEntry(settings.mode, Date.now(), done);
+    if (entry) recordSession(entry);
+    setSummary(summarize(done));
+    setPhase('summary');
+  }
 
   function handleAnswer(correct: boolean) {
+    const position = queue[index];
     if (!position) return;
     recordAnswer(position, correct);
-    setSession((s) => ({
-      correct: s.correct + (correct ? 1 : 0),
-      total: s.total + 1,
-      streak: correct ? s.streak + 1 : 0,
-    }));
+    resultsRef.current = [...resultsRef.current, { correct, ms: Date.now() - questionStart.current }];
+    setResults(resultsRef.current);
   }
 
   function handleNext() {
-    if (position) lastKey.current = positionKey(position);
-    setRound((r) => r + 1);
+    if (index + 1 >= queue.length) {
+      finish();
+      return;
+    }
+    questionStart.current = Date.now();
+    setIndex(index + 1);
   }
 
+  function changeMode(mode: typeof settings.mode) {
+    updateSettings({ mode });
+    setPhase('idle');
+  }
+
+  const position = queue[index];
   const quizProps = { settings, onAnswer: handleAnswer, onNext: handleNext };
+  const hits = results.filter((r) => r.correct).length;
+  let streak = 0;
+  for (let i = results.length - 1; i >= 0 && results[i].correct; i--) streak++;
 
   return (
     <section className="screen">
@@ -60,29 +86,74 @@ export function Study({ forced = null }: { forced?: Position | null }) {
             key={mode}
             type="button"
             aria-pressed={settings.mode === mode}
-            onClick={() => updateSettings({ mode })}
+            onClick={() => changeMode(mode)}
           >
             {label}
           </button>
         ))}
       </div>
-      <p className="session">
-        Acertos {session.correct}/{session.total} · Sequência {session.streak}
-      </p>
-      {candidates.length === 0 && !forced ? (
-        <p className="empty">
-          Nenhuma posição no foco atual. Selecione ao menos uma corda ou ajuste as casas e o nível
-          de notas em Foco.
-        </p>
-      ) : (
-        position &&
-        (settings.mode === 'position-to-note' ? (
-          <ChoiceQuiz key={round} position={position} {...quizProps} />
-        ) : settings.mode === 'note-to-position' ? (
-          <FindQuiz key={round} position={position} {...quizProps} />
-        ) : (
-          <Flashcard key={round} position={position} {...quizProps} />
-        ))
+
+      {phase === 'idle' && (
+        <div className="session-start">
+          {candidates.length === 0 ? (
+            <p className="empty">
+              Nenhuma posição no foco atual. Selecione ao menos uma corda ou ajuste as casas e o
+              nível de notas em Foco.
+            </p>
+          ) : (
+            <p>
+              {candidates.length} {candidates.length === 1 ? 'pergunta' : 'perguntas'}
+            </p>
+          )}
+          <button type="button" className="primary" disabled={candidates.length === 0} onClick={begin}>
+            Iniciar
+          </button>
+        </div>
+      )}
+
+      {phase === 'running' && position && (
+        <>
+          <div className="session-bar">
+            <p className="session">
+              Pergunta {index + 1}/{queue.length} · Acertos {hits}/{results.length} · Sequência{' '}
+              {streak}
+            </p>
+            <button type="button" onClick={finish}>
+              Finalizar
+            </button>
+          </div>
+          {settings.mode === 'position-to-note' ? (
+            <ChoiceQuiz key={index} position={position} {...quizProps} />
+          ) : settings.mode === 'note-to-position' ? (
+            <FindQuiz key={index} position={position} {...quizProps} />
+          ) : (
+            <Flashcard key={index} position={position} {...quizProps} />
+          )}
+        </>
+      )}
+
+      {phase === 'summary' && summary && (
+        <div className="session-summary">
+          <h2>Sessão concluída</h2>
+          {summary.total === 0 ? (
+            <p>Nenhuma pergunta respondida.</p>
+          ) : (
+            <>
+              <p>
+                Acertos: {summary.correct} de {summary.total} ({summary.percent}%)
+              </p>
+              <p>Tempo médio por resposta: {formatSeconds(summary.averageMs)}</p>
+            </>
+          )}
+          <div className="options options--two">
+            <button type="button" className="primary" onClick={begin}>
+              Nova sessão
+            </button>
+            <button type="button" onClick={() => setPhase('idle')}>
+              Encerrar
+            </button>
+          </div>
+        </div>
       )}
     </section>
   );

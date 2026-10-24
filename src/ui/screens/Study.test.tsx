@@ -1,12 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
 import { readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
 import { Study } from './Study';
 
-// Uma única posição candidata: corda 6, casa 12 (nota E) → sorteio determinístico.
+// Uma única posição candidata: corda 6, casa 12 (nota E).
 const SINGLE: Settings['filter'] = { strings: [6], fretMin: 12, fretMax: 12, naturalsOnly: true };
+// Três posições naturais na corda 6: casa 1 (F), casa 3 (G), casa 5 (A).
+const THREE: Settings['filter'] = { strings: [6], fretMin: 1, fretMax: 5, naturalsOnly: true };
 
 function setup(settings: Partial<Settings> = {}, forced?: { string: number; fret: number }) {
   const storage = seededStorage({ settings: { notation: 'cifra', filter: SINGLE, ...settings } });
@@ -18,10 +20,33 @@ function setup(settings: Partial<Settings> = {}, forced?: { string: number; fret
   return storage;
 }
 
-describe('Study', () => {
-  it('explains what is missing when the filter has no positions', () => {
+const start = () => fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
+const tick = (ms: number) => act(() => void vi.setSystemTime(Date.now() + ms));
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(1_000_000);
+});
+afterEach(() => vi.useRealTimers());
+
+describe('Study: before the session', () => {
+  it('waits for the Iniciar button and says how many questions there will be', () => {
+    setup({ filter: THREE });
+    expect(screen.getByText('3 perguntas')).toBeInTheDocument();
+    expect(screen.queryByText('Qual é esta nota?')).not.toBeInTheDocument();
+    start();
+    expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
+  });
+
+  it('uses the singular for one question', () => {
+    setup();
+    expect(screen.getByText('1 pergunta')).toBeInTheDocument();
+  });
+
+  it('explains what is missing when the filter has no positions, and cannot start', () => {
     setup({ filter: { ...SINGLE, strings: [] } });
     expect(screen.getByText(/Nenhuma posição no foco/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
   });
 
   it('explains it too when naturals-only leaves nothing (A# on string 5 fret 1)', () => {
@@ -29,9 +54,21 @@ describe('Study', () => {
     expect(screen.getByText(/Nenhuma posição no foco/)).toBeInTheDocument();
   });
 
+  it('switching mode shows that mode start screen and remembers the mode', () => {
+    const storage = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Flashcard' }));
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mostrar nota' })).not.toBeInTheDocument();
+    expect(readSaved(storage).settings.mode).toBe('flashcard');
+    start();
+    expect(screen.getByRole('button', { name: 'Mostrar nota' })).toBeInTheDocument();
+  });
+});
+
+describe('Study: answering', () => {
   it('multiple choice: a correct answer gives feedback and saves progress', () => {
     const storage = setup();
-    expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
+    start();
     fireEvent.click(screen.getByRole('button', { name: 'E' }));
     expect(screen.getByText('Correto!')).toBeInTheDocument();
     expect(readSaved(storage).progress['6-12'].box).toBe(2);
@@ -40,19 +77,19 @@ describe('Study', () => {
 
   it('multiple choice: a wrong answer shows the right note and a Próxima button', () => {
     const storage = setup();
+    start();
     const wrong = screen
       .getAllByRole('button')
       .find((b) => b.classList.contains('option') && b.textContent !== 'E')!;
     fireEvent.click(wrong);
     expect(screen.getByText('Era E')).toBeInTheDocument();
     expect(readSaved(storage).progress['6-12'].box).toBe(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
-    expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
-    expect(screen.queryByText('Era E')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Próxima' })).toBeInTheDocument();
   });
 
   it('find mode: tapping the right cell is correct, another cell is wrong', () => {
     const storage = setup({ mode: 'note-to-position' });
+    start();
     expect(screen.getByText('Encontre E na corda 6')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cell-6-12'));
     expect(screen.getByText('Correto!')).toBeInTheDocument();
@@ -61,6 +98,7 @@ describe('Study', () => {
 
   it('find mode: a wrong tap saves a miss', () => {
     const storage = setup({ mode: 'note-to-position' });
+    start();
     fireEvent.click(screen.getByTestId('cell-5-12'));
     expect(screen.getByRole('button', { name: 'Próxima' })).toBeInTheDocument();
     expect(readSaved(storage).progress['6-12'].box).toBe(1);
@@ -68,21 +106,106 @@ describe('Study', () => {
 
   it('flashcard: reveal then self-grade', () => {
     const storage = setup({ mode: 'flashcard' });
+    start();
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' }));
     fireEvent.click(screen.getByRole('button', { name: 'Acertei' }));
     expect(readSaved(storage).progress['6-12'].box).toBe(2);
-    expect(screen.getByRole('button', { name: 'Mostrar nota' })).toBeInTheDocument();
+  });
+});
+
+describe('Study: a session', () => {
+  /** Responde a pergunta atual no flashcard depois de `ms` e devolve nada. */
+  function flash(ms: number, grade: 'Acertei' | 'Errei') {
+    tick(ms);
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' }));
+    fireEvent.click(screen.getByRole('button', { name: grade }));
+  }
+
+  it('asks every position once, never repeating, then shows the summary', () => {
+    setup({ mode: 'note-to-position', filter: THREE });
+    start();
+    const asked: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      asked.push(screen.getByText(/^Encontre /).textContent!);
+      fireEvent.click(screen.getByTestId('cell-1-1')); // errada: outra corda
+      fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
+    }
+    expect([...asked].sort()).toEqual(['Encontre A na corda 6', 'Encontre F na corda 6', 'Encontre G na corda 6']);
+    expect(screen.getByText('Sessão concluída')).toBeInTheDocument();
   });
 
-  it('switches mode from the mode bar and remembers it', () => {
-    const storage = setup();
-    fireEvent.click(screen.getByRole('button', { name: 'Flashcard' }));
-    expect(screen.getByRole('button', { name: 'Mostrar nota' })).toBeInTheDocument();
-    expect(readSaved(storage).settings.mode).toBe('flashcard');
+  it('shows hits, percentage and the average answer time', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    expect(screen.getByText(/Pergunta 1\/3/)).toBeInTheDocument();
+    flash(2000, 'Acertei');
+    expect(screen.getByText(/Pergunta 2\/3/)).toBeInTheDocument();
+    flash(4000, 'Errei');
+    flash(3000, 'Acertei');
+    expect(screen.getByText('Sessão concluída')).toBeInTheDocument();
+    expect(screen.getByText('Acertos: 2 de 3 (67%)')).toBeInTheDocument();
+    expect(screen.getByText('Tempo médio por resposta: 3,0 s')).toBeInTheDocument();
   });
 
-  it('starts on the forced position even if it is outside the filter', () => {
+  it('saves the finished session in the history', () => {
+    const storage = setup({ mode: 'flashcard', filter: THREE });
+    start();
+    flash(2000, 'Acertei');
+    flash(2000, 'Acertei');
+    flash(2000, 'Errei');
+    const [entry] = readSaved(storage).history;
+    expect(entry).toMatchObject({ mode: 'flashcard', total: 3, correct: 2, averageMs: 2000 });
+    expect(entry.at).toBe(1_006_000);
+  });
+
+  it('Finalizar ends early and summarizes only what was answered', () => {
+    const storage = setup({ mode: 'flashcard', filter: THREE });
+    start();
+    flash(1000, 'Acertei');
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(screen.getByText('Acertos: 1 de 1 (100%)')).toBeInTheDocument();
+    expect(readSaved(storage).history[0]).toMatchObject({ total: 1, correct: 1 });
+  });
+
+  it('Finalizar with no answers shows an empty summary and saves nothing', () => {
+    const storage = setup({ mode: 'flashcard', filter: THREE });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(screen.getByText('Nenhuma pergunta respondida.')).toBeInTheDocument();
+    expect(readSaved(storage).history).toEqual([]);
+  });
+
+  it('Nova sessão restarts the exercise from the first question', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    flash(1000, 'Acertei');
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }));
+    expect(screen.getByText(/Pergunta 1\/3/)).toBeInTheDocument();
+    expect(screen.getByText(/Acertos 0\/0/)).toBeInTheDocument();
+  });
+
+  it('Encerrar goes back to the start screen of the exercise', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+    expect(screen.getByText('3 perguntas')).toBeInTheDocument();
+  });
+
+  it('changing mode in the middle abandons the session without saving it', () => {
+    const storage = setup({ mode: 'flashcard', filter: THREE });
+    start();
+    flash(1000, 'Acertei');
+    fireEvent.click(screen.getByRole('button', { name: 'Posição → nota' }));
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+    expect(readSaved(storage).history).toEqual([]);
+  });
+
+  it('a forced position starts a session right away, asking it first', () => {
     setup({ mode: 'note-to-position' }, { string: 3, fret: 7 });
     expect(screen.getByText('Encontre D na corda 3')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Iniciar/ })).not.toBeInTheDocument();
   });
 });

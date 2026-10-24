@@ -9,6 +9,8 @@ import {
 import { masteryOf, type Mastery } from '../../domain/scheduler';
 import { useAppState } from '../../state/AppState';
 import { Fretboard, type Mark } from '../Fretboard';
+import { formatSeconds } from '../format';
+import { modeLabel } from '../modeLabels';
 import { stringLabels } from '../stringLabels';
 
 const LEGEND: { mastery: Mastery; label: string }[] = [
@@ -19,8 +21,8 @@ const LEGEND: { mastery: Mastery; label: string }[] = [
 ];
 
 export function Progress({ onSelect }: { onSelect(position: Position): void }) {
-  const { data } = useAppState();
-  const { progress, settings } = data;
+  const { data, clearHistory } = useAppState();
+  const { progress, settings, history } = data;
 
   const { marks, counts } = useMemo(() => {
     const counts: Record<Mastery, number> = { unseen: 0, wrong: 0, learning: 0, mastered: 0 };
@@ -54,6 +56,44 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
         ))}
       </ul>
       <p className="hint">Toque numa posição para estudá-la.</p>
+
+      <h2>Histórico</h2>
+      {history.length === 0 ? (
+        <p className="empty">Nenhuma sessão ainda.</p>
+      ) : (
+        <>
+          <ul className="history">
+            {history.map((entry, i) => (
+              <li key={`${entry.at}-${i}`}>
+                <strong>{modeLabel(entry.mode)}</strong>
+                <span>
+                  {Math.round((entry.correct / entry.total) * 100)}% · {entry.correct}/{entry.total}{' '}
+                  · {formatSeconds(entry.averageMs)}
+                </span>
+                <time dateTime={new Date(entry.at).toISOString()}>
+                  {new Date(entry.at).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </time>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              if (window.confirm('Limpar o histórico de sessões? Isso não pode ser desfeito.')) {
+                clearHistory();
+              }
+            }}
+          >
+            Limpar histórico
+          </button>
+        </>
+      )}
     </section>
   );
 }

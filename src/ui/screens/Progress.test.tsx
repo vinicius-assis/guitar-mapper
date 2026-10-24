@@ -51,4 +51,56 @@ describe('Progress', () => {
     fireEvent.click(screen.getByTestId('cell-6-1'));
     expect(onSelect).toHaveBeenCalledWith({ string: 6, fret: 1 });
   });
+
+  describe('history', () => {
+    const history = [
+      { mode: 'flashcard' as const, at: new Date(2026, 9, 24, 19, 5).getTime(), total: 18, correct: 14, averageMs: 4200 },
+      { mode: 'position-to-note' as const, at: new Date(2026, 9, 23, 8, 30).getTime(), total: 3, correct: 1, averageMs: 2000 },
+    ];
+    const renderWith = (h = history) => {
+      const storage = seededStorage({ history: h });
+      render(
+        <AppProvider storage={storage}>
+          <Progress onSelect={() => {}} />
+        </AppProvider>,
+      );
+      return storage;
+    };
+
+    it('says there are no sessions yet, with no clear button', () => {
+      renderWith([]);
+      expect(screen.getByText('Nenhuma sessão ainda.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Limpar histórico' })).not.toBeInTheDocument();
+    });
+
+    it('lists type, percentage, score and average time, newest first', () => {
+      renderWith();
+      const items = screen.getAllByRole('listitem').filter((li) => li.closest('.history'));
+      expect(items).toHaveLength(2);
+      expect(items[0]).toHaveTextContent('Flashcard');
+      expect(items[0]).toHaveTextContent('78%');
+      expect(items[0]).toHaveTextContent('14/18');
+      expect(items[0]).toHaveTextContent('4,2 s');
+      expect(items[1]).toHaveTextContent('Posição → nota');
+      expect(items[1]).toHaveTextContent('33%');
+    });
+
+    it('clears the history only after confirmation, keeping the progress', () => {
+      const storage = seededStorage({ history, progress: { '6-1': entry(5) } });
+      render(
+        <AppProvider storage={storage}>
+          <Progress onSelect={() => {}} />
+        </AppProvider>,
+      );
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      fireEvent.click(screen.getByRole('button', { name: 'Limpar histórico' }));
+      expect(JSON.parse(storage.dump()['guitar-mapper:v1']).history).toHaveLength(2);
+      confirm.mockReturnValue(true);
+      fireEvent.click(screen.getByRole('button', { name: 'Limpar histórico' }));
+      const saved = JSON.parse(storage.dump()['guitar-mapper:v1']);
+      expect(saved.history).toEqual([]);
+      expect(Object.keys(saved.progress)).toEqual(['6-1']);
+      expect(screen.getByText('Nenhuma sessão ainda.')).toBeInTheDocument();
+    });
+  });
 });
