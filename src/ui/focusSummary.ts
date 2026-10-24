@@ -18,6 +18,6 @@ export function describeFocus(filter: Filter): FocusSummary {
     strings: strings.length === STRING_COUNT ? 'todas' : joinList(strings),
     frets:
       filter.fretMin === filter.fretMax ? `${filter.fretMin}` : `${filter.fretMin}–${filter.fretMax}`,
-    notes: filter.naturalsOnly ? 'só naturais' : 'com acidentais',
+    notes: filter.naturalsOnly ? 'Só naturais' : 'Com acidentais',
   };
 }

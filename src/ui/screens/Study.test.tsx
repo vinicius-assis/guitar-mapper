@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
 import { readSaved, seededStorage } from '../../test-utils';
@@ -36,7 +36,7 @@ afterEach(() => vi.useRealTimers());
 describe('Study: before the session', () => {
   it('waits for the Iniciar button and says how many questions there will be', () => {
     setup({ filter: THREE });
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('3 perguntas');
     expect(screen.queryByText('Qual é esta nota?')).not.toBeInTheDocument();
     start();
     expect(screen.getByText('Qual é esta nota?')).toBeInTheDocument();
@@ -59,13 +59,13 @@ describe('Study: before the session', () => {
     expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
-  it('summarises the focus next to the start button', () => {
+  it('shows the focus as badges next to the start button', () => {
     setup({ filter: THREE });
     const card = screen.getByRole('group', { name: 'Foco' });
-    expect(card).toHaveTextContent('Perguntas3');
-    expect(card).toHaveTextContent('Cordas6');
-    expect(card).toHaveTextContent('Casas1–5');
-    expect(card).toHaveTextContent('Notassó naturais');
+    expect(within(card).getByText('3 perguntas')).toHaveClass('badge');
+    expect(within(card).getByText('Cordas: 6')).toHaveClass('badge');
+    expect(within(card).getByText('Casas 1–5')).toHaveClass('badge');
+    expect(within(card).getByText('Só naturais')).toHaveClass('badge');
   });
 
   it('Alterar foco calls back, also when the focus is empty', () => {
@@ -77,7 +77,7 @@ describe('Study: before the session', () => {
 
   it('uses the singular for one question', () => {
     setup();
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas1');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('1 pergunta');
   });
 
   it('explains what is missing when the filter has no positions, and cannot start', () => {
@@ -212,14 +212,24 @@ describe('Study: a session', () => {
     expect(readSaved(storage).history).toEqual([]);
   });
 
-  it('Nova sessão restarts the exercise from the first question', () => {
+  it('Reiniciar restarts the exercise from the first question', () => {
     setup({ mode: 'flashcard', filter: THREE });
     start();
     flash(1000, 'Acertei');
     fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar' }));
     expect(screen.getByText(/Pergunta 1\/3/)).toBeInTheDocument();
     expect(screen.getByText(/Acertos 0\/0/)).toBeInTheDocument();
+  });
+
+  it('Reiniciar has a decorative icon and both summary buttons share a size class', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    const restart = screen.getByRole('button', { name: 'Reiniciar' });
+    expect(restart.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(restart).toHaveClass('summary-button');
+    expect(screen.getByRole('button', { name: 'Encerrar' })).toHaveClass('summary-button');
   });
 
   it('Encerrar goes back to the start screen of the exercise', () => {
@@ -228,7 +238,7 @@ describe('Study: a session', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('Perguntas3');
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('3 perguntas');
   });
 
   it('changing mode in the middle abandons the session without saving it', () => {

@@ -116,16 +116,14 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
                 nível de notas em Foco.
               </p>
             ) : (
-              <dl>
-                <dt>Perguntas</dt>
-                <dd>{candidates.length}</dd>
-                <dt>Cordas</dt>
-                <dd>{focus.strings}</dd>
-                <dt>Casas</dt>
-                <dd>{focus.frets}</dd>
-                <dt>Notas</dt>
-                <dd>{focus.notes}</dd>
-              </dl>
+              <ul className="badges">
+                <li className="badge badge--accent">
+                  {candidates.length} {candidates.length === 1 ? 'pergunta' : 'perguntas'}
+                </li>
+                <li className="badge">Cordas: {focus.strings}</li>
+                <li className="badge">Casas {focus.frets}</li>
+                <li className="badge">{focus.notes}</li>
+              </ul>
             )}
           </div>
           <button
@@ -177,10 +175,16 @@ export function Study({ forced = null, onChangeFocus }: StudyProps) {
             </>
           )}
           <div className="options options--two">
-            <button type="button" className="primary" onClick={begin}>
-              Nova sessão
+            <button type="button" className="primary start summary-button" onClick={begin}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                <path
+                  d="M12 5V2L7 6.5 12 11V8a5 5 0 1 1-5 5H5a7 7 0 1 0 7-8z"
+                  fill="currentColor"
+                />
+              </svg>
+              Reiniciar
             </button>
-            <button type="button" onClick={() => setPhase('idle')}>
+            <button type="button" className="summary-button" onClick={() => setPhase('idle')}>
               Encerrar
             </button>
           </div>
