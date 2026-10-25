@@ -11,7 +11,9 @@ import { windowFor } from './window';
 export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
   const sound = useSound();
-  const fit = useBreakpoint() !== 'mobile';
+  const breakpoint = useBreakpoint();
+  const fit = breakpoint !== 'mobile';
+  const expand = breakpoint === 'desktop';
   const [revealed, setRevealed] = useState(false);
   const { fretMin, fretMax } = windowFor(filter, position);
 
@@ -25,6 +27,7 @@ export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
       <p className="prompt">Qual é esta nota?</p>
       <Fretboard
         fit={fit}
+        expand={expand}
         fretMin={fretMin}
         fretMax={fretMax}
         leftHanded={leftHanded}

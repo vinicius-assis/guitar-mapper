@@ -13,7 +13,9 @@ import { windowFor } from './window';
 export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
   const sound = useSound();
-  const fit = useBreakpoint() !== 'mobile';
+  const breakpoint = useBreakpoint();
+  const fit = breakpoint !== 'mobile';
+  const expand = breakpoint === 'desktop';
   const question = useMemo(() => buildFindQuestion(position, filter), [position, filter]);
   const [tapped, setTapped] = useState<Position | null>(null);
   const correct = tapped !== null && isCorrectFind(question, tapped);
@@ -52,6 +54,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
       </p>
       <Fretboard
         fit={fit}
+        expand={expand}
         fretMin={fretMin}
         fretMax={fretMax}
         leftHanded={leftHanded}

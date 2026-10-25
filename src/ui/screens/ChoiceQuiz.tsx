@@ -20,7 +20,9 @@ export interface QuizProps {
 export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
   const sound = useSound();
-  const fit = useBreakpoint() !== 'mobile';
+  const breakpoint = useBreakpoint();
+  const fit = breakpoint !== 'mobile';
+  const expand = breakpoint === 'desktop';
   const question = useMemo(
     () => buildChoiceQuestion(position, filter.naturalsOnly, Math.random),
     [position, filter.naturalsOnly],
@@ -43,6 +45,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
       <p className="prompt">Qual é esta nota?</p>
       <Fretboard
         fit={fit}
+        expand={expand}
         fretMin={fretMin}
         fretMax={fretMax}
         leftHanded={leftHanded}

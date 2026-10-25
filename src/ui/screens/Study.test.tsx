@@ -927,3 +927,49 @@ describe('Study: keyboard shortcuts', () => {
     expect(readSaved(storage).progress).toEqual({});
   });
 });
+
+describe('Study: desktop board shows more frets and disables the ones outside the focus', () => {
+  let viewport: ReturnType<typeof mockViewport>;
+  let board: ReturnType<typeof mockBoardWidth>;
+  afterEach(() => {
+    viewport.restore();
+    board.restore();
+  });
+  const cell = (s: number, f: number) => screen.queryByTestId(`cell-${s}-${f}`);
+
+  it('desktop: a 1-5 focus shows frets 1 to 12, with 6 to 12 disabled', () => {
+    viewport = mockViewport(1280);
+    board = mockBoardWidth(864);
+    setup({ mode: 'note-to-position', filter: THREE });
+    start();
+    expect(cell(6, 12)).not.toBeNull();
+    expect(cell(6, 3)).toHaveAttribute('role', 'button');
+    expect(cell(6, 8)).toHaveClass('cell--disabled');
+    expect(cell(6, 8)).not.toHaveAttribute('role');
+  });
+
+  it('tapping a disabled fret in Nota → posição is ignored (no answer)', () => {
+    viewport = mockViewport(1280);
+    board = mockBoardWidth(864);
+    const storage = setup({ mode: 'note-to-position', filter: THREE });
+    start();
+    fireEvent.click(cell(6, 8)!);
+    expect(readSaved(storage).progress).toEqual({});
+    expect(screen.queryByRole('button', { name: 'Próxima' })).not.toBeInTheDocument();
+  });
+
+  it('tablet and phone keep the focus window only', () => {
+    for (const width of [800, 390]) {
+      viewport = mockViewport(width);
+      board = mockBoardWidth(700);
+      setup({ mode: 'note-to-position', filter: THREE });
+      start();
+      expect(cell(6, 8), String(width)).toBeNull();
+      cleanup();
+      viewport.restore();
+      board.restore();
+    }
+    viewport = mockViewport(390);
+    board = mockBoardWidth(330);
+  });
+});

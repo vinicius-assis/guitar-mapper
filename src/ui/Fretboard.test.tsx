@@ -161,6 +161,76 @@ describe('Fretboard', () => {
     });
   });
 
+  describe('expand (desktop): more frets, the ones outside the focus are disabled', () => {
+    let board: ReturnType<typeof mockBoardWidth>;
+    afterEach(() => board?.restore());
+    const cell = (c: HTMLElement, s: number, f: number) => c.querySelector(`[data-testid="cell-${s}-${f}"]`);
+
+    it('shows as many frets as fit at about 72px each (864px = 12 frets), from the first fret', () => {
+      board = mockBoardWidth(864);
+      const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit expand />);
+      expect(cell(container, 3, 12)).not.toBeNull();
+      expect(cell(container, 3, 13)).toBeNull();
+      expect(container.querySelector('svg')!.getAttribute('width')).toBe('864');
+    });
+
+    it('centers the focus in the wider window and stays inside frets 1 to 24', () => {
+      board = mockBoardWidth(864);
+      const middle = render(<Fretboard fretMin={10} fretMax={14} marks={[]} fit expand />);
+      expect(cell(middle.container, 3, 7)).not.toBeNull();
+      expect(cell(middle.container, 3, 6)).toBeNull();
+      expect(cell(middle.container, 3, 18)).not.toBeNull();
+      expect(cell(middle.container, 3, 19)).toBeNull();
+      const end = render(<Fretboard fretMin={20} fretMax={24} marks={[]} fit expand />);
+      expect(cell(end.container, 3, 13)).not.toBeNull();
+      expect(cell(end.container, 3, 12)).toBeNull();
+      expect(cell(end.container, 3, 24)).not.toBeNull();
+    });
+
+    it('never shows more than 24 frets', () => {
+      board = mockBoardWidth(4000);
+      const { container } = render(<Fretboard fretMin={3} fretMax={5} marks={[]} fit expand />);
+      expect(cell(container, 1, 1)).not.toBeNull();
+      expect(cell(container, 1, 24)).not.toBeNull();
+      expect(container.querySelectorAll('[data-testid^="cell-1-"]')).toHaveLength(24);
+    });
+
+    it('disables the frets outside the focus: dimmed, no tap', () => {
+      board = mockBoardWidth(864);
+      const onTap = vi.fn();
+      const { container } = render(
+        <Fretboard fretMin={1} fretMax={5} marks={[]} fit expand onTap={onTap} />,
+      );
+      expect(cell(container, 2, 3)).toHaveAttribute('role', 'button');
+      expect(cell(container, 2, 9)).not.toHaveAttribute('role');
+      expect(cell(container, 2, 9)).toHaveClass('cell--disabled');
+      fireEvent.click(cell(container, 2, 9)!);
+      expect(onTap).not.toHaveBeenCalled();
+      fireEvent.click(cell(container, 2, 3)!);
+      expect(onTap).toHaveBeenCalledWith({ string: 2, fret: 3 });
+      expect(container.querySelectorAll('.fret-disabled')).toHaveLength(7);
+      const numbers = [...container.querySelectorAll('.fret-number')];
+      expect(numbers.filter((n) => n.classList.contains('fret-number--disabled'))).toHaveLength(7);
+    });
+
+    it('mirrors correctly for left-handed players', () => {
+      board = mockBoardWidth(864);
+      const { container } = render(
+        <Fretboard fretMin={1} fretMax={5} marks={[]} fit expand leftHanded />,
+      );
+      // casa 12 (desabilitada) fica na ponta esquerda; a 1 na ponta direita
+      expect(Number(cell(container, 3, 12)!.getAttribute('x'))).toBe(0);
+      expect(Number(cell(container, 3, 1)!.getAttribute('x'))).toBe(11 * 72);
+    });
+
+    it('without expand nothing is disabled and the window is the focus', () => {
+      board = mockBoardWidth(864);
+      const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
+      expect(cell(container, 3, 6)).toBeNull();
+      expect(container.querySelectorAll('.fret-disabled')).toHaveLength(0);
+    });
+  });
+
   it('string labels use proportional rows (natural size)', () => {
     const { container } = render(
       <Fretboard fretMin={1} fretMax={5} marks={[]} stringLabels={['E', 'B', 'G', 'D', 'A', 'E']} />,

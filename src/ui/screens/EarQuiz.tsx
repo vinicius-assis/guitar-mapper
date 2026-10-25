@@ -14,7 +14,9 @@ import { windowFor } from './window';
 export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded, earLevel } = settings;
   const sound = useSound();
-  const fit = useBreakpoint() !== 'mobile';
+  const breakpoint = useBreakpoint();
+  const fit = breakpoint !== 'mobile';
+  const expand = breakpoint === 'desktop';
   const question = useMemo(
     () => buildEarQuestion(position, earLevel, filter.naturalsOnly, Math.random),
     [position, earLevel, filter.naturalsOnly],
@@ -94,6 +96,7 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
         <>
           <Fretboard
         fit={fit}
+        expand={expand}
             fretMin={fretMin}
             fretMax={fretMax}
             leftHanded={leftHanded}
