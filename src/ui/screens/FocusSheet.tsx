@@ -28,10 +28,10 @@ export function FocusSheet({ open, onOpenChange }: FocusSheetProps) {
     <div className={`focus-sheet${open ? ' focus-sheet--open' : ''}`} role="group" aria-label="Foco">
       {open && (
         <div className="focus-sheet__panel" id="focus-sheet-panel">
-          <dl className="focus-rows">
+          <dl className="focus-rows focus-rows--stacked">
             <dt>Perguntas</dt>
-            <dd>
-              <span className="badge badge--accent">{count}</span>
+            <dd className="focus-count">
+              <span className="static-value">{count}</span>
             </dd>
 
             <dt>Cordas</dt>
@@ -135,15 +135,19 @@ export function FocusSheet({ open, onOpenChange }: FocusSheetProps) {
         onClick={() => onOpenChange(!open)}
       >
         <span className="focus-sheet__title">Foco</span>
-        <span className="badge badge--accent">
-          {count} {count === 1 ? 'pergunta' : 'perguntas'}
-        </span>
+        {!open && (
+          <span className="static-value">
+            {count} {count === 1 ? 'pergunta' : 'perguntas'}
+          </span>
+        )}
         <svg className="focus-sheet__chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
           <path d="M7 14l5-5 5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span className="focus-sheet__summary">
-          {summaryText(summary.strings, summary.frets, summary.notes)}
-        </span>
+        {!open && (
+          <span className="focus-sheet__summary">
+            {summaryText(summary.strings, summary.frets, summary.notes)}
+          </span>
+        )}
       </button>
     </div>
   );

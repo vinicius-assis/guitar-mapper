@@ -513,6 +513,39 @@ describe('Study: focus sheet', () => {
     expect(sheet()).toHaveTextContent('Todas as cordas · Casas 1–5 · Com acidentais');
   });
 
+  it('the question count is plain text, not a badge that looks editable', () => {
+    setup({ filter: THREE });
+    const closedCount = within(sheet()).getByText('3 perguntas');
+    expect(closedCount).toHaveClass('static-value');
+    expect(closedCount).not.toHaveClass('badge');
+    open();
+    const row = within(sheet()).getByText('Perguntas').nextElementSibling!;
+    expect(row.querySelector('.static-value')).toHaveTextContent('3');
+    expect(row.querySelector('.badge, button')).toBeNull();
+  });
+
+  it('while open, the bar does not repeat the count and the summary shown in the card', () => {
+    setup({ filter: THREE });
+    open();
+    expect(within(sheet()).queryByText('3 perguntas')).not.toBeInTheDocument();
+    expect(within(sheet()).queryByText(/Cordas 6 · Casas 1–5/)).not.toBeInTheDocument();
+    expect(bar()).toHaveTextContent('Foco');
+    fireEvent.click(bar());
+    expect(within(sheet()).getByText('3 perguntas')).toBeInTheDocument();
+    expect(within(sheet()).getByText(/Cordas 6 · Casas 1–5/)).toBeInTheDocument();
+  });
+
+  it('puts each label on its own line above its options', () => {
+    setup({ filter: THREE });
+    open();
+    for (const label of ['Cordas', 'Casas', 'De / até', 'Notas']) {
+      const term = within(sheet()).getByText(label);
+      expect(term.tagName).toBe('DT');
+      expect(term.nextElementSibling!.tagName).toBe('DD');
+    }
+    expect(sheet().querySelector('dl')).toHaveClass('focus-rows--stacked');
+  });
+
   it('opens on tap with the editable values and a dimmed backdrop', () => {
     setup({ filter: THREE });
     open();
@@ -544,10 +577,10 @@ describe('Study: focus sheet', () => {
     open();
     fireEvent.click(screen.getByRole('button', { name: 'Corda 6' }));
     expect(readSaved(storage).settings.filter.strings).toEqual([1, 2, 3, 4, 5]);
-    expect(sheet()).toHaveTextContent('15 perguntas');
+    expect(sheet()).toHaveTextContent('Perguntas15');
     fireEvent.click(screen.getByRole('button', { name: 'Todas' }));
     expect(readSaved(storage).settings.filter.strings).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(sheet()).toHaveTextContent('18 perguntas');
+    expect(sheet()).toHaveTextContent('Perguntas18');
   });
 
   it('edits the frets with the presets and the selects, keeping the range ordered', () => {
@@ -568,7 +601,7 @@ describe('Study: focus sheet', () => {
     expect(readSaved(storage).settings.filter.naturalsOnly).toBe(false);
     expect(screen.getByRole('button', { name: 'Com acidentais' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Naturais' })).toHaveAttribute('aria-pressed', 'false');
-    expect(sheet()).toHaveTextContent('30 perguntas');
+    expect(sheet()).toHaveTextContent('Perguntas30');
   });
 
   it('with no position left it explains and blocks Iniciar, even while closed', () => {
