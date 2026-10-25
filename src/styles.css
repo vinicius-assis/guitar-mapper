@@ -313,6 +313,15 @@ main { display: flex; flex-direction: column; }
   .screen--study-desktop .mode-description { margin: 0; max-width: 52ch; text-align: center; font-size: 1.0625rem; }
   .screen--study-desktop .level-bar { width: 100%; max-width: 420px; }
   .focus-slot--fixed { height: auto; margin-top: 0; z-index: auto; }
+  /* Painel lateral de Foco: texto à esquerda, controles compactos (as 6 cordas + "Todas" numa linha). */
+  .focus-card--fixed { text-align: left; }
+  .focus-card--fixed .focus-card__head--static { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+  .focus-card--fixed .focus-card__title { font-size: 1rem; color: var(--text); }
+  .focus-card--fixed .focus-card__body { padding: 8px 16px 16px; }
+  .focus-card--fixed .focus-controls { gap: 6px; }
+  .focus-card--fixed .badge--button { padding: 6px 10px; min-width: 32px; text-align: center; }
+  .focus-card--fixed .focus-rows--stacked dt { margin: 16px 0 8px; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .focus-card--fixed .focus-count .static-value { font-size: 1.75rem; line-height: 1; }
   .focus-card--fixed { position: static; overflow: visible; box-shadow: none; border-radius: 12px; }
   .focus-card__head--static { display: block; min-height: 0; padding: 12px 16px 0; border: 0; }
   /* Sessão: coluna central larga. */
