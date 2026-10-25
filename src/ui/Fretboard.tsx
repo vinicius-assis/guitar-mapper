@@ -26,6 +26,10 @@ export interface FretboardProps {
   scrollToFret?: number;
   /** Nome de cada corda solta (índice 0 = corda 1), mostrado numa coluna fixa ao lado do braço. */
   stringLabels?: string[];
+  /** O SVG ocupa a largura do container (tablet e computador); sem isso mantém o tamanho natural. */
+  fit?: boolean;
+  /** Com `fit`, largura mínima por casa antes de rolar (padrão 56). */
+  minFretWidth?: number;
 }
 
 const FRET_W = 56;
@@ -43,6 +47,8 @@ export function Fretboard({
   leftHanded = false,
   scrollToFret,
   stringLabels,
+  fit = false,
+  minFretWidth = FRET_W,
 }: FretboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const count = fretMax - fretMin + 1;
@@ -80,7 +86,12 @@ export function Fretboard({
         </div>
       )}
       <div className="fretboard" ref={scrollRef} role="group" aria-label="Braço da guitarra">
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        <svg
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          style={fit ? { width: '100%', minWidth: count * minFretWidth, height: 'auto' } : undefined}
+        >
           {frets.map((f) => (
             <text key={`n${f}`} className="fret-number" x={cx(f)} y={16} textAnchor="middle">
               {f}

@@ -80,4 +80,27 @@ describe('Fretboard', () => {
       expect(container.querySelector('.fretboard-frame--mirrored')).not.toBeNull();
     });
   });
+
+  it('keeps the natural size without fit (phone)', () => {
+    const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} />);
+    const svg = container.querySelector('svg')!;
+    expect(svg.getAttribute('width')).toBe(String(5 * 56));
+    expect(svg.style.width).toBe('');
+  });
+
+  it('with fit the SVG fills the container but never shrinks below minFretWidth per fret', () => {
+    const { container } = render(
+      <Fretboard fretMin={1} fretMax={24} marks={[]} fit minFretWidth={34} />,
+    );
+    const svg = container.querySelector('svg')!;
+    expect(svg.style.width).toBe('100%');
+    expect(svg.style.minWidth).toBe(`${24 * 34}px`);
+    expect(svg.style.height).toBe('auto');
+    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${24 * 56} ${28 + 6 * 44}`);
+  });
+
+  it('fit defaults to a 56px minimum per fret', () => {
+    const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
+    expect(container.querySelector('svg')!.style.minWidth).toBe(`${5 * 56}px`);
+  });
 });
