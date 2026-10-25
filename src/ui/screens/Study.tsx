@@ -91,6 +91,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
     resultsRef.current = [];
     setResults([]);
     setSummary(null);
+    setOpenPanel(null); // o painel de Foco não pode sobrar aberto até o resumo
     questionStart.current = Date.now();
     setPhase('running');
   }
