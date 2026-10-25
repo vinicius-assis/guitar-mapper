@@ -72,14 +72,15 @@ export function Fretboard({
   return (
     <div className={`fretboard-frame${leftHanded ? ' fretboard-frame--mirrored' : ''}`}>
       {stringLabels && (
-        <div className="string-labels" style={{ paddingTop: TOP }} aria-hidden="true">
+        <div
+          className="string-labels"
+          // Linhas em `fr` na mesma proporção do SVG: os nomes acompanham o braço quando ele escala.
+          style={{ gridTemplateRows: `${TOP}fr repeat(${STRING_COUNT}, ${STRING_GAP}fr)` }}
+          aria-hidden="true"
+        >
+          <div />
           {stringLabels.map((label, i) => (
-            <div
-              key={i}
-              className="string-label"
-              data-testid={`string-label-${i + 1}`}
-              style={{ height: STRING_GAP }}
-            >
+            <div key={i} className="string-label" data-testid={`string-label-${i + 1}`}>
               {label}
             </div>
           ))}
@@ -90,7 +91,19 @@ export function Fretboard({
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}
-          style={fit ? { width: '100%', minWidth: count * minFretWidth, height: 'auto' } : undefined}
+          style={
+            fit
+              ? {
+                  width: '100%',
+                  minWidth: count * minFretWidth,
+                  // Sem passar de 1,4x o tamanho natural: uma janela curta não vira um braço altíssimo.
+                  maxWidth: width * 1.4,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  height: 'auto',
+                }
+              : undefined
+          }
         >
           {frets.map((f) => (
             <text key={`n${f}`} className="fret-number" x={cx(f)} y={16} textAnchor="middle">

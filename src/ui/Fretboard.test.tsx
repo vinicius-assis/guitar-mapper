@@ -99,6 +99,28 @@ describe('Fretboard', () => {
     expect(svg.getAttribute('viewBox')).toBe(`0 0 ${24 * 56} ${28 + 6 * 44}`);
   });
 
+  it('fit caps the scaling at 1.4x so a short window does not become a tall board', () => {
+    const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
+    const svg = container.querySelector('svg')!;
+    expect(svg.style.maxWidth).toBe(`${5 * 56 * 1.4}px`);
+    expect(svg.style.marginLeft).toBe('auto');
+    expect(svg.style.marginRight).toBe('auto');
+  });
+
+  it('string labels use rows proportional to the board so they follow it when it scales', () => {
+    const { container } = render(
+      <Fretboard fretMin={1} fretMax={5} marks={[]} fit stringLabels={['E', 'B', 'G', 'D', 'A', 'E']} />,
+    );
+    const gutter = container.querySelector('.string-labels') as HTMLElement;
+    expect(gutter.style.gridTemplateRows).toBe('28fr repeat(6, 44fr)');
+    expect(gutter.style.paddingTop).toBe('');
+    // um espaçador (o cabeçalho com os números das casas) + 6 nomes, na mesma proporção do SVG
+    expect(gutter.children).toHaveLength(7);
+    expect(gutter.children[0].textContent).toBe('');
+    expect(screen.getByTestId('string-label-1')).toHaveTextContent('E');
+    expect((screen.getByTestId('string-label-1') as HTMLElement).style.height).toBe('');
+  });
+
   it('fit defaults to a 56px minimum per fret', () => {
     const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
     expect(container.querySelector('svg')!.style.minWidth).toBe(`${5 * 56}px`);

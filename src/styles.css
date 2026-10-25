@@ -133,6 +133,8 @@ main { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
   -webkit-overflow-scrolling: touch;
 }
 .string-labels {
+  display: grid;
+  min-height: 0;
   flex: none;
   width: 36px;
   box-sizing: content-box;
@@ -324,7 +326,7 @@ main { display: flex; flex-direction: column; }
 
 .screen--form { max-width: 640px; }
 .progress-layout { display: block; }
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   .progress-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
   .progress-side .danger { margin-top: 12px; }
 }

@@ -211,7 +211,7 @@ describe('Progress layout by width', () => {
     const { container } = renderAt(1280);
     const svg = container.querySelector('svg')!;
     expect(svg.style.width).toBe('100%');
-    expect(svg.style.minWidth).toBe(`${24 * 34}px`);
+    expect(svg.style.minWidth).toBe(`${24 * 24}px`);
     const main = container.querySelector('.progress-main')!;
     const side = container.querySelector('.progress-side')!;
     expect(main.querySelector('svg')).not.toBeNull();

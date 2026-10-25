@@ -47,7 +47,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
           <h2>Progresso</h2>
           <Fretboard
             fit={breakpoint !== 'mobile'}
-            minFretWidth={breakpoint === 'desktop' ? 34 : undefined}
+            minFretWidth={breakpoint === 'desktop' ? 24 : undefined}
             fretMin={FIRST_QUIZ_FRET}
             fretMax={MAX_FRET}
             marks={marks}
