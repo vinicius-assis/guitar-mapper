@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { noteAt } from '../../domain/fretboard';
 import { noteLabel } from '../../domain/notes';
 import { useSound } from '../../audio/SoundProvider';
+import { useBreakpoint } from '../useBreakpoint';
 import { Fretboard } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
 import type { QuizProps } from './ChoiceQuiz';
@@ -10,6 +11,7 @@ import { windowFor } from './window';
 export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
   const sound = useSound();
+  const fit = useBreakpoint() !== 'mobile';
   const [revealed, setRevealed] = useState(false);
   const { fretMin, fretMax } = windowFor(filter, position);
 
@@ -22,6 +24,7 @@ export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
     <div className="quiz">
       <p className="prompt">Qual é esta nota?</p>
       <Fretboard
+        fit={fit}
         fretMin={fretMin}
         fretMax={fretMax}
         leftHanded={leftHanded}

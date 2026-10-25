@@ -5,7 +5,7 @@ export function Focus() {
     useFocusFilter();
 
   return (
-    <section className="screen">
+    <section className="screen screen--form">
       <h2>Foco</h2>
 
       <h3>Cordas</h3>

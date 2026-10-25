@@ -787,3 +787,30 @@ describe('Study: desktop layout', () => {
     expect(screen.queryByRole('button', { name: 'Corda 6' })).not.toBeInTheDocument();
   });
 });
+
+describe('Study: boards scale on tablet and desktop only', () => {
+  let viewport: ReturnType<typeof mockViewport>;
+  afterEach(() => viewport.restore());
+  const svgWidth = () => document.querySelector('.fretboard svg')!.getAttribute('style') ?? '';
+
+  it.each([
+    [390, false],
+    [800, true],
+    [1280, true],
+  ])('width %i: board scales = %s', (width, scales) => {
+    viewport = mockViewport(width);
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    expect(svgWidth().includes('width: 100%')).toBe(scales);
+  });
+
+  it('every exercise board scales on tablet', () => {
+    viewport = mockViewport(800);
+    for (const mode of ['position-to-note', 'note-to-position', 'flashcard'] as const) {
+      setup({ mode, filter: THREE });
+      start();
+      expect(svgWidth(), mode).toContain('width: 100%');
+      cleanup();
+    }
+  });
+});

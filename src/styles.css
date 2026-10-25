@@ -321,3 +321,10 @@ main { display: flex; flex-direction: column; }
   .options--two { grid-template-columns: 1fr 1fr; }
   .options--many { grid-template-columns: repeat(6, 1fr); }
 }
+
+.screen--form { max-width: 640px; }
+.progress-layout { display: block; }
+@media (min-width: 1024px) {
+  .progress-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
+  .progress-side .danger { margin-top: 12px; }
+}

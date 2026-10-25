@@ -12,7 +12,7 @@ export function Settings() {
   const { settings } = data;
 
   return (
-    <section className="screen">
+    <section className="screen screen--form">
       <h2>Ajustes</h2>
 
       <fieldset>

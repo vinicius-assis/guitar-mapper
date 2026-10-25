@@ -4,6 +4,7 @@ import { noteLabel, type NoteIndex } from '../../domain/notes';
 import { buildChoiceQuestion } from '../../domain/quiz';
 import { useSound } from '../../audio/SoundProvider';
 import type { Settings } from '../../state/storage';
+import { useBreakpoint } from '../useBreakpoint';
 import { Fretboard } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
@@ -19,6 +20,7 @@ export interface QuizProps {
 export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
   const sound = useSound();
+  const fit = useBreakpoint() !== 'mobile';
   const question = useMemo(
     () => buildChoiceQuestion(position, filter.naturalsOnly, Math.random),
     [position, filter.naturalsOnly],
@@ -40,6 +42,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
     <div className="quiz">
       <p className="prompt">Qual é esta nota?</p>
       <Fretboard
+        fit={fit}
         fretMin={fretMin}
         fretMax={fretMax}
         leftHanded={leftHanded}

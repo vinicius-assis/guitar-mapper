@@ -3,6 +3,7 @@ import { positionsOfNote, type Position } from '../../domain/fretboard';
 import { noteLabel } from '../../domain/notes';
 import { buildFindQuestion, isCorrectFind } from '../../domain/quiz';
 import { useSound } from '../../audio/SoundProvider';
+import { useBreakpoint } from '../useBreakpoint';
 import { Fretboard, type Mark } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
@@ -12,6 +13,7 @@ import { windowFor } from './window';
 export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
   const sound = useSound();
+  const fit = useBreakpoint() !== 'mobile';
   const question = useMemo(() => buildFindQuestion(position, filter), [position, filter]);
   const [tapped, setTapped] = useState<Position | null>(null);
   const correct = tapped !== null && isCorrectFind(question, tapped);
@@ -49,6 +51,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
         Encontre {noteLabel(question.target, notation)} na corda {question.string}
       </p>
       <Fretboard
+        fit={fit}
         fretMin={fretMin}
         fretMax={fretMax}
         leftHanded={leftHanded}

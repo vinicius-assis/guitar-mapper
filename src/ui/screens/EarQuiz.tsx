@@ -4,6 +4,7 @@ import { positionKey, positionsInFilter } from '../../domain/fretboard';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
 import { pitchOf } from '../../domain/pitch';
 import { EAR_LISTEN_LIMIT, buildEarQuestion } from '../../domain/quiz';
+import { useBreakpoint } from '../useBreakpoint';
 import { Fretboard } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
@@ -13,6 +14,7 @@ import { windowFor } from './window';
 export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded, earLevel } = settings;
   const sound = useSound();
+  const fit = useBreakpoint() !== 'mobile';
   const question = useMemo(
     () => buildEarQuestion(position, earLevel, filter.naturalsOnly, Math.random),
     [position, earLevel, filter.naturalsOnly],
@@ -91,6 +93,7 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
       {answered && (
         <>
           <Fretboard
+        fit={fit}
             fretMin={fretMin}
             fretMax={fretMax}
             leftHanded={leftHanded}

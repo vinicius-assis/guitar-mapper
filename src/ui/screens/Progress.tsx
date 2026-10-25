@@ -13,6 +13,7 @@ import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
 import { earLevelLabel, modeLabel } from '../modeLabels';
 import { stringLabels } from '../stringLabels';
+import { useBreakpoint } from '../useBreakpoint';
 
 const LEGEND: { mastery: Mastery; label: string }[] = [
   { mastery: 'mastered', label: 'Dominadas' },
@@ -24,6 +25,7 @@ const LEGEND: { mastery: Mastery; label: string }[] = [
 export function Progress({ onSelect }: { onSelect(position: Position): void }) {
   const { data, clearHistory, resetProgress } = useAppState();
   const confirm = useConfirm();
+  const breakpoint = useBreakpoint();
   const { progress, settings, history } = data;
 
   const { marks, counts } = useMemo(() => {
@@ -40,82 +42,90 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
 
   return (
     <section className="screen">
-      <h2>Progresso</h2>
-      <Fretboard
-        fretMin={FIRST_QUIZ_FRET}
-        fretMax={MAX_FRET}
-        marks={marks}
-        onTap={onSelect}
-        leftHanded={settings.leftHanded}
-        stringLabels={stringLabels()}
-      />
-      <ul className="legend">
-        {LEGEND.map(({ mastery, label }) => (
-          <li key={mastery}>
-            <span className={`swatch swatch--${mastery}`} aria-hidden="true" />
-            {label}: {counts[mastery]}
-          </li>
-        ))}
-      </ul>
-      <p className="hint">Toque numa posição para estudá-la.</p>
-      <button
-        type="button"
-        className="danger"
-        onClick={async () => {
-          const ok = await confirm({
-            title: 'Zerar o progresso?',
-            message: "Todas as posições voltam a ser 'nunca vistas'. Isso não pode ser desfeito.",
-            confirmLabel: 'Zerar',
-          });
-          if (ok) resetProgress();
-        }}
-      >
-        Zerar progresso
-      </button>
-
-      <h2>Histórico</h2>
-      {history.length === 0 ? (
-        <p className="empty">Nenhuma sessão ainda.</p>
-      ) : (
-        <>
-          <ul className="history">
-            {history.map((entry, i) => (
-              <li key={`${entry.at}-${i}`}>
-                <strong>
-                  {modeLabel(entry.mode)}
-                  {entry.level ? ` · ${earLevelLabel(entry.level)}` : ''}
-                </strong>
-                <span>
-                  {Math.round((entry.correct / entry.total) * 100)}% · {entry.correct}/{entry.total}{' '}
-                  · {formatSeconds(entry.averageMs)}
-                </span>
-                <time dateTime={new Date(entry.at).toISOString()}>
-                  {new Date(entry.at).toLocaleString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </time>
+      <div className="progress-layout">
+        <div className="progress-main">
+          <h2>Progresso</h2>
+          <Fretboard
+            fit={breakpoint !== 'mobile'}
+            minFretWidth={breakpoint === 'desktop' ? 34 : undefined}
+            fretMin={FIRST_QUIZ_FRET}
+            fretMax={MAX_FRET}
+            marks={marks}
+            onTap={onSelect}
+            leftHanded={settings.leftHanded}
+            stringLabels={stringLabels()}
+          />
+          <ul className="legend">
+            {LEGEND.map(({ mastery, label }) => (
+              <li key={mastery}>
+                <span className={`swatch swatch--${mastery}`} aria-hidden="true" />
+                {label}: {counts[mastery]}
               </li>
             ))}
           </ul>
+          <p className="hint">Toque numa posição para estudá-la.</p>
+        </div>
+        <div className="progress-side">
           <button
             type="button"
             className="danger"
             onClick={async () => {
               const ok = await confirm({
-                title: 'Limpar o histórico?',
-                message: 'As últimas sessões serão apagadas. Isso não pode ser desfeito.',
-                confirmLabel: 'Limpar',
+                title: 'Zerar o progresso?',
+                message: "Todas as posições voltam a ser 'nunca vistas'. Isso não pode ser desfeito.",
+                confirmLabel: 'Zerar',
               });
-              if (ok) clearHistory();
+              if (ok) resetProgress();
             }}
           >
-            Limpar histórico
+            Zerar progresso
           </button>
-        </>
-      )}
+
+          <h2>Histórico</h2>
+          {history.length === 0 ? (
+            <p className="empty">Nenhuma sessão ainda.</p>
+          ) : (
+            <>
+              <ul className="history">
+                {history.map((entry, i) => (
+                  <li key={`${entry.at}-${i}`}>
+                    <strong>
+                      {modeLabel(entry.mode)}
+                      {entry.level ? ` · ${earLevelLabel(entry.level)}` : ''}
+                    </strong>
+                    <span>
+                      {Math.round((entry.correct / entry.total) * 100)}% · {entry.correct}/{entry.total}{' '}
+                      · {formatSeconds(entry.averageMs)}
+                    </span>
+                    <time dateTime={new Date(entry.at).toISOString()}>
+                      {new Date(entry.at).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="danger"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Limpar o histórico?',
+                    message: 'As últimas sessões serão apagadas. Isso não pode ser desfeito.',
+                    confirmLabel: 'Limpar',
+                  });
+                  if (ok) clearHistory();
+                }}
+              >
+                Limpar histórico
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

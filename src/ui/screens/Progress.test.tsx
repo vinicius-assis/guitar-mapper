@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import type { HistoryEntry } from '../../domain/session';
 import { AppProvider } from '../../state/AppState';
-import { seededStorage } from '../../test-utils';
+import { mockViewport, seededStorage } from '../../test-utils';
 import { ConfirmProvider } from '../ConfirmDialog';
 import { Progress } from './Progress';
 
@@ -173,5 +173,50 @@ describe('Progress', () => {
       expect(Object.keys(saved.progress)).toEqual(['6-1']);
       expect(screen.getByText('Nenhuma sessão ainda.')).toBeInTheDocument();
     });
+  });
+});
+
+describe('Progress layout by width', () => {
+  let viewport: ReturnType<typeof mockViewport> | null = null;
+  afterEach(() => viewport?.restore());
+  function renderAt(width: number) {
+    viewport = mockViewport(width);
+    return render(
+      <AppProvider
+        storage={seededStorage({
+          history: [{ mode: 'flashcard', at: 5, total: 2, correct: 1, averageMs: 1000 }],
+        })}
+      >
+        <ConfirmProvider>
+          <Progress onSelect={() => {}} />
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+  }
+
+  it('phone: the map keeps its natural size', () => {
+    const { container } = renderAt(390);
+    const svg = container.querySelector('svg')!;
+    expect(svg.style.width).toBe('');
+  });
+
+  it('tablet: the map scales to the column', () => {
+    const { container } = renderAt(800);
+    const svg = container.querySelector('svg')!;
+    expect(svg.style.width).toBe('100%');
+    expect(svg.style.minWidth).toBe(`${24 * 56}px`);
+  });
+
+  it('desktop: the 24 frets fit without scrolling and the history sits in its own column', () => {
+    const { container } = renderAt(1280);
+    const svg = container.querySelector('svg')!;
+    expect(svg.style.width).toBe('100%');
+    expect(svg.style.minWidth).toBe(`${24 * 34}px`);
+    const main = container.querySelector('.progress-main')!;
+    const side = container.querySelector('.progress-side')!;
+    expect(main.querySelector('svg')).not.toBeNull();
+    expect(within(side as HTMLElement).getByRole('heading', { name: 'Histórico' })).toBeInTheDocument();
+    expect(within(side as HTMLElement).getByRole('button', { name: 'Zerar progresso' })).toBeInTheDocument();
+    expect(main.querySelector('.legend')).not.toBeNull();
   });
 });
