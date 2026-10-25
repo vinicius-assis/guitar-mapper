@@ -535,6 +535,19 @@ describe('Study: focus sheet', () => {
     expect(within(sheet()).getByText(/Cordas 6 · Casas 1–5/)).toBeInTheDocument();
   });
 
+  it('is one expanding card: the header stays on top and the body opens below it, with no bar underneath', () => {
+    setup({ filter: THREE });
+    open();
+    const card = sheet();
+    const head = bar();
+    const body = card.querySelector('dl')!;
+    expect(card.firstElementChild).toBe(head);
+    expect(head.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(card.querySelectorAll('[aria-expanded]')).toHaveLength(1);
+    expect(card.lastElementChild).toBe(card.querySelector('.focus-card__body'));
+    expect(card).toHaveClass('focus-card--open');
+  });
+
   it('puts each label on its own line above its options', () => {
     setup({ filter: THREE });
     open();

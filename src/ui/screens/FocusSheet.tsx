@@ -25,9 +25,32 @@ export function FocusSheet({ open, onOpenChange }: FocusSheetProps) {
   const allStrings = ALL_STRINGS.every((s) => filter.strings.includes(s));
 
   return (
-    <div className={`focus-sheet${open ? ' focus-sheet--open' : ''}`} role="group" aria-label="Foco">
+    <div className="focus-slot">
+      <div className={`focus-card${open ? ' focus-card--open' : ''}`} role="group" aria-label="Foco">
+      <button
+        type="button"
+        className="focus-card__head"
+        aria-expanded={open}
+        aria-controls={open ? 'focus-card-body' : undefined}
+        onClick={() => onOpenChange(!open)}
+      >
+        <span className="focus-card__title">Foco</span>
+        {!open && (
+          <span className="static-value">
+            {count} {count === 1 ? 'pergunta' : 'perguntas'}
+          </span>
+        )}
+        <svg className="focus-card__chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <path d="M7 14l5-5 5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {!open && (
+          <span className="focus-card__summary">
+            {summaryText(summary.strings, summary.frets, summary.notes)}
+          </span>
+        )}
+      </button>
       {open && (
-        <div className="focus-sheet__panel" id="focus-sheet-panel">
+        <div className="focus-card__body" id="focus-card-body">
           <dl className="focus-rows focus-rows--stacked">
             <dt>Perguntas</dt>
             <dd className="focus-count">
@@ -127,28 +150,7 @@ export function FocusSheet({ open, onOpenChange }: FocusSheetProps) {
           )}
         </div>
       )}
-      <button
-        type="button"
-        className="focus-sheet__bar"
-        aria-expanded={open}
-        aria-controls={open ? 'focus-sheet-panel' : undefined}
-        onClick={() => onOpenChange(!open)}
-      >
-        <span className="focus-sheet__title">Foco</span>
-        {!open && (
-          <span className="static-value">
-            {count} {count === 1 ? 'pergunta' : 'perguntas'}
-          </span>
-        )}
-        <svg className="focus-sheet__chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-          <path d="M7 14l5-5 5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        {!open && (
-          <span className="focus-sheet__summary">
-            {summaryText(summary.strings, summary.frets, summary.notes)}
-          </span>
-        )}
-      </button>
+      </div>
     </div>
   );
 }
