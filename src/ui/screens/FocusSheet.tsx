@@ -9,6 +9,8 @@ import {
 interface FocusSheetProps {
   /** Quantas perguntas a sessão terá (posições, ou sons distintos no Ouvido). */
   questionCount: number;
+  /** Painel sempre aberto, sem botão de abrir e fechar (computador). */
+  fixed?: boolean;
   open: boolean;
   onOpenChange(open: boolean): void;
 }
@@ -20,37 +22,53 @@ function summaryText(strings: string, frets: string, notes: string): string {
 }
 
 /** Cartão do Foco: recolhido mostra o resumo; aberto edita cordas, casas e notas na hora. */
-export function FocusSheet({ questionCount: count, open, onOpenChange }: FocusSheetProps) {
+export function FocusSheet({
+  questionCount: count,
+  fixed = false,
+  open: openProp,
+  onOpenChange,
+}: FocusSheetProps) {
+  const open = fixed || openProp;
   const { filter, toggleString, selectAllStrings, setRange, setMin, setMax, setNaturalsOnly } =
     useFocusFilter();
   const summary = describeFocus(filter);
   const allStrings = ALL_STRINGS.every((s) => filter.strings.includes(s));
 
   return (
-    <div className="focus-slot">
-      <div className={`focus-card${open ? ' focus-card--open' : ''}`} role="group" aria-label="Foco">
-      <button
-        type="button"
-        className="focus-card__head"
-        aria-expanded={open}
-        aria-controls={open ? 'focus-card-body' : undefined}
-        onClick={() => onOpenChange(!open)}
+    <div className={fixed ? 'focus-slot focus-slot--fixed' : 'focus-slot'}>
+      <div
+        className={`focus-card${open ? ' focus-card--open' : ''}${fixed ? ' focus-card--fixed' : ''}`}
+        role="group"
+        aria-label="Foco"
       >
-        <span className="focus-card__title">Foco</span>
-        {!open && (
-          <span className="static-value">
-            {count} {count === 1 ? 'pergunta' : 'perguntas'}
-          </span>
-        )}
-        <svg className="focus-card__chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-          <path d="M7 14l5-5 5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        {!open && (
-          <span className="focus-card__summary">
-            {summaryText(summary.strings, summary.frets, summary.notes)}
-          </span>
-        )}
-      </button>
+      {fixed ? (
+        <div className="focus-card__head focus-card__head--static">
+          <span className="focus-card__title">Foco</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="focus-card__head"
+          aria-expanded={open}
+          aria-controls={open ? 'focus-card-body' : undefined}
+          onClick={() => onOpenChange(!open)}
+        >
+          <span className="focus-card__title">Foco</span>
+          {!open && (
+            <span className="static-value">
+              {count} {count === 1 ? 'pergunta' : 'perguntas'}
+            </span>
+          )}
+          <svg className="focus-card__chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M7 14l5-5 5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {!open && (
+            <span className="focus-card__summary">
+              {summaryText(summary.strings, summary.frets, summary.notes)}
+            </span>
+          )}
+        </button>
+      )}
       {open && (
         <div className="focus-card__body" id="focus-card-body">
           <dl className="focus-rows focus-rows--stacked">

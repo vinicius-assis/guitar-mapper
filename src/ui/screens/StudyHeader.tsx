@@ -2,6 +2,8 @@ import { MODES, modeLabel } from '../modeLabels';
 import type { QuizMode } from '../../domain/quiz';
 
 interface StudyHeaderProps {
+  /** 'compact': logo + menu (celular e tablet). 'tabs': os 4 exercícios sempre visíveis (computador). */
+  layout?: 'compact' | 'tabs';
   mode: QuizMode;
   menuOpen: boolean;
   onMenuOpenChange(open: boolean): void;
@@ -9,7 +11,24 @@ interface StudyHeaderProps {
 }
 
 /** Logo do app à esquerda (com o exercício atual) e o menu de exercícios à direita. */
-export function StudyHeader({ mode, menuOpen, onMenuOpenChange, onSelectMode }: StudyHeaderProps) {
+export function StudyHeader({
+  layout = 'compact',
+  mode,
+  menuOpen,
+  onMenuOpenChange,
+  onSelectMode,
+}: StudyHeaderProps) {
+  if (layout === 'tabs') {
+    return (
+      <div className="study-header study-header--tabs" role="group" aria-label="Exercício">
+        {MODES.map(({ mode: m, label }) => (
+          <button key={m} type="button" aria-pressed={m === mode} onClick={() => onSelectMode(m)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="study-header" role="group" aria-label="Exercício">
       <div className="study-header__brand">

@@ -20,6 +20,7 @@ import { Flashcard } from './Flashcard';
 import { FindQuiz } from './FindQuiz';
 import { FocusSheet } from './FocusSheet';
 import { StudyHeader } from './StudyHeader';
+import { useBreakpoint } from '../useBreakpoint';
 
 type Phase = 'idle' | 'running' | 'summary';
 
@@ -33,6 +34,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   const { data, recordAnswer, updateSettings, recordSession } = useAppState();
   const confirm = useConfirm();
   const sound = useSound();
+  const desktop = useBreakpoint() === 'desktop';
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
   // Ouvido pergunta cada som uma vez (o mesmo som em cordas diferentes não é outra pergunta).
@@ -148,16 +150,17 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   for (let i = results.length - 1; i >= 0 && results[i].correct; i--) streak++;
 
   return (
-    <section className="screen screen--study">
+    <section className={desktop ? 'screen screen--study screen--study-desktop' : 'screen screen--study'}>
       {phase !== 'running' && (
         <StudyHeader
+          layout={desktop ? 'tabs' : 'compact'}
           mode={settings.mode}
           menuOpen={openPanel === 'menu'}
           onMenuOpenChange={(open) => setOpenPanel(open ? 'menu' : null)}
           onSelectMode={changeMode}
         />
       )}
-      {phase !== 'running' && openPanel && (
+      {phase !== 'running' && openPanel && !desktop && (
         <div
           className="overlay-backdrop"
           data-testid={`${openPanel}-backdrop`}
@@ -198,6 +201,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
           )}
           <FocusSheet
             questionCount={questionCount}
+            fixed={desktop}
             open={openPanel === 'focus'}
             onOpenChange={(open) => setOpenPanel(open ? 'focus' : null)}
           />

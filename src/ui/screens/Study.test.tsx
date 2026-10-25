@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
-import { readSaved, seededStorage } from '../../test-utils';
+import { mockViewport, readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
@@ -725,5 +725,65 @@ describe('Study: Ouvido counts sounds, not positions', () => {
     const pitches = vi.mocked(player.prepare).mock.calls[0][0];
     expect(pitches).toHaveLength(48);
     expect(new Set(pitches).size).toBe(48);
+  });
+});
+
+describe('Study: desktop layout', () => {
+  let viewport: ReturnType<typeof mockViewport>;
+  beforeEach(() => {
+    viewport = mockViewport(1280);
+  });
+  afterEach(() => viewport.restore());
+  const exercises = () => screen.queryByRole('group', { name: 'Exercício' });
+
+  it('shows the 4 exercises as buttons instead of the menu, and no logo in the header', () => {
+    setup({ filter: THREE });
+    const group = exercises()!;
+    expect(
+      within(group)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard', 'Ouvido']);
+    expect(within(group).getByRole('button', { name: 'Posição → nota' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Menu de exercícios' })).not.toBeInTheDocument();
+    expect(within(group).queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('choosing an exercise switches the mode and saves it', () => {
+    const storage = setup({ filter: THREE });
+    fireEvent.click(within(exercises()!).getByRole('button', { name: 'Ouvido' }));
+    expect(readSaved(storage).settings.mode).toBe('ear');
+    expect(within(exercises()!).getByRole('button', { name: 'Ouvido' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: 'Nível' })).toBeInTheDocument();
+  });
+
+  it('the Foco panel is already open and editable, with no toggle and no backdrop', () => {
+    const storage = setup({ filter: WIDE_FILTER });
+    const foco = screen.getByRole('group', { name: 'Foco' });
+    expect(within(foco).getByRole('button', { name: 'Corda 6' })).toHaveAttribute('aria-pressed', 'true');
+    expect(foco.querySelector('[aria-expanded]')).toBeNull();
+    expect(screen.queryByTestId('focus-backdrop')).not.toBeInTheDocument();
+    expect(foco).toHaveTextContent('Perguntas18');
+    fireEvent.click(within(foco).getByRole('button', { name: 'Corda 6' }));
+    expect(readSaved(storage).settings.filter.strings).toEqual([1, 2, 3, 4, 5]);
+    expect(foco).toHaveTextContent('Perguntas15');
+  });
+
+  it('the panel and the exercise buttons disappear during a session and come back after', async () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    start();
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(exercises()).not.toBeInTheDocument();
+    await finalize();
+    expect(exercises()).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Encerrar' }));
+    expect(screen.getByRole('group', { name: 'Foco' })).toBeInTheDocument();
+  });
+
+  it('on a phone the menu and the collapsed Foco stay as before', () => {
+    viewport.setWidth(390);
+    setup({ filter: THREE });
+    expect(screen.getByRole('button', { name: 'Menu de exercícios' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Corda 6' })).not.toBeInTheDocument();
   });
 });
