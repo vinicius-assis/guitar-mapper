@@ -67,3 +67,31 @@ export function seededStorage(
 export function readSaved(storage: { dump(): Record<string, string> }): AppData {
   return JSON.parse(storage.dump()[STORAGE_KEY]) as AppData;
 }
+
+/** Simula a largura da janela: instala um matchMedia falso que entende `(min-width: Npx)`. */
+export function mockViewport(initialWidth: number) {
+  let width = initialWidth;
+  const original = window.matchMedia;
+  type Listener = () => void;
+  const listeners = new Set<Listener>();
+  window.matchMedia = ((query: string) => {
+    const min = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0);
+    return {
+      get matches() {
+        return width >= min;
+      },
+      media: query,
+      addEventListener: (_: string, l: Listener) => listeners.add(l),
+      removeEventListener: (_: string, l: Listener) => listeners.delete(l),
+    } as unknown as MediaQueryList;
+  }) as typeof window.matchMedia;
+  return {
+    setWidth(w: number) {
+      width = w;
+      listeners.forEach((l) => l());
+    },
+    restore() {
+      window.matchMedia = original;
+    },
+  };
+}
