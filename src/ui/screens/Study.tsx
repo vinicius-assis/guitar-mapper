@@ -21,6 +21,7 @@ import { FindQuiz } from './FindQuiz';
 import { FocusSheet } from './FocusSheet';
 import { StudyHeader } from './StudyHeader';
 import { useBreakpoint } from '../useBreakpoint';
+import { useQuizShortcuts } from '../useQuizShortcuts';
 
 type Phase = 'idle' | 'running' | 'summary';
 
@@ -35,6 +36,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   const confirm = useConfirm();
   const sound = useSound();
   const desktop = useBreakpoint() === 'desktop';
+  useQuizShortcuts(true);
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
   // Ouvido pergunta cada som uma vez (o mesmo som em cordas diferentes não é outra pergunta).

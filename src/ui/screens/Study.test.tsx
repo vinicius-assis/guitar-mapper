@@ -814,3 +814,110 @@ describe('Study: boards scale on tablet and desktop only', () => {
     }
   });
 });
+
+describe('Study: keyboard shortcuts', () => {
+  const press = (key: string, init: KeyboardEventInit = {}, target: Element = document.body) =>
+    fireEvent.keyDown(target, { key, ...init });
+  const optionTexts = () =>
+    [...document.querySelectorAll('.options:not(.options--two) .option')].map((o) => o.textContent);
+
+  it('Enter on the start screen begins the session; with no positions it does nothing', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    press('Enter');
+    expect(screen.getByText(/Pergunta 1 de 3/)).toBeInTheDocument();
+    cleanup();
+    setup({ mode: 'flashcard', filter: { ...THREE, strings: [] } });
+    press('Enter');
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+  });
+
+  it('a digit picks that option; Enter then goes to the next question', async () => {
+    const storage = setup();
+    start();
+    const wrongIndex = optionTexts().findIndex((t) => t !== 'E');
+    press(String(wrongIndex + 1));
+    expect(readSaved(storage).progress['6-12'].box).toBe(1); // errou
+    expect(screen.getByRole('button', { name: 'Próxima' })).toBeInTheDocument();
+    press('Enter');
+    await act(async () => {});
+    expect(screen.getByText('Sessão concluída')).toBeInTheDocument();
+  });
+
+  it('a digit beyond the number of options does nothing', () => {
+    const storage = setup();
+    start();
+    press('9');
+    expect(readSaved(storage).progress).toEqual({});
+  });
+
+  it('Enter with a button focused does not fire the shortcut (the browser activates the button)', () => {
+    setup();
+    start();
+    const wrongIndex = optionTexts().findIndex((t) => t !== 'E');
+    press(String(wrongIndex + 1));
+    const next = screen.getByRole('button', { name: 'Próxima' });
+    next.focus();
+    press('Enter', {}, next);
+    expect(screen.queryByText('Sessão concluída')).not.toBeInTheDocument();
+  });
+
+  it('Flashcard: Enter reveals, 1 is Errei and 2 is Acertei', async () => {
+    const storage = setup({ mode: 'flashcard' });
+    start();
+    press('Enter');
+    expect(screen.getByRole('button', { name: 'Acertei' })).toBeInTheDocument();
+    press('1');
+    expect(readSaved(storage).progress['6-12'].box).toBe(1);
+    await act(async () => {});
+    cleanup();
+    const storage2 = setup({ mode: 'flashcard' });
+    start();
+    press('Enter');
+    press('2');
+    expect(readSaved(storage2).progress['6-12'].box).toBe(2);
+  });
+
+  it('Ouvido: r plays again and respects the listen limit; Ctrl+R is ignored', () => {
+    const { player } = setupWithPlayer({ mode: 'ear', earLevel: 'hard' });
+    start();
+    expect(player.play).toHaveBeenCalledTimes(1);
+    press('r', { ctrlKey: true });
+    expect(player.play).toHaveBeenCalledTimes(1);
+    press('r');
+    expect(player.play).toHaveBeenCalledTimes(2);
+    press('R');
+    expect(player.play).toHaveBeenCalledTimes(2); // Difícil: 2 audições no total
+  });
+
+  it('ignores the keys while a dialog is open', async () => {
+    const storage = setup({ mode: 'flashcard' });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    press('Enter');
+    expect(screen.queryByRole('button', { name: 'Acertei' })).not.toBeInTheDocument();
+    press('1');
+    expect(readSaved(storage).progress).toEqual({});
+  });
+
+  it('ignores the keys while typing in a field', () => {
+    const storage = setup();
+    start();
+    const field = document.createElement('input');
+    document.body.appendChild(field);
+    field.focus();
+    press('1', {}, field);
+    press('2', {}, field);
+    expect(readSaved(storage).progress).toEqual({});
+    field.remove();
+  });
+
+  it('ignores digits combined with Ctrl, Alt or Meta', () => {
+    const storage = setup();
+    start();
+    press('1', { ctrlKey: true });
+    press('1', { altKey: true });
+    press('1', { metaKey: true });
+    expect(readSaved(storage).progress).toEqual({});
+  });
+});
