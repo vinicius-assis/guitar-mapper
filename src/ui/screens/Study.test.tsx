@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
-import { mockViewport, readSaved, seededStorage } from '../../test-utils';
+import { mockBoardWidth, mockViewport, readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
@@ -788,28 +788,34 @@ describe('Study: desktop layout', () => {
   });
 });
 
-describe('Study: boards scale on tablet and desktop only', () => {
+describe('Study: boards fill the space on tablet and desktop only', () => {
   let viewport: ReturnType<typeof mockViewport>;
-  afterEach(() => viewport.restore());
-  const svgWidth = () => document.querySelector('.fretboard svg')!.getAttribute('style') ?? '';
+  let board: ReturnType<typeof mockBoardWidth>;
+  afterEach(() => {
+    viewport.restore();
+    board.restore();
+  });
+  const svgWidth = () => document.querySelector('.fretboard svg')!.getAttribute('width');
 
   it.each([
-    [390, false],
-    [800, true],
-    [1280, true],
-  ])('width %i: board scales = %s', (width, scales) => {
+    [390, 280],
+    [800, 700],
+    [1280, 860],
+  ])('width %i: a 5-fret board measures %i px', (width, expected) => {
     viewport = mockViewport(width);
+    board = mockBoardWidth(width === 390 ? 330 : expected);
     setup({ mode: 'flashcard', filter: THREE });
     start();
-    expect(svgWidth().includes('width: 100%')).toBe(scales);
+    expect(svgWidth()).toBe(String(expected));
   });
 
-  it('every exercise board scales on tablet', () => {
+  it('every exercise board fills the column on tablet', () => {
     viewport = mockViewport(800);
+    board = mockBoardWidth(700);
     for (const mode of ['position-to-note', 'note-to-position', 'flashcard'] as const) {
       setup({ mode, filter: THREE });
       start();
-      expect(svgWidth(), mode).toContain('width: 100%');
+      expect(svgWidth(), mode).toBe('700');
       cleanup();
     }
   });

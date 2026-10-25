@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { STRING_COUNT, positionKey, type Position } from '../domain/fretboard';
 
 export type MarkKind =
@@ -26,16 +26,17 @@ export interface FretboardProps {
   scrollToFret?: number;
   /** Nome de cada corda solta (índice 0 = corda 1), mostrado numa coluna fixa ao lado do braço. */
   stringLabels?: string[];
-  /** O SVG ocupa a largura do container (tablet e computador); sem isso mantém o tamanho natural. */
+  /** A geometria acompanha a largura do container (tablet e computador); sem isso fica no tamanho natural. */
   fit?: boolean;
   /** Com `fit`, largura mínima por casa antes de rolar (padrão 56). */
   minFretWidth?: number;
 }
 
-const FRET_W = 56;
-const STRING_GAP = 44;
+const NATURAL_FRET_W = 56;
+const NATURAL_STRING_GAP = 44;
 const TOP = 28;
-const MARK_R = 16;
+const MAX_FRET_W = 180;
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const INLAYS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21, 24]);
 const STRINGS = [1, 2, 3, 4, 5, 6].slice(0, STRING_COUNT);
 
@@ -48,10 +49,29 @@ export function Fretboard({
   scrollToFret,
   stringLabels,
   fit = false,
-  minFretWidth = FRET_W,
+  minFretWidth = NATURAL_FRET_W,
 }: FretboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const count = fretMax - fretMin + 1;
+
+  // Com `fit`, mede o container e calcula a geometria de verdade (largura de cada casa, distância
+  // entre cordas, tamanho das marcas) em vez de esticar a imagem: nada fica distorcido.
+  const [measured, setMeasured] = useState(0);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!fit || !el) return;
+    const update = () => setMeasured(el.clientWidth);
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fit]);
+
+  const fitted = fit && measured > 0;
+  const FRET_W = fitted ? clamp(measured / count, minFretWidth, MAX_FRET_W) : NATURAL_FRET_W;
+  const STRING_GAP = fitted ? clamp(Math.round(FRET_W * 0.8), NATURAL_STRING_GAP, 60) : NATURAL_STRING_GAP;
+  const MARK_R = fitted ? clamp(Math.round(Math.min(FRET_W, STRING_GAP) * 0.36), 9, 20) : 16;
   const width = count * FRET_W;
   const height = TOP + STRING_COUNT * STRING_GAP;
   const frets = Array.from({ length: count }, (_, i) => fretMin + i);
@@ -91,19 +111,7 @@ export function Fretboard({
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}
-          style={
-            fit
-              ? {
-                  width: '100%',
-                  minWidth: count * minFretWidth,
-                  // Sem passar de 1,4x o tamanho natural: uma janela curta não vira um braço altíssimo.
-                  maxWidth: width * 1.4,
-                  marginLeft: 'auto',
-                  marginRight: 'auto',
-                  height: 'auto',
-                }
-              : undefined
-          }
+          style={fitted ? { display: 'block', marginLeft: 'auto', marginRight: 'auto' } : undefined}
         >
           {frets.map((f) => (
             <text key={`n${f}`} className="fret-number" x={cx(f)} y={16} textAnchor="middle">
@@ -132,7 +140,7 @@ export function Fretboard({
                   className="inlay"
                   cx={cx(f)}
                   cy={TOP + row * STRING_GAP}
-                  r={6}
+                  r={Math.round(MARK_R * 0.4)}
                 />
               )),
             )}

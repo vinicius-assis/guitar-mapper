@@ -95,3 +95,20 @@ export function mockViewport(initialWidth: number) {
     },
   };
 }
+
+/** jsdom não tem layout: faz o container do braço (`.fretboard`) medir `width` px. */
+export function mockBoardWidth(width: number) {
+  const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return this.classList.contains('fretboard') ? width : 0;
+    },
+  });
+  return {
+    restore() {
+      if (original) Object.defineProperty(HTMLElement.prototype, 'clientWidth', original);
+      else delete (HTMLElement.prototype as unknown as { clientWidth?: number }).clientWidth;
+    },
+  };
+}

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { mockBoardWidth } from '../test-utils';
 import { Fretboard } from './Fretboard';
 
 describe('Fretboard', () => {
@@ -81,48 +82,93 @@ describe('Fretboard', () => {
     });
   });
 
-  it('keeps the natural size without fit (phone)', () => {
-    const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} />);
-    const svg = container.querySelector('svg')!;
-    expect(svg.getAttribute('width')).toBe(String(5 * 56));
-    expect(svg.style.width).toBe('');
+  it('keeps the natural size without fit (phone), whatever the container measures', () => {
+    const board = mockBoardWidth(900);
+    try {
+      const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} />);
+      const svg = container.querySelector('svg')!;
+      expect(svg.getAttribute('width')).toBe(String(5 * 56));
+      expect(svg.getAttribute('height')).toBe(String(28 + 6 * 44));
+    } finally {
+      board.restore();
+    }
   });
 
-  it('with fit the SVG fills the container but never shrinks below minFretWidth per fret', () => {
+  describe('fit (tablet and desktop): the geometry follows the measured container', () => {
+    let board: ReturnType<typeof mockBoardWidth>;
+    afterEach(() => board?.restore());
+    const svgOf = (container: HTMLElement) => container.querySelector('svg')!;
+
+    it('stretches the frets to fill the width: 5 frets in 860px are 172px wide each', () => {
+      board = mockBoardWidth(860);
+      const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
+      expect(svgOf(container).getAttribute('width')).toBe('860');
+      // casas mais largas pedem cordas mais afastadas (até 60px), sem distorcer
+      expect(svgOf(container).getAttribute('height')).toBe(String(28 + 6 * 60));
+    });
+
+    it('never goes below minFretWidth: it scrolls instead', () => {
+      board = mockBoardWidth(100);
+      const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
+      expect(svgOf(container).getAttribute('width')).toBe(String(5 * 56));
+      const small = render(<Fretboard fretMin={1} fretMax={24} marks={[]} fit minFretWidth={24} />);
+      expect(small.container.querySelector('svg')!.getAttribute('width')).toBe(String(24 * 24));
+    });
+
+    it('fills the 24-fret map without scrolling when the container is wide enough', () => {
+      board = mockBoardWidth(624);
+      const { container } = render(
+        <Fretboard fretMin={1} fretMax={24} marks={[]} fit minFretWidth={24} />,
+      );
+      expect(svgOf(container).getAttribute('width')).toBe(String(24 * 26));
+      expect(svgOf(container).getAttribute('height')).toBe(String(28 + 6 * 44));
+    });
+
+    it('caps each fret at 180px and centers the board', () => {
+      board = mockBoardWidth(2000);
+      const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
+      expect(svgOf(container).getAttribute('width')).toBe('900');
+      expect(svgOf(container).style.marginLeft).toBe('auto');
+      expect(svgOf(container).style.marginRight).toBe('auto');
+    });
+
+    it('marks grow with the cells but stay round', () => {
+      board = mockBoardWidth(860);
+      const { container } = render(
+        <Fretboard fretMin={1} fretMax={5} marks={[{ position: { string: 3, fret: 2 }, kind: 'target' }]} fit />,
+      );
+      const r = Number(container.querySelector('.mark circle')!.getAttribute('r'));
+      expect(r).toBeGreaterThan(16);
+      expect(r).toBeLessThanOrEqual(20);
+      const natural = render(
+        <Fretboard fretMin={1} fretMax={5} marks={[{ position: { string: 3, fret: 2 }, kind: 'target' }]} />,
+      );
+      expect(natural.container.querySelector('.mark circle')!.getAttribute('r')).toBe('16');
+    });
+
+    it('cells and string labels follow the new spacing', () => {
+      board = mockBoardWidth(860);
+      const { container } = render(
+        <Fretboard fretMin={1} fretMax={5} marks={[]} fit stringLabels={['E', 'B', 'G', 'D', 'A', 'E']} />,
+      );
+      const gutter = container.querySelector('.string-labels') as HTMLElement;
+      expect(gutter.style.gridTemplateRows).toBe('28fr repeat(6, 60fr)');
+      const cell = container.querySelector('[data-testid="cell-2-3"]')!;
+      expect(cell.getAttribute('width')).toBe('172');
+      expect(cell.getAttribute('height')).toBe('60');
+      expect(cell.getAttribute('x')).toBe(String(2 * 172));
+      expect(cell.getAttribute('y')).toBe(String(28 + 60));
+    });
+  });
+
+  it('string labels use proportional rows (natural size)', () => {
     const { container } = render(
-      <Fretboard fretMin={1} fretMax={24} marks={[]} fit minFretWidth={34} />,
-    );
-    const svg = container.querySelector('svg')!;
-    expect(svg.style.width).toBe('100%');
-    expect(svg.style.minWidth).toBe(`${24 * 34}px`);
-    expect(svg.style.height).toBe('auto');
-    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${24 * 56} ${28 + 6 * 44}`);
-  });
-
-  it('fit caps the scaling at 1.4x so a short window does not become a tall board', () => {
-    const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
-    const svg = container.querySelector('svg')!;
-    expect(svg.style.maxWidth).toBe(`${5 * 56 * 1.4}px`);
-    expect(svg.style.marginLeft).toBe('auto');
-    expect(svg.style.marginRight).toBe('auto');
-  });
-
-  it('string labels use rows proportional to the board so they follow it when it scales', () => {
-    const { container } = render(
-      <Fretboard fretMin={1} fretMax={5} marks={[]} fit stringLabels={['E', 'B', 'G', 'D', 'A', 'E']} />,
+      <Fretboard fretMin={1} fretMax={5} marks={[]} stringLabels={['E', 'B', 'G', 'D', 'A', 'E']} />,
     );
     const gutter = container.querySelector('.string-labels') as HTMLElement;
     expect(gutter.style.gridTemplateRows).toBe('28fr repeat(6, 44fr)');
-    expect(gutter.style.paddingTop).toBe('');
-    // um espaçador (o cabeçalho com os números das casas) + 6 nomes, na mesma proporção do SVG
     expect(gutter.children).toHaveLength(7);
     expect(gutter.children[0].textContent).toBe('');
     expect(screen.getByTestId('string-label-1')).toHaveTextContent('E');
-    expect((screen.getByTestId('string-label-1') as HTMLElement).style.height).toBe('');
-  });
-
-  it('fit defaults to a 56px minimum per fret', () => {
-    const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} fit />);
-    expect(container.querySelector('svg')!.style.minWidth).toBe(`${5 * 56}px`);
   });
 });
