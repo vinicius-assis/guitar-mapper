@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mulberry32 } from '../test-utils';
-import { noteAt, positionKey } from './fretboard';
+import { noteAt, positionKey, positionsInFilter } from './fretboard';
+import { pitchOf } from './pitch';
 import {
   HISTORY_LIMIT,
   addToHistory,
@@ -136,5 +137,39 @@ describe('history level', () => {
     expect(makeHistoryEntry('ear', 1, results, 'hard')?.level).toBe('hard');
     expect(makeHistoryEntry('ear', 1, results)?.level).toBe('easy');
     expect(makeHistoryEntry('flashcard', 1, results, 'hard')).not.toHaveProperty('level');
+  });
+});
+
+describe('buildQueue uniquePitch (Ouvido)', () => {
+  const focus = positionsInFilter({
+    strings: [1, 2, 3, 4, 5, 6],
+    fretMin: 1,
+    fretMax: 12,
+    naturalsOnly: false,
+  }); // 72 posições, 36 sons
+
+  it('asks each sound once: no two questions share a pitch', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const queue = buildQueue(focus, mulberry32(seed), null, { uniquePitch: true });
+      expect(queue).toHaveLength(36);
+      expect(new Set(queue.map(pitchOf)).size).toBe(36);
+    }
+  });
+
+  it('a forced position opens the queue and its sound is not asked again', () => {
+    const forced = { string: 6, fret: 12 }; // E3 também existe nas cordas 5 e 4
+    const queue = buildQueue(focus, mulberry32(3), forced, { uniquePitch: true });
+    expect(queue[0]).toEqual(forced);
+    expect(queue).toHaveLength(36);
+    expect(queue.filter((p) => pitchOf(p) === pitchOf(forced))).toHaveLength(1);
+  });
+
+  it('combines with avoidSameNote', () => {
+    const queue = buildQueue(focus, mulberry32(4), null, { uniquePitch: true, avoidSameNote: true });
+    for (let i = 1; i < queue.length; i++) expect(noteAt(queue[i])).not.toBe(noteAt(queue[i - 1]));
+  });
+
+  it('is off by default', () => {
+    expect(buildQueue(focus, mulberry32(1))).toHaveLength(72);
   });
 });

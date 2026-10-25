@@ -25,9 +25,16 @@ Treinar o reconhecimento de notas de ouvido: o app toca uma nota de violão e o 
 - **Som desligado em Ajustes:** o modo Ouvido não pode iniciar. A tela de início mostra "Ligue o Som em Ajustes" e o Iniciar fica desabilitado.
 - Foco vazio: mesma mensagem dos outros modos.
 
+## Uma pergunta por som
+
+- O mesmo som toca igual em cordas diferentes (a altura é a mesma). No Ouvido a unidade da pergunta é o **som distinto**, não a posição: a fila tem uma pergunta por altura dentro do Foco (48 no braço inteiro, 17 no foco padrão), sem repetir nenhum som.
+- O card de Foco mostra essa quantidade ("48 perguntas") quando o exercício é o Ouvido; nos outros exercícios continua contando posições.
+- Depois de responder, o braço marca **todas as posições daquele som dentro do Foco** (mais a posição sorteada, se ela vier de fora, como no caso de uma posição aberta pelo Progresso).
+- Uma posição vinda do Progresso abre a fila e o som dela não volta a ser perguntado.
+
 ## Aleatoriedade (todos os níveis)
 
-- A ordem dos sons é sorteada a cada sessão: a fila é o Foco inteiro embaralhado, sem repetir posição, igual aos outros modos.
+- A ordem dos sons é sorteada a cada sessão: a fila é o conjunto de sons do Foco embaralhado, sem repetir.
 - **A mesma nota não toca duas vezes seguidas** quando existe outra opção na fila (por exemplo, dois E em oitavas diferentes ficam separados). Se só sobrar a mesma nota, ela toca.
 - A posição da resposta certa entre as opções também é sorteada: no Fácil a certa cai à esquerda ou à direita ao acaso; no Médio as 4 opções vêm embaralhadas. No Difícil as opções ficam em ordem cromática fixa (para o aluno achar a nota rápido).
 

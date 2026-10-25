@@ -8,3 +8,14 @@ export const HIGHEST_MIDI = 88;
 export function pitchOf(position: Position): number {
   return OPEN_STRING_MIDI[position.string - 1] + position.fret;
 }
+
+/** Uma posição por som (altura): a primeira que aparece. O mesmo som toca igual em cordas diferentes. */
+export function uniquePitchPositions(positions: Position[]): Position[] {
+  const seen = new Set<number>();
+  return positions.filter((p) => {
+    const pitch = pitchOf(p);
+    if (seen.has(pitch)) return false;
+    seen.add(pitch);
+    return true;
+  });
+}

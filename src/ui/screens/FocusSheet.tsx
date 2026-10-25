@@ -7,6 +7,8 @@ import {
 } from '../useFocusFilter';
 
 interface FocusSheetProps {
+  /** Quantas perguntas a sessão terá (posições, ou sons distintos no Ouvido). */
+  questionCount: number;
   open: boolean;
   onOpenChange(open: boolean): void;
 }
@@ -18,8 +20,8 @@ function summaryText(strings: string, frets: string, notes: string): string {
 }
 
 /** Cartão do Foco: recolhido mostra o resumo; aberto edita cordas, casas e notas na hora. */
-export function FocusSheet({ open, onOpenChange }: FocusSheetProps) {
-  const { filter, count, toggleString, selectAllStrings, setRange, setMin, setMax, setNaturalsOnly } =
+export function FocusSheet({ questionCount: count, open, onOpenChange }: FocusSheetProps) {
+  const { filter, toggleString, selectAllStrings, setRange, setMin, setMax, setNaturalsOnly } =
     useFocusFilter();
   const summary = describeFocus(filter);
   const allStrings = ALL_STRINGS.every((s) => filter.strings.includes(s));

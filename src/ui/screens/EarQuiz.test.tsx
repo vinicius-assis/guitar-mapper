@@ -4,18 +4,18 @@ import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
 import type { EarLevel } from '../../domain/quiz';
 import { AppProvider } from '../../state/AppState';
-import { createDefaultData } from '../../state/storage';
+import { createDefaultData, type Settings } from '../../state/storage';
 import { createMemoryStorage } from '../../test-utils';
 import { EarQuiz } from './EarQuiz';
 
 const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn() });
 
 // Corda 6, casa 12 = E3 (MIDI 52).
-function setup(level: EarLevel, naturalsOnly = true) {
+function setup(level: EarLevel, naturalsOnly = true, filter?: Settings['filter']) {
   const settings = createDefaultData().settings;
   settings.notation = 'cifra';
   settings.earLevel = level;
-  settings.filter = { strings: [6], fretMin: 12, fretMax: 12, naturalsOnly };
+  settings.filter = filter ?? { strings: [6], fretMin: 12, fretMax: 12, naturalsOnly };
   const player = fakePlayer();
   const onAnswer = vi.fn();
   const onNext = vi.fn();
@@ -100,6 +100,24 @@ describe('EarQuiz', () => {
     fireEvent.click(again);
     fireEvent.click(again);
     expect(player.play).toHaveBeenCalledTimes(4);
+  });
+
+  it('after answering, shows every position of that sound inside the focus', () => {
+    // E3 (MIDI 52) está na corda 6 casa 12, na corda 5 casa 7 e na corda 4 casa 2.
+    setup('medium', false, { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 24, naturalsOnly: false });
+    fireEvent.click(options().find((b) => b.textContent === 'E')!);
+    const marked = [...document.querySelectorAll('.mark--correct')].length;
+    const cells = ['cell-6-12', 'cell-5-7', 'cell-4-2'].map((id) => screen.getByTestId(id));
+    expect(marked).toBe(3);
+    expect(cells).toHaveLength(3);
+  });
+
+  it('marks only positions inside the focus, plus the one that was asked', () => {
+    setup('medium', false, { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 5, naturalsOnly: false });
+    fireEvent.click(options().find((b) => b.textContent === 'E')!);
+    // E3 no foco 1–5: só a corda 4 casa 2. A pergunta veio da corda 6 casa 12 (fora do foco) e
+    // também fica marcada; a corda 5 casa 7 está na janela mas fora do foco, então não.
+    expect(document.querySelectorAll('.mark--correct')).toHaveLength(2);
   });
 
   it('a right answer reports it, shows Correto! and reveals the board without replaying', () => {

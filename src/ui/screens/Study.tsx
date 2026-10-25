@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { QuizMode } from '../../domain/quiz';
 import { useSound } from '../../audio/SoundProvider';
+import { uniquePitchPositions } from '../../domain/pitch';
 import { positionsInFilter, type Position } from '../../domain/fretboard';
 import {
   buildQueue,
@@ -34,6 +35,11 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   const sound = useSound();
   const { settings } = data;
   const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
+  // Ouvido pergunta cada som uma vez (o mesmo som em cordas diferentes não é outra pergunta).
+  const questionCount = useMemo(
+    () => (settings.mode === 'ear' ? uniquePitchPositions(candidates).length : candidates.length),
+    [candidates, settings.mode],
+  );
 
   // Ouvido precisa de som: sem ele, uma posição vinda do Progresso não inicia a sessão.
   const earWithoutSound = settings.mode === 'ear' && !settings.soundEnabled;
@@ -45,6 +51,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
     startsRunning
       ? buildQueue(positionsInFilter(settings.filter), Math.random, forced, {
           avoidSameNote: settings.mode === 'ear',
+          uniquePitch: settings.mode === 'ear',
         })
       : [],
   );
@@ -71,6 +78,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
     if (!canStart) return;
     const nextQueue = buildQueue(candidates, Math.random, null, {
       avoidSameNote: settings.mode === 'ear',
+      uniquePitch: settings.mode === 'ear',
     });
     sound.unlock(); // dentro do toque em Iniciar: libera o áudio no iPhone
     sound.prepare(nextQueue);
@@ -189,6 +197,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
             </p>
           )}
           <FocusSheet
+            questionCount={questionCount}
             open={openPanel === 'focus'}
             onOpenChange={(open) => setOpenPanel(open ? 'focus' : null)}
           />

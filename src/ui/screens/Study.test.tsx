@@ -693,3 +693,37 @@ describe('Study: header menu', () => {
     expect(screen.queryByRole('button', { name: 'Corda 6' })).not.toBeInTheDocument();
   });
 });
+
+describe('Study: Ouvido counts sounds, not positions', () => {
+  const FULL: Settings['filter'] = {
+    strings: [1, 2, 3, 4, 5, 6],
+    fretMin: 1,
+    fretMax: 24,
+    naturalsOnly: false,
+  };
+
+  it('the Foco card shows 144 questions in the position exercises but 48 sounds in Ouvido', () => {
+    const { unmount } = (() => {
+      setup({ mode: 'flashcard', filter: FULL });
+      return { unmount: () => cleanup() };
+    })();
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('144 perguntas');
+    unmount();
+    setup({ mode: 'ear', filter: FULL });
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('48 perguntas');
+  });
+
+  it('the default focus has 17 sounds out of 18 positions', () => {
+    setup({ mode: 'ear', filter: WIDE_FILTER });
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('17 perguntas');
+  });
+
+  it('an ear session has one question per sound and never repeats a sound', () => {
+    const { player } = setupWithPlayer({ mode: 'ear', filter: FULL });
+    start();
+    expect(screen.getByText('Pergunta 1 de 48')).toBeInTheDocument();
+    const pitches = vi.mocked(player.prepare).mock.calls[0][0];
+    expect(pitches).toHaveLength(48);
+    expect(new Set(pitches).size).toBe(48);
+  });
+});

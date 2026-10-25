@@ -1,5 +1,6 @@
 import { noteAt, positionKey, type Position } from './fretboard';
 import type { NoteIndex } from './notes';
+import { pitchOf, uniquePitchPositions } from './pitch';
 import type { EarLevel, QuizMode } from './quiz';
 
 export const HISTORY_LIMIT = 20;
@@ -68,10 +69,15 @@ export function buildQueue(
   positions: Position[],
   rng: () => number,
   first: Position | null = null,
-  options: { avoidSameNote?: boolean } = {},
+  options: { avoidSameNote?: boolean; uniquePitch?: boolean } = {},
 ): Position[] {
   const firstKey = first ? positionKey(first) : null;
-  const rest = positions.filter((p) => positionKey(p) !== firstKey);
+  // Ouvido: o mesmo som em cordas diferentes é a mesma pergunta, então entra uma vez só.
+  const pool = options.uniquePitch ? uniquePitchPositions(positions) : positions;
+  const firstPitch = first ? pitchOf(first) : null;
+  const rest = pool.filter(
+    (p) => positionKey(p) !== firstKey && !(options.uniquePitch && pitchOf(p) === firstPitch),
+  );
   for (let i = rest.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [rest[i], rest[j]] = [rest[j], rest[i]];

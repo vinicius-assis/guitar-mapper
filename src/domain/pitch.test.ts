@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { allPositions, noteAt } from './fretboard';
-import { HIGHEST_MIDI, LOWEST_MIDI, OPEN_STRING_MIDI, pitchOf } from './pitch';
+import { allPositions, noteAt, positionsInFilter } from './fretboard';
+import {
+  HIGHEST_MIDI,
+  LOWEST_MIDI,
+  OPEN_STRING_MIDI,
+  pitchOf,
+  uniquePitchPositions,
+} from './pitch';
 
 describe('pitchOf', () => {
   it('knows the open strings (E2 A2 D3 G3 B3 E4)', () => {
@@ -26,5 +32,32 @@ describe('pitchOf', () => {
 
   it('agrees with noteAt for every position', () => {
     for (const p of allPositions()) expect(pitchOf(p) % 12).toBe(noteAt(p));
+  });
+});
+
+describe('uniquePitchPositions', () => {
+  const ALL = { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 24, naturalsOnly: false };
+
+  it('keeps one position per sound: 48 for the whole neck instead of 144', () => {
+    const positions = positionsInFilter(ALL);
+    expect(positions).toHaveLength(144);
+    const unique = uniquePitchPositions(positions);
+    expect(unique).toHaveLength(48);
+    expect(new Set(unique.map(pitchOf)).size).toBe(48);
+  });
+
+  it('keeps the first position of each sound, in order', () => {
+    const list = [
+      { string: 6, fret: 12 }, // E3
+      { string: 5, fret: 7 }, // E3 de novo
+      { string: 6, fret: 13 }, // F3
+      { string: 4, fret: 2 }, // E3 de novo
+    ];
+    expect(uniquePitchPositions(list)).toEqual([list[0], list[2]]);
+  });
+
+  it('counts 17 sounds for the default focus (frets 1-5, naturals)', () => {
+    const focus = { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 5, naturalsOnly: true };
+    expect(uniquePitchPositions(positionsInFilter(focus))).toHaveLength(17);
   });
 });

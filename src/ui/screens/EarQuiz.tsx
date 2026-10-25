@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSound } from '../../audio/SoundProvider';
+import { positionKey, positionsInFilter } from '../../domain/fretboard';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
+import { pitchOf } from '../../domain/pitch';
 import { EAR_LISTEN_LIMIT, buildEarQuestion } from '../../domain/quiz';
 import { Fretboard } from '../Fretboard';
 import { stringLabels } from '../stringLabels';
@@ -42,6 +44,12 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   // Depois de responder, o limite deixa de valer: ouvir a nota certa com o braço à vista reforça.
   const repeatsLeft = limit === null ? null : Math.max(0, limit - listens);
   const { fretMin, fretMax } = windowFor(filter, position);
+  // O mesmo som existe em várias cordas: depois de responder, mostra todas as posições dele no foco
+  // (mais a posição sorteada, que pode vir de fora do foco).
+  const soundPositions = useMemo(() => {
+    const same = positionsInFilter(filter).filter((p) => pitchOf(p) === pitchOf(position));
+    return same.some((p) => positionKey(p) === positionKey(position)) ? same : [position, ...same];
+  }, [filter, position]);
   return (
     <div className="quiz">
       <p className="prompt">Qual nota você ouviu?</p>
@@ -88,13 +96,11 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
             leftHanded={leftHanded}
             scrollToFret={position.fret}
             stringLabels={stringLabels()}
-            marks={[
-              {
-                position,
-                kind: correct ? 'correct' : 'wrong',
-                label: noteLabel(question.answer, notation),
-              },
-            ]}
+            marks={soundPositions.map((p) => ({
+              position: p,
+              kind: correct ? 'correct' : 'wrong',
+              label: noteLabel(question.answer, notation),
+            }))}
           />
           <div className="feedback quiz-actions">
             <p role="status" className={correct ? undefined : 'sr-only'}>
