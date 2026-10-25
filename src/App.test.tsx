@@ -1,8 +1,13 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
 import { App } from './App';
 import { STORAGE_KEY } from './state/storage';
-import { createMemoryStorage, createThrowingStorage, seededStorage } from './test-utils';
+import {
+  createMemoryStorage,
+  createThrowingStorage,
+  mockViewport,
+  seededStorage,
+} from './test-utils';
 
 describe('App', () => {
   it('shows the four tabs and starts on Estudar', () => {
@@ -74,4 +79,54 @@ describe('App', () => {
     expect(screen.queryByRole('navigation', { name: 'Principal' })).not.toBeInTheDocument();
   });
 
+});
+
+describe('App layout by width', () => {
+  let viewport: ReturnType<typeof mockViewport> | null = null;
+  afterEach(() => viewport?.restore());
+  const nav = () => screen.queryByRole('navigation', { name: 'Principal' });
+  const app = (container: HTMLElement) => container.querySelector('.app')!;
+
+  it('phone: bottom tabs (no sidebar) that hide while a session runs', () => {
+    viewport = mockViewport(390);
+    const { container } = render(<App storage={seededStorage()} />);
+    expect(app(container)).toHaveClass('app--mobile');
+    expect(nav()).not.toHaveClass('sidebar');
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
+    expect(nav()).not.toBeInTheDocument();
+    expect(app(container)).toHaveClass('app--session');
+  });
+
+  it('tablet: bottom tabs and the tablet column', () => {
+    viewport = mockViewport(800);
+    const { container } = render(<App storage={seededStorage()} />);
+    expect(app(container)).toHaveClass('app--tablet');
+    expect(nav()).not.toHaveClass('sidebar');
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
+    expect(nav()).not.toBeInTheDocument();
+  });
+
+  it('desktop: a sidebar with the brand that stays visible during a session', () => {
+    viewport = mockViewport(1280);
+    const { container } = render(<App storage={seededStorage()} />);
+    expect(app(container)).toHaveClass('app--desktop');
+    expect(nav()).toHaveClass('sidebar');
+    expect(within(nav()!).getByRole('img', { name: 'Guitar Mapper' })).toBeInTheDocument();
+    expect(nav()).toHaveTextContent('Guitar Mapper');
+    fireEvent.click(screen.getByRole('button', { name: /Iniciar/ }));
+    expect(nav()).toBeInTheDocument();
+    expect(app(container)).not.toHaveClass('app--session');
+    fireEvent.click(within(nav()!).getByRole('button', { name: 'Progresso' }));
+    expect(within(nav()!).getByRole('button', { name: 'Progresso' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('switching width swaps the sidebar for tabs without losing the current tab', () => {
+    viewport = mockViewport(1280);
+    render(<App storage={seededStorage()} />);
+    fireEvent.click(within(nav()!).getByRole('button', { name: 'Ajustes' }));
+    act(() => viewport!.setWidth(390));
+    expect(nav()).not.toHaveClass('sidebar');
+    expect(within(nav()!).getByRole('button', { name: 'Ajustes' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByLabelText('Mão esquerda')).toBeInTheDocument();
+  });
 });

@@ -8,6 +8,7 @@ import { Focus } from './ui/screens/Focus';
 import { Progress } from './ui/screens/Progress';
 import { Settings } from './ui/screens/Settings';
 import { Study } from './ui/screens/Study';
+import { useBreakpoint } from './ui/useBreakpoint';
 
 type Tab = 'study' | 'progress' | 'focus' | 'settings';
 
@@ -24,6 +25,8 @@ function Shell() {
   const [forced, setForced] = useState<Position | null>(null);
   const [sessionRunning, setSessionRunning] = useState(false);
   const [recoveredDismissed, setRecoveredDismissed] = useState(false);
+  const breakpoint = useBreakpoint();
+  const desktop = breakpoint === 'desktop';
 
   const go = (next: Tab) => {
     setForced(null);
@@ -31,7 +34,11 @@ function Shell() {
   };
 
   return (
-    <div className={sessionRunning ? 'app app--session' : 'app'}>
+    <div
+      className={['app', `app--${breakpoint}`, sessionRunning && !desktop ? 'app--session' : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <header className="banners">
         {!storageAvailable && (
           <p className="banner">O progresso não será salvo neste navegador (armazenamento indisponível).</p>
@@ -65,8 +72,19 @@ function Shell() {
         {tab === 'settings' && <Settings />}
       </main>
 
-      {!sessionRunning && (
-        <nav className="tabs" aria-label="Principal">
+      {(desktop || !sessionRunning) && (
+        <nav className={desktop ? 'tabs sidebar' : 'tabs'} aria-label="Principal">
+          {desktop && (
+            <div className="sidebar__brand">
+              <img
+                src={`${import.meta.env.BASE_URL}pwa-64x64.png`}
+                width="32"
+                height="32"
+                alt="Guitar Mapper"
+              />
+              <span>Guitar Mapper</span>
+            </div>
+          )}
           {TABS.map(({ tab: t, label }) => (
             <button
               key={t}
