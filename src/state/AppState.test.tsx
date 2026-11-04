@@ -1,11 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import {
   createMemoryStorage,
   createThrowingStorage,
   readSaved,
+  seededStorage,
 } from '../test-utils';
+import type { PositionProgress } from '../domain/scheduler';
 import { AppProvider, useAppState } from './AppState';
+
+const okProgress: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
 
 function Probe() {
   const s = useAppState();
@@ -107,5 +111,71 @@ describe('AppProvider', () => {
     fireEvent.click(screen.getByText('session'));
     fireEvent.click(screen.getByText('reset'));
     expect(screen.getByTestId('history')).toHaveTextContent('1');
+  });
+});
+
+describe('active instrument', () => {
+  const entry = { mode: 'flashcard', at: 7, total: 2, correct: 1, averageMs: 900 } as const;
+  const filter = { strings: [3], fretMin: 2, fretMax: 7, naturalsOnly: false };
+  let api: ReturnType<typeof useAppState>;
+  function Capture() {
+    api = useAppState();
+    return null;
+  }
+  const mount = (storage: ReturnType<typeof createMemoryStorage>) =>
+    render(
+      <AppProvider storage={storage} now={() => 1000}>
+        <Capture />
+      </AppProvider>,
+    );
+
+  it('switches to the bass with its own filter, empty progress and keeps the guitar intact', () => {
+    const storage = seededStorage({ progress: { '6-3': okProgress } });
+    mount(storage);
+    act(() => api.updateSettings({ instrument: 'bass' }));
+    expect(api.instrument.id).toBe('bass');
+    expect(api.data.settings.filter.strings).toEqual([1, 2, 3, 4]);
+    expect(api.data.progress).toEqual({});
+    act(() => api.updateSettings({ instrument: 'guitar' }));
+    expect(api.instrument.id).toBe('guitar');
+    expect(api.data.progress['6-3']).toEqual(okProgress);
+  });
+
+  it('records bass answers only in the bass bucket', () => {
+    const storage = seededStorage({ progress: { '6-3': okProgress } });
+    mount(storage);
+    act(() => api.updateSettings({ instrument: 'bass' }));
+    act(() => api.recordAnswer({ string: 4, fret: 3 }, true));
+    expect(readSaved(storage, 'bass').progress['4-3'].box).toBe(2);
+    expect(readSaved(storage, 'guitar').progress).toEqual({ '6-3': okProgress });
+  });
+
+  it('keeps filters, history, reset and clear separate per instrument', () => {
+    const storage = seededStorage({ progress: { '6-3': okProgress }, history: [entry] });
+    mount(storage);
+    const guitarFilter = readSaved(storage, 'guitar').settings.filter;
+    act(() => api.updateSettings({ instrument: 'bass' }));
+    act(() => api.updateSettings({ filter }));
+    act(() => api.recordSession(entry));
+    act(() => api.recordAnswer({ string: 4, fret: 3 }, true));
+    expect(readSaved(storage, 'bass').history).toEqual([entry]);
+    expect(readSaved(storage, 'guitar').history).toEqual([entry]);
+    expect(readSaved(storage, 'guitar').settings.filter).toEqual(guitarFilter);
+    expect(readSaved(storage, 'bass').settings.filter).toEqual(filter);
+    act(() => api.resetProgress());
+    act(() => api.clearHistory());
+    expect(readSaved(storage, 'bass').progress).toEqual({});
+    expect(readSaved(storage, 'bass').history).toEqual([]);
+    expect(readSaved(storage, 'guitar').progress).toEqual({ '6-3': okProgress });
+    expect(readSaved(storage, 'guitar').history).toEqual([entry]);
+  });
+
+  it('persists the active instrument across reloads', () => {
+    const storage = createMemoryStorage();
+    const first = mount(storage);
+    act(() => api.updateSettings({ instrument: 'bass' }));
+    first.unmount();
+    mount(storage);
+    expect(api.instrument.id).toBe('bass');
   });
 });
