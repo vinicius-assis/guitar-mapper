@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAppState } from '../../state/AppState';
 import { useSound } from '../../audio/SoundProvider';
 import { positionKey, positionsInFilter } from '../../domain/fretboard';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
@@ -13,13 +14,14 @@ import { windowFor } from './window';
 
 export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded, earLevel } = settings;
+  const { instrument } = useAppState();
   const sound = useSound();
   const breakpoint = useBreakpoint();
   const fit = breakpoint !== 'mobile';
   const expand = breakpoint === 'desktop';
   const question = useMemo(
-    () => buildEarQuestion(position, earLevel, filter.naturalsOnly, Math.random),
-    [position, earLevel, filter.naturalsOnly],
+    () => buildEarQuestion(position, earLevel, filter.naturalsOnly, Math.random, instrument),
+    [position, earLevel, filter.naturalsOnly, instrument],
   );
   const [picked, setPicked] = useState<NoteIndex | null>(null);
   const [listens, setListens] = useState(1); // a que toca sozinha já conta
@@ -51,9 +53,11 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   // O mesmo som existe em várias cordas: depois de responder, mostra todas as posições dele no foco
   // (mais a posição sorteada, que pode vir de fora do foco).
   const soundPositions = useMemo(() => {
-    const same = positionsInFilter(filter).filter((p) => pitchOf(p) === pitchOf(position));
+    const same = positionsInFilter(filter, instrument).filter(
+      (p) => pitchOf(p, instrument) === pitchOf(position, instrument),
+    );
     return same.some((p) => positionKey(p) === positionKey(position)) ? same : [position, ...same];
-  }, [filter, position]);
+  }, [filter, position, instrument]);
   return (
     <div className="quiz">
       <p className="prompt">Qual nota você ouviu?</p>
@@ -95,13 +99,14 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
       {answered && (
         <>
           <Fretboard
-        fit={fit}
-        expand={expand}
+            instrument={instrument}
+            fit={fit}
+            expand={expand}
             fretMin={fretMin}
             fretMax={fretMax}
             leftHanded={leftHanded}
             scrollToFret={position.fret}
-            stringLabels={stringLabels()}
+            stringLabels={stringLabels(instrument)}
             marks={soundPositions.map((p) => ({
               position: p,
               kind: correct ? 'correct' : 'wrong',

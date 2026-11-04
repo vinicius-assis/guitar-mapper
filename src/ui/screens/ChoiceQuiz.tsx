@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Position } from '../../domain/fretboard';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
 import { buildChoiceQuestion } from '../../domain/quiz';
+import { useAppState } from '../../state/AppState';
 import { useSound } from '../../audio/SoundProvider';
 import type { Settings } from '../../state/storage';
 import { useBreakpoint } from '../useBreakpoint';
@@ -19,13 +20,14 @@ export interface QuizProps {
 
 export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const { filter, notation, leftHanded } = settings;
+  const { instrument } = useAppState();
   const sound = useSound();
   const breakpoint = useBreakpoint();
   const fit = breakpoint !== 'mobile';
   const expand = breakpoint === 'desktop';
   const question = useMemo(
-    () => buildChoiceQuestion(position, filter.naturalsOnly, Math.random),
-    [position, filter.naturalsOnly],
+    () => buildChoiceQuestion(position, filter.naturalsOnly, Math.random, instrument),
+    [position, filter.naturalsOnly, instrument],
   );
   const [picked, setPicked] = useState<NoteIndex | null>(null);
   const answered = picked !== null;
@@ -44,13 +46,14 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
     <div className="quiz">
       <p className="prompt">Qual é esta nota?</p>
       <Fretboard
+        instrument={instrument}
         fit={fit}
         expand={expand}
         fretMin={fretMin}
         fretMax={fretMax}
         leftHanded={leftHanded}
         scrollToFret={position.fret}
-        stringLabels={stringLabels()}
+        stringLabels={stringLabels(instrument)}
         marks={[
           {
             position,

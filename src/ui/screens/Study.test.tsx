@@ -6,6 +6,10 @@ import type { Settings } from '../../state/storage';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
 import { ConfirmProvider } from '../ConfirmDialog';
+import { BASS } from '../../domain/instruments';
+import { positionsInFilter } from '../../domain/fretboard';
+import { uniquePitchPositions } from '../../domain/pitch';
+import { defaultFilterFor } from '../../state/storage';
 import { Study } from './Study';
 
 // Uma única posição candidata: corda 6, casa 12 (nota E).
@@ -971,5 +975,49 @@ describe('Study: desktop board shows more frets and disables the ones outside th
     }
     viewport = mockViewport(390);
     board = mockBoardWidth(330);
+  });
+});
+
+describe('Study: bass', () => {
+  function setupBass(settings: Partial<Settings> = {}) {
+    const storage = seededStorage({
+      instrument: 'bass',
+      settings: { notation: 'cifra', instrument: 'bass', ...settings },
+    });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Study />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    return storage;
+  }
+
+  it('starts with the bass focus: all strings and the bass question count', () => {
+    setupBass();
+    const focus = screen.getByRole('group', { name: 'Foco' });
+    expect(focus).toHaveTextContent('Todas as cordas');
+    const n = positionsInFilter(defaultFilterFor(BASS), BASS).length;
+    expect(focus).toHaveTextContent(`${n} perguntas`);
+  });
+
+  it('position-to-note asks about a bass string and the answer is the bass note', () => {
+    // corda 4 (E), casa 5 = A no baixo (no violão seria G)
+    const storage = setupBass({
+      filter: { strings: [4], fretMin: 5, fretMax: 5, naturalsOnly: true },
+    });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'A' }));
+    expect(readSaved(storage, 'bass').progress['4-5'].correct).toBe(1);
+  });
+
+  it('Ouvido counts distinct bass sounds', () => {
+    setupBass({ mode: 'ear' });
+    const f = defaultFilterFor(BASS);
+    const n = uniquePitchPositions(positionsInFilter(f, BASS), BASS).length;
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent(`${n} perguntas`);
   });
 });

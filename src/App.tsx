@@ -20,7 +20,7 @@ const TABS: { tab: Tab; label: string }[] = [
 ];
 
 function Shell() {
-  const { storageAvailable, recovered } = useAppState();
+  const { storageAvailable, recovered, instrument } = useAppState();
   const [tab, setTab] = useState<Tab>('study');
   const [forced, setForced] = useState<Position | null>(null);
   const [sessionRunning, setSessionRunning] = useState(false);
@@ -56,12 +56,14 @@ function Shell() {
       <main>
         {tab === 'study' && (
           <Study
+            key={instrument.id}
             forced={forced}
             onSessionChange={setSessionRunning}
           />
         )}
         {tab === 'progress' && (
           <Progress
+            key={instrument.id}
             onSelect={(position) => {
               setForced(position);
               setTab('study');

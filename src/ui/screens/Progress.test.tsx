@@ -220,3 +220,32 @@ describe('Progress layout by width', () => {
     expect(main.querySelector('.legend')).not.toBeNull();
   });
 });
+
+describe('Progress (bass)', () => {
+  function renderBass(progress = {}, guitarProgress = {}) {
+    const storage = seededStorage({ settings: { instrument: 'bass' }, progress: guitarProgress });
+    const data = JSON.parse(storage.getItem('guitar-mapper:v2')!);
+    data.instruments.bass.progress = progress;
+    storage.setItem('guitar-mapper:v2', JSON.stringify(data));
+    return render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <Progress onSelect={() => {}} />
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+  }
+
+  it('maps 4 strings x 24 frets, labelled G D A E', () => {
+    const { container } = renderBass();
+    expect(container.querySelectorAll('.mark')).toHaveLength(96);
+    const labels = [1, 2, 3, 4].map((n) => screen.getByTestId(`string-label-${n}`).textContent);
+    expect(labels).toEqual(['G', 'D', 'A', 'E']);
+  });
+
+  it("does not show the guitar's progress", () => {
+    renderBass({}, { '6-3': entry(5) });
+    expect(screen.getByText('Nunca vistas: 96')).toBeInTheDocument();
+    expect(screen.getByText('Dominadas: 0')).toBeInTheDocument();
+  });
+});

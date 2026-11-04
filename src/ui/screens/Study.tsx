@@ -32,17 +32,17 @@ interface StudyProps {
 }
 
 export function Study({ forced = null, onSessionChange }: StudyProps) {
-  const { data, recordAnswer, updateSettings, recordSession } = useAppState();
+  const { data, instrument, recordAnswer, updateSettings, recordSession } = useAppState();
   const confirm = useConfirm();
   const sound = useSound();
   const desktop = useBreakpoint() === 'desktop';
   useQuizShortcuts(true);
   const { settings } = data;
-  const candidates = useMemo(() => positionsInFilter(settings.filter), [settings.filter]);
+  const candidates = useMemo(() => positionsInFilter(settings.filter, instrument), [settings.filter, instrument]);
   // Ouvido pergunta cada som uma vez (o mesmo som em cordas diferentes não é outra pergunta).
   const questionCount = useMemo(
-    () => (settings.mode === 'ear' ? uniquePitchPositions(candidates).length : candidates.length),
-    [candidates, settings.mode],
+    () => (settings.mode === 'ear' ? uniquePitchPositions(candidates, instrument).length : candidates.length),
+    [candidates, settings.mode, instrument],
   );
 
   // Ouvido precisa de som: sem ele, uma posição vinda do Progresso não inicia a sessão.
@@ -53,9 +53,10 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   const [phase, setPhase] = useState<Phase>(startsRunning ? 'running' : 'idle');
   const [queue, setQueue] = useState<Position[]>(() =>
     startsRunning
-      ? buildQueue(positionsInFilter(settings.filter), Math.random, forced, {
+      ? buildQueue(positionsInFilter(settings.filter, instrument), Math.random, forced, {
           avoidSameNote: settings.mode === 'ear',
           uniquePitch: settings.mode === 'ear',
+          instrument,
         })
       : [],
   );
@@ -83,6 +84,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
     const nextQueue = buildQueue(candidates, Math.random, null, {
       avoidSameNote: settings.mode === 'ear',
       uniquePitch: settings.mode === 'ear',
+      instrument,
     });
     sound.unlock(); // dentro do toque em Iniciar: libera o áudio no iPhone
     sound.prepare(nextQueue);

@@ -5,7 +5,7 @@ import type { NotePlayer } from '../../audio/player';
 import type { EarLevel } from '../../domain/quiz';
 import { AppProvider } from '../../state/AppState';
 import { activeView, createDefaultData, type Settings } from '../../state/storage';
-import { createMemoryStorage } from '../../test-utils';
+import { createMemoryStorage, seededStorage } from '../../test-utils';
 import { EarQuiz } from './EarQuiz';
 
 const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn() });
@@ -138,5 +138,39 @@ describe('EarQuiz', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
     expect(onNext).toHaveBeenCalled();
     expect(player.play).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('EarQuiz (bass)', () => {
+  function setupBass() {
+    const settings = activeView(createDefaultData()).settings;
+    settings.notation = 'cifra';
+    settings.earLevel = 'hard';
+    settings.filter = { strings: [2, 4], fretMin: 1, fretMax: 12, naturalsOnly: false };
+    const player = fakePlayer();
+    render(
+      <AppProvider
+        storage={seededStorage({ instrument: 'bass', settings: { instrument: 'bass' } })}
+      >
+        <SoundProvider player={player}>
+          <EarQuiz
+            position={{ string: 4, fret: 12 }}
+            settings={settings}
+            onAnswer={vi.fn()}
+            onNext={vi.fn()}
+          />
+        </SoundProvider>
+      </AppProvider>,
+    );
+    return player;
+  }
+
+  it('plays the bass pitch (E1 string 4 + 12 = E2 = MIDI 40) and shows the bass answer', () => {
+    const player = setupBass();
+    expect(player.play).toHaveBeenCalledWith(40);
+    fireEvent.click(options().find((b) => b.textContent === 'E')!);
+    expect(screen.getByText('Correto!')).toBeInTheDocument();
+    // mesmo som no baixo: corda 4 casa 12 e corda 2 casa 2
+    expect(document.querySelectorAll('.mark--correct')).toHaveLength(2);
   });
 });

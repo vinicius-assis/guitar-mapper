@@ -23,14 +23,14 @@ const LEGEND: { mastery: Mastery; label: string }[] = [
 ];
 
 export function Progress({ onSelect }: { onSelect(position: Position): void }) {
-  const { data, clearHistory, resetProgress } = useAppState();
+  const { data, instrument, clearHistory, resetProgress } = useAppState();
   const confirm = useConfirm();
   const breakpoint = useBreakpoint();
   const { progress, settings, history } = data;
 
   const { marks, counts } = useMemo(() => {
     const counts: Record<Mastery, number> = { unseen: 0, wrong: 0, learning: 0, mastered: 0 };
-    const marks: Mark[] = allPositions()
+    const marks: Mark[] = allPositions(instrument)
       .filter((position) => position.fret >= FIRST_QUIZ_FRET)
       .map((position) => {
         const kind = masteryOf(progress[positionKey(position)]);
@@ -38,7 +38,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
         return { position, kind };
       });
     return { marks, counts };
-  }, [progress]);
+  }, [progress, instrument]);
 
   return (
     <section className="screen">
@@ -46,6 +46,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
         <div className="progress-main">
           <h2>Progresso</h2>
           <Fretboard
+            instrument={instrument}
             fit={breakpoint !== 'mobile'}
             minFretWidth={breakpoint === 'desktop' ? 24 : undefined}
             fretMin={FIRST_QUIZ_FRET}
@@ -53,7 +54,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
             marks={marks}
             onTap={onSelect}
             leftHanded={settings.leftHanded}
-            stringLabels={stringLabels()}
+            stringLabels={stringLabels(instrument)}
           />
           <ul className="legend">
             {LEGEND.map(({ mastery, label }) => (
