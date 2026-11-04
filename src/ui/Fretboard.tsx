@@ -66,8 +66,8 @@ export function Fretboard({
   expand = false,
   instrument = GUITAR,
 }: FretboardProps) {
-  const STRING_COUNT = instrument.stringCount;
-  const STRINGS = Array.from({ length: STRING_COUNT }, (_, i) => i + 1);
+  const stringCount = instrument.stringCount;
+  const STRINGS = Array.from({ length: stringCount }, (_, i) => i + 1);
   const scrollRef = useRef<HTMLDivElement>(null);
   const focusCount = fretMax - fretMin + 1;
 
@@ -105,7 +105,7 @@ export function Fretboard({
   const STRING_GAP = fitted ? clamp(Math.round(FRET_W * 0.8), NATURAL_STRING_GAP, 60) : NATURAL_STRING_GAP;
   const MARK_R = fitted ? clamp(Math.round(Math.min(FRET_W, STRING_GAP) * 0.36), 9, 20) : 16;
   const width = count * FRET_W;
-  const height = TOP + STRING_COUNT * STRING_GAP;
+  const height = TOP + stringCount * STRING_GAP;
   const frets = Array.from({ length: count }, (_, i) => viewMin + i);
 
   const colOf = (fret: number) => (leftHanded ? viewMax - fret : fret - viewMin);
@@ -127,7 +127,7 @@ export function Fretboard({
         <div
           className="string-labels"
           // Linhas em `fr` na mesma proporção do SVG: os nomes acompanham o braço quando ele escala.
-          style={{ gridTemplateRows: `${TOP}fr repeat(${STRING_COUNT}, ${STRING_GAP}fr)` }}
+          style={{ gridTemplateRows: `${TOP}fr repeat(${stringCount}, ${STRING_GAP}fr)` }}
           aria-hidden="true"
         >
           <div />
@@ -172,10 +172,11 @@ export function Fretboard({
           {frets
             .filter((f) => INLAYS.has(f))
             .flatMap((f) =>
-              (f % 12 === 0 ? [2, 4] : [3]).map((row) => (
+              (f % 12 === 0 ? [stringCount / 2 - 1, stringCount / 2 + 1] : [stringCount / 2]).map((row) => (
                 <circle
                   key={`i${f}-${row}`}
                   className="inlay"
+                  data-fret={f}
                   cx={cx(f)}
                   cy={TOP + row * STRING_GAP}
                   r={Math.round(MARK_R * 0.4)}
@@ -223,7 +224,7 @@ export function Fretboard({
               x={colOf(f) * FRET_W}
               y={TOP}
               width={FRET_W}
-              height={STRING_COUNT * STRING_GAP}
+              height={stringCount * STRING_GAP}
               pointerEvents="none"
             />
           ))}

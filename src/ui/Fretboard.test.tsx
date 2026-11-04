@@ -261,3 +261,24 @@ describe('Fretboard (bass)', () => {
     expect(container.querySelectorAll('line.string')).toHaveLength(6);
   });
 });
+
+describe('Fretboard inlays follow the string count', () => {
+  const inlayYs = (container: HTMLElement, fret: number) =>
+    [...container.querySelectorAll('circle.inlay')]
+      .filter((c) => c.getAttribute('data-fret') === String(fret))
+      .map((c) => Number(c.getAttribute('cy')));
+
+  it('bass: single inlay in the middle row, double inlay between strings 1-2 and 3-4', () => {
+    const { container } = render(
+      <Fretboard fretMin={1} fretMax={12} marks={[]} instrument={BASS} />,
+    );
+    expect(inlayYs(container, 5)).toEqual([28 + 2 * 44]);
+    expect(inlayYs(container, 12)).toEqual([28 + 1 * 44, 28 + 3 * 44]);
+  });
+
+  it('guitar: unchanged (row 3 single, rows 2 and 4 double)', () => {
+    const { container } = render(<Fretboard fretMin={1} fretMax={12} marks={[]} />);
+    expect(inlayYs(container, 5)).toEqual([28 + 3 * 44]);
+    expect(inlayYs(container, 12)).toEqual([28 + 2 * 44, 28 + 4 * 44]);
+  });
+});
