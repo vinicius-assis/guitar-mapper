@@ -260,6 +260,19 @@ describe('storage v2', () => {
       expect(data.instruments.guitar.progress).toEqual({});
     });
 
+    it.each([['unparseable', '{bad'], ['wrong version', JSON.stringify({ version: 2, settings: {} })]])(
+      'recovers from a %s v1 value, backing it up and leaving v1 untouched',
+      (_label, rawV1) => {
+        const storage = createMemoryStorage({ [LEGACY_STORAGE_KEY]: rawV1 });
+        const result = loadData(storage);
+        expect(result.recovered).toBe(true);
+        expect(result.storageAvailable).toBe(true);
+        expect(result.data).toEqual(createDefaultData());
+        expect(storage.dump()[BACKUP_KEY]).toBe(rawV1);
+        expect(storage.dump()[LEGACY_STORAGE_KEY]).toBe(rawV1);
+      },
+    );
+
     it('does not re-migrate v1 over a corrupted v2', () => {
       const rawV1 = JSON.stringify(v1);
       const storage = createMemoryStorage({ [STORAGE_KEY]: '{bad', [LEGACY_STORAGE_KEY]: rawV1 });

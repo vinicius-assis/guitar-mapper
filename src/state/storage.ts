@@ -286,33 +286,36 @@ export function loadData(storage: StorageLike | null): LoadResult {
     return { data: createDefaultData(), storageAvailable: false, recovered: false };
   }
 
-  if (raw === null) {
-    if (legacy !== null) {
-      try {
-        const parsed: unknown = JSON.parse(legacy);
-        if (isRecord(parsed) && parsed.version === 1) {
-          const data = migrateV1(parsed);
-          saveData(storage, data); // falha de escrita é ignorada
-          return { data, storageAvailable: true, recovered: false };
-        }
-      } catch {
-        // v1 ilegível: ignorado (a chave antiga nunca é alterada)
-      }
-    }
+  if (raw === null && legacy === null) {
     return { data: createDefaultData(), storageAvailable: true, recovered: false };
   }
 
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (isRecord(parsed) && parsed.version === 2) {
-      return { data: sanitizeV2(parsed), storageAvailable: true, recovered: false };
+  if (raw === null) {
+    // só existe a chave v1: migra; se ilegível ou de outra versão, recuperação (sem alterar a v1)
+    try {
+      const parsed: unknown = JSON.parse(legacy as string);
+      if (isRecord(parsed) && parsed.version === 1) {
+        const data = migrateV1(parsed);
+        saveData(storage, data); // falha de escrita é ignorada
+        return { data, storageAvailable: true, recovered: false };
+      }
+    } catch {
+      // cai para a recuperação abaixo
     }
-  } catch {
-    // cai para a recuperação abaixo
+    raw = legacy;
+  } else {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (isRecord(parsed) && parsed.version === 2) {
+        return { data: sanitizeV2(parsed), storageAvailable: true, recovered: false };
+      }
+    } catch {
+      // cai para a recuperação abaixo
+    }
   }
 
   try {
-    storage.setItem(BACKUP_KEY, raw);
+    storage.setItem(BACKUP_KEY, raw as string);
   } catch {
     // sem backup possível; segue com dados limpos
   }
