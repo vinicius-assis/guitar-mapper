@@ -42,7 +42,7 @@ export function SoundProvider({ player, children }: { player?: NotePlayer; child
     };
     return {
       playPosition: (p) => run(() => notePlayer.play(pitchOf(p))),
-      prepare: (ps) => run(() => notePlayer.prepare(ps.map(pitchOf))),
+      prepare: (ps) => run(() => notePlayer.prepare(ps.map((p) => pitchOf(p)))),
       unlock: () => run(() => notePlayer.unlock()),
     };
   }, [enabled, notePlayer]);

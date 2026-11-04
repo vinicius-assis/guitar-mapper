@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { BASS } from './instruments';
 import { allPositions, noteAt, positionsInFilter } from './fretboard';
 import {
   HIGHEST_MIDI,
@@ -43,7 +44,7 @@ describe('uniquePitchPositions', () => {
     expect(positions).toHaveLength(144);
     const unique = uniquePitchPositions(positions);
     expect(unique).toHaveLength(48);
-    expect(new Set(unique.map(pitchOf)).size).toBe(48);
+    expect(new Set(unique.map((p) => pitchOf(p))).size).toBe(48);
   });
 
   it('keeps the first position of each sound, in order', () => {
@@ -59,5 +60,16 @@ describe('uniquePitchPositions', () => {
   it('counts 17 sounds for the default focus (frets 1-5, naturals)', () => {
     const focus = { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 5, naturalsOnly: true };
     expect(uniquePitchPositions(positionsInFilter(focus))).toHaveLength(17);
+  });
+});
+
+describe('bass pitch', () => {
+  it('pitchOf', () => {
+    expect(pitchOf({ string: 4, fret: 0 }, BASS)).toBe(28);
+    expect(pitchOf({ string: 1, fret: 24 }, BASS)).toBe(67);
+  });
+  it('uniquePitchPositions merges equal sounds', () => {
+    const out = uniquePitchPositions([{ string: 4, fret: 5 }, { string: 3, fret: 0 }], BASS);
+    expect(out).toHaveLength(1);
   });
 });

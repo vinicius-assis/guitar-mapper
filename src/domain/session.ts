@@ -1,4 +1,5 @@
 import { noteAt, positionKey, type Position } from './fretboard';
+import { GUITAR, type Instrument } from './instruments';
 import type { NoteIndex } from './notes';
 import { pitchOf, uniquePitchPositions } from './pitch';
 import type { EarLevel, QuizMode } from './quiz';
@@ -36,6 +37,7 @@ function arrangeWithoutRepeats(
   items: Position[],
   start: NoteIndex | null,
   rng: () => number,
+  instrument: Instrument,
 ): Position[] {
   const remaining = [...items];
   const out: Position[] = [];
@@ -43,20 +45,20 @@ function arrangeWithoutRepeats(
   while (remaining.length > 0) {
     const left = remaining.length - 1;
     const counts = new Map<NoteIndex, number>();
-    for (const p of remaining) counts.set(noteAt(p), (counts.get(noteAt(p)) ?? 0) + 1);
+    for (const p of remaining) counts.set(noteAt(p, instrument), (counts.get(noteAt(p, instrument)) ?? 0) + 1);
     // Depois de escolher `picked`, sobram `left` posições: uma nota que não é a escolhida cabe
     // em até ceil(left/2) lugares; a própria nota escolhida, em até floor(left/2).
     const canFinish = (picked: NoteIndex) =>
       [...counts].every(([note, count]) =>
         note === picked ? count - 1 <= Math.floor(left / 2) : count <= Math.ceil(left / 2),
       );
-    const different = remaining.filter((p) => noteAt(p) !== last);
-    const good = different.filter((p) => canFinish(noteAt(p)));
+    const different = remaining.filter((p) => noteAt(p, instrument) !== last);
+    const good = different.filter((p) => canFinish(noteAt(p, instrument)));
     const pool = good.length > 0 ? good : different.length > 0 ? different : remaining;
     const pick = pool[Math.floor(rng() * pool.length)];
     remaining.splice(remaining.indexOf(pick), 1);
     out.push(pick);
-    last = noteAt(pick);
+    last = noteAt(pick, instrument);
   }
   return out;
 }
@@ -69,21 +71,22 @@ export function buildQueue(
   positions: Position[],
   rng: () => number,
   first: Position | null = null,
-  options: { avoidSameNote?: boolean; uniquePitch?: boolean } = {},
+  options: { avoidSameNote?: boolean; uniquePitch?: boolean; instrument?: Instrument } = {},
 ): Position[] {
+  const instrument = options.instrument ?? GUITAR;
   const firstKey = first ? positionKey(first) : null;
   // Ouvido: o mesmo som em cordas diferentes é a mesma pergunta, então entra uma vez só.
-  const pool = options.uniquePitch ? uniquePitchPositions(positions) : positions;
-  const firstPitch = first ? pitchOf(first) : null;
+  const pool = options.uniquePitch ? uniquePitchPositions(positions, instrument) : positions;
+  const firstPitch = first ? pitchOf(first, instrument) : null;
   const rest = pool.filter(
-    (p) => positionKey(p) !== firstKey && !(options.uniquePitch && pitchOf(p) === firstPitch),
+    (p) => positionKey(p) !== firstKey && !(options.uniquePitch && pitchOf(p, instrument) === firstPitch),
   );
   for (let i = rest.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [rest[i], rest[j]] = [rest[j], rest[i]];
   }
   const ordered = options.avoidSameNote
-    ? arrangeWithoutRepeats(rest, first ? noteAt(first) : null, rng)
+    ? arrangeWithoutRepeats(rest, first ? noteAt(first, instrument) : null, rng, instrument)
     : rest;
   return first ? [first, ...ordered] : ordered;
 }

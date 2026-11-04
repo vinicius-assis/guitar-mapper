@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mulberry32 } from '../test-utils';
 import { allPositions, noteAt, type Filter } from './fretboard';
+import { BASS } from './instruments';
 import { ALL_NOTES, NATURAL_NOTES, isNatural } from './notes';
 import {
   OPTION_COUNT,
@@ -112,5 +113,21 @@ describe('buildEarQuestion', () => {
     expect(buildEarQuestion(position, 'hard', false, mulberry32(1)).options).toEqual([
       ...ALL_NOTES,
     ]);
+  });
+});
+
+describe('bass questions', () => {
+  it('choice question uses bass notes and strings', () => {
+    const q = buildChoiceQuestion({ string: 4, fret: 3 }, true, mulberry32(1), BASS);
+    expect(q.answer).toBe(7);
+    expect(q.options).toHaveLength(4);
+    expect(new Set(q.options).size).toBe(4);
+  });
+  it('find question stays on the string', () => {
+    const filter: Filter = { strings: [2], fretMin: 1, fretMax: 12, naturalsOnly: false };
+    const q = buildFindQuestion({ string: 2, fret: 2 }, filter, BASS);
+    expect(q.target).toBe(4);
+    expect(q.validPositions.length).toBeGreaterThan(0);
+    expect(q.validPositions.every((p) => p.string === 2)).toBe(true);
   });
 });

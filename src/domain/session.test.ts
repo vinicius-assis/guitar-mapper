@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mulberry32 } from '../test-utils';
 import { noteAt, positionKey, positionsInFilter } from './fretboard';
+import { BASS } from './instruments';
 import { pitchOf } from './pitch';
 import {
   HISTORY_LIMIT,
@@ -152,7 +153,7 @@ describe('buildQueue uniquePitch (Ouvido)', () => {
     for (let seed = 1; seed <= 10; seed++) {
       const queue = buildQueue(focus, mulberry32(seed), null, { uniquePitch: true });
       expect(queue).toHaveLength(36);
-      expect(new Set(queue.map(pitchOf)).size).toBe(36);
+      expect(new Set(queue.map((p) => pitchOf(p))).size).toBe(36);
     }
   });
 
@@ -171,5 +172,19 @@ describe('buildQueue uniquePitch (Ouvido)', () => {
 
   it('is off by default', () => {
     expect(buildQueue(focus, mulberry32(1))).toHaveLength(72);
+  });
+});
+
+describe('bass queue', () => {
+  it('avoidSameNote uses bass notes', () => {
+    const f = { strings: [1, 2, 3, 4], fretMin: 1, fretMax: 12, naturalsOnly: false };
+    const queue = buildQueue(positionsInFilter(f, BASS), mulberry32(2), null, {
+      avoidSameNote: true,
+      instrument: BASS,
+    });
+    expect(queue).toHaveLength(48);
+    for (let i = 1; i < queue.length; i++) {
+      expect(noteAt(queue[i], BASS)).not.toBe(noteAt(queue[i - 1], BASS));
+    }
   });
 });

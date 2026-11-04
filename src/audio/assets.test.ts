@@ -16,7 +16,7 @@ const license = Object.values(
 
 describe('nylon guitar assets', () => {
   it('has an MP3 for every pitch on the fretboard', () => {
-    const pitches = new Set(allPositions().map(pitchOf));
+    const pitches = new Set(allPositions().map((p) => pitchOf(p)));
     for (const midi of pitches) {
       expect(mp3, `${midi}.mp3`).toContain(`/public/sounds/nylon/${midi}.mp3`);
     }

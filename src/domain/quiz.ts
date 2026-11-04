@@ -1,13 +1,12 @@
 import {
   MAX_FRET,
-  STRING_COUNT,
   noteAt,
   positionsInFilter,
   type Filter,
   type Position,
 } from './fretboard';
 import { ALL_NOTES, NATURAL_NOTES, type NoteIndex } from './notes';
-import { STANDARD_TUNING } from './tuning';
+import { GUITAR, type Instrument } from './instruments';
 
 export type QuizMode = 'position-to-note' | 'note-to-position' | 'flashcard' | 'ear';
 export type EarLevel = 'easy' | 'medium' | 'hard';
@@ -39,9 +38,9 @@ export function buildChoiceQuestion(
   position: Position,
   naturalsOnly: boolean,
   rng: () => number,
-  tuning: readonly NoteIndex[] = STANDARD_TUNING,
+  instrument: Instrument = GUITAR,
 ): ChoiceQuestion {
-  const answer = noteAt(position, tuning);
+  const answer = noteAt(position, instrument);
   const allowed = naturalsOnly ? NATURAL_NOTES : ALL_NOTES;
   const { string, fret } = position;
 
@@ -52,11 +51,11 @@ export function buildChoiceQuestion(
     { string, fret: fret + 2 },
     { string: string - 1, fret },
     { string: string + 1, fret },
-  ].filter((p) => p.string >= 1 && p.string <= STRING_COUNT && p.fret >= 0 && p.fret <= MAX_FRET);
+  ].filter((p) => p.string >= 1 && p.string <= instrument.stringCount && p.fret >= 0 && p.fret <= MAX_FRET);
 
   const distractors: NoteIndex[] = [];
   for (const n of neighbours) {
-    const note = noteAt(n, tuning);
+    const note = noteAt(n, instrument);
     if (note !== answer && allowed.includes(note) && !distractors.includes(note)) {
       distractors.push(note);
     }
@@ -90,10 +89,10 @@ export function buildEarQuestion(
   level: EarLevel,
   naturalsOnly: boolean,
   rng: () => number,
-  tuning: readonly NoteIndex[] = STANDARD_TUNING,
+  instrument: Instrument = GUITAR,
 ): ChoiceQuestion {
-  if (level === 'medium') return buildChoiceQuestion(position, naturalsOnly, rng, tuning);
-  const answer = noteAt(position, tuning);
+  if (level === 'medium') return buildChoiceQuestion(position, naturalsOnly, rng, instrument);
+  const answer = noteAt(position, instrument);
   const pool = naturalsOnly ? NATURAL_NOTES : ALL_NOTES;
   if (level === 'hard') return { position, answer, options: [...pool] };
   const far = pool.filter((n) => circularDistance(n, answer) >= EASY_MIN_DISTANCE);
@@ -104,9 +103,9 @@ export function buildEarQuestion(
 export function buildFindQuestion(
   position: Position,
   filter: Filter,
-  tuning: readonly NoteIndex[] = STANDARD_TUNING,
+  instrument: Instrument = GUITAR,
 ): FindQuestion {
-  const target = noteAt(position, tuning);
+  const target = noteAt(position, instrument);
   // A janela inclui a própria posição sorteada, mesmo que esteja fora do filtro
   // (ex.: aberta a partir do mapa de Progresso).
   const stringOnly: Filter = {
@@ -115,8 +114,8 @@ export function buildFindQuestion(
     fretMax: Math.max(filter.fretMax, position.fret),
     naturalsOnly: false,
   };
-  const validPositions = positionsInFilter(stringOnly, tuning).filter(
-    (p) => noteAt(p, tuning) === target,
+  const validPositions = positionsInFilter(stringOnly, instrument).filter(
+    (p) => noteAt(p, instrument) === target,
   );
   return { string: position.string, target, validPositions };
 }
