@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { allPositions } from '../domain/fretboard';
+import { BASS } from '../domain/instruments';
 import { pitchOf } from '../domain/pitch';
 
 // import.meta.glob (do Vite) evita depender de tipos do Node só para listar arquivos.
@@ -27,5 +28,36 @@ describe('nylon guitar assets', () => {
     expect(license).toMatch(/FluidR3/);
     expect(license).toMatch(/MIT/);
     expect(license).toMatch(/Creative Commons Attribution 3\.0/);
+  });
+});
+
+const bassMp3 = Object.keys(
+  import.meta.glob('/public/sounds/bass/*.mp3', { query: '?url', import: 'default' }),
+);
+const bassLicense = Object.values(
+  import.meta.glob('/public/sounds/bass/LICENSE.txt', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+)[0] as string | undefined;
+
+describe('bass assets', () => {
+  it('has an MP3 for every pitch on the bass fretboard', () => {
+    const pitches = new Set(allPositions(BASS).map((p) => pitchOf(p, BASS)));
+    for (const midi of pitches) {
+      expect(bassMp3, `${midi}.mp3`).toContain(`/public/sounds/bass/${midi}.mp3`);
+    }
+  });
+
+  it('ships the license notices', () => {
+    expect(bassLicense).toBeDefined();
+    expect(bassLicense).toMatch(/FluidR3/);
+    expect(bassLicense).toMatch(/MIT/);
+    expect(bassLicense).toMatch(/Creative Commons Attribution 3\.0/);
+  });
+
+  it('has exactly the 28-67 range', () => {
+    expect(bassMp3.length).toBe(40);
   });
 });
