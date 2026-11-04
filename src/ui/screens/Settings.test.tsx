@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
+import { STORAGE_KEY } from '../../state/storage';
 import { AppProvider } from '../../state/AppState';
 import { readSaved, seededStorage } from '../../test-utils';
 import { ConfirmProvider } from '../ConfirmDialog';
@@ -58,14 +59,16 @@ describe('Settings', () => {
   it('picks the instrument globally and leaves the other settings alone', () => {
     const storage = setup();
     expect(screen.getByLabelText('Violão')).toBeChecked();
-    const before = readSaved(storage).settings;
+    // readSaved fixa o instrumento ativo; aqui lemos o valor global cru gravado.
+    const saved = () => JSON.parse(storage.dump()[STORAGE_KEY]).settings;
+    const before = saved();
     fireEvent.click(screen.getByLabelText('Baixo'));
-    const after = readSaved(storage).settings;
+    const after = saved();
     expect(after.instrument).toBe('bass');
     expect(screen.getByLabelText('Baixo')).toBeChecked();
     expect({ ...after, instrument: 'guitar' }).toEqual({ ...before, instrument: 'guitar' });
     fireEvent.click(screen.getByLabelText('Violão'));
-    expect(readSaved(storage).settings.instrument).toBe('guitar');
+    expect(saved().instrument).toBe('guitar');
   });
 
   it('places the Instrumento group right before Notação', () => {
