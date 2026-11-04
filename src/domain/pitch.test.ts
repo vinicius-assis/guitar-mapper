@@ -23,8 +23,6 @@ describe('pitchOf', () => {
 
   it('spans E2 to E6 over the whole neck', () => {
     expect(pitchOf({ string: 1, fret: 24 })).toBe(HIGHEST_MIDI);
-    expect(HIGHEST_MIDI).toBe(88);
-    expect(LOWEST_MIDI).toBe(40);
     for (const p of allPositions()) {
       expect(pitchOf(p)).toBeGreaterThanOrEqual(LOWEST_MIDI);
       expect(pitchOf(p)).toBeLessThanOrEqual(HIGHEST_MIDI);

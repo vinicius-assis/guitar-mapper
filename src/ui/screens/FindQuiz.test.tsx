@@ -7,8 +7,7 @@ import { createMemoryStorage, seededStorage } from '../../test-utils';
 import { FindQuiz } from './FindQuiz';
 import { fireEvent } from '@testing-library/react';
 import { BASS } from '../../domain/instruments';
-import { positionsOfNote } from '../../domain/fretboard';
-import { noteAt } from '../../domain/fretboard';
+import { noteAt, positionsOfNote } from '../../domain/fretboard';
 
 // jsdom não guarda scrollLeft; simulamos para observar para onde o braço rola.
 beforeEach(() => {

@@ -1,8 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { STORAGE_KEY } from '../../state/storage';
 import { AppProvider } from '../../state/AppState';
-import { readSaved, seededStorage } from '../../test-utils';
+import { readRawSettings, readSaved, seededStorage } from '../../test-utils';
 import { ConfirmProvider } from '../ConfirmDialog';
 import { Settings } from './Settings';
 
@@ -60,7 +59,7 @@ describe('Settings', () => {
     const storage = setup();
     expect(screen.getByLabelText('Violão')).toBeChecked();
     // readSaved fixa o instrumento ativo; aqui lemos o valor global cru gravado.
-    const saved = () => JSON.parse(storage.dump()[STORAGE_KEY]).settings;
+    const saved = () => readRawSettings(storage);
     const before = saved();
     fireEvent.click(screen.getByLabelText('Baixo'));
     const after = saved();

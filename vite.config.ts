@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         name: 'Guitar Mapper',
         short_name: 'Guitar Mapper',
-        description: 'Memorize as notas do braço da guitarra.',
+        description: 'Memorize as notas do braço do violão e do baixo.',
         lang: 'pt-BR',
         display: 'standalone',
         orientation: 'any',

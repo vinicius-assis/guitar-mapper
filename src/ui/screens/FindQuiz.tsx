@@ -18,8 +18,10 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   const breakpoint = useBreakpoint();
   const fit = breakpoint !== 'mobile';
   const expand = breakpoint === 'desktop';
-  const question = useMemo(() => buildFindQuestion(position, filter, instrument),
-    [position, filter, instrument],);
+  const question = useMemo(
+    () => buildFindQuestion(position, filter, instrument),
+    [position, filter, instrument],
+  );
   const [tapped, setTapped] = useState<Position | null>(null);
   const correct = tapped !== null && isCorrectFind(question, tapped);
   useAutoAdvance(correct, onNext);

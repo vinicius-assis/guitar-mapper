@@ -698,6 +698,15 @@ describe('Study: header menu', () => {
   });
 });
 
+describe('Study: Ouvido description on the guitar', () => {
+  it('uses the same neutral sentence', () => {
+    setup({ mode: 'ear' });
+    expect(document.querySelector('.mode-description')!.textContent).toBe(
+      'Ouça uma nota e descubra qual é. Treina o ouvido, sem ver o braço até responder.',
+    );
+  });
+});
+
 describe('Study: Ouvido counts sounds, not positions', () => {
   const FULL: Settings['filter'] = {
     strings: [1, 2, 3, 4, 5, 6],
@@ -1012,6 +1021,15 @@ describe('Study: bass', () => {
     start();
     fireEvent.click(screen.getByRole('button', { name: 'A' }));
     expect(readSaved(storage, 'bass').progress['4-5'].correct).toBe(1);
+  });
+
+  it('Ouvido description is neutral for the bass (no "violão")', () => {
+    setupBass({ mode: 'ear' });
+    const text = document.querySelector('.mode-description')!.textContent!;
+    expect(text).toBe(
+      'Ouça uma nota e descubra qual é. Treina o ouvido, sem ver o braço até responder.',
+    );
+    expect(text).not.toContain('violão');
   });
 
   it('Ouvido counts distinct bass sounds', () => {

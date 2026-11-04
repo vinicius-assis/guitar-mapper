@@ -1,6 +1,6 @@
 # Guitar Mapper
 
-App web (PWA) para memorizar as notas do braço da guitarra, casas 0–24, com quiz de múltipla escolha, "encontre a nota" no braço e flashcards, com repetição espaçada.
+App web (PWA) para memorizar as notas do braço do violão e do baixo, casas 0–24, com quiz de múltipla escolha, "encontre a nota" no braço e flashcards, com repetição espaçada.
 
 ## Desenvolvimento
 

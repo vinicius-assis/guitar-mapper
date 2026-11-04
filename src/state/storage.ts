@@ -268,12 +268,6 @@ function migrateV1(parsed: Record<string, unknown>): AppData {
   };
 }
 
-export interface LoadResult {
-  data: AppData;
-  storageAvailable: boolean;
-  recovered: boolean;
-}
-
 export function loadData(storage: StorageLike | null): LoadResult {
   if (!storage) return { data: createDefaultData(), storageAvailable: false, recovered: false };
 
@@ -286,14 +280,15 @@ export function loadData(storage: StorageLike | null): LoadResult {
     return { data: createDefaultData(), storageAvailable: false, recovered: false };
   }
 
-  if (raw === null && legacy === null) {
+  const text = raw ?? legacy;
+  if (text === null) {
     return { data: createDefaultData(), storageAvailable: true, recovered: false };
   }
 
   if (raw === null) {
     // só existe a chave v1: migra; se ilegível ou de outra versão, recuperação (sem alterar a v1)
     try {
-      const parsed: unknown = JSON.parse(legacy as string);
+      const parsed: unknown = JSON.parse(text);
       if (isRecord(parsed) && parsed.version === 1) {
         const data = migrateV1(parsed);
         saveData(storage, data); // falha de escrita é ignorada
@@ -302,11 +297,10 @@ export function loadData(storage: StorageLike | null): LoadResult {
     } catch {
       // cai para a recuperação abaixo
     }
-    raw = legacy;
   } else {
     try {
-      const parsed: unknown = JSON.parse(raw);
-      if (isRecord(parsed) && parsed.version === 2) {
+      const parsed: unknown = JSON.parse(text);
+      if (isRecord(parsed) && parsed.version === 2 && isRecord(parsed.instruments)) {
         return { data: sanitizeV2(parsed), storageAvailable: true, recovered: false };
       }
     } catch {
@@ -315,7 +309,7 @@ export function loadData(storage: StorageLike | null): LoadResult {
   }
 
   try {
-    storage.setItem(BACKUP_KEY, raw as string);
+    storage.setItem(BACKUP_KEY, text);
   } catch {
     // sem backup possível; segue com dados limpos
   }

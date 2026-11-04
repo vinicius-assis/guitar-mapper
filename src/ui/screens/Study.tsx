@@ -38,7 +38,10 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   const desktop = useBreakpoint() === 'desktop';
   useQuizShortcuts(true);
   const { settings } = data;
-  const candidates = useMemo(() => positionsInFilter(settings.filter, instrument), [settings.filter, instrument]);
+  const candidates = useMemo(
+    () => positionsInFilter(settings.filter, instrument),
+    [settings.filter, instrument],
+  );
   // Ouvido pergunta cada som uma vez (o mesmo som em cordas diferentes não é outra pergunta).
   const questionCount = useMemo(
     () => (settings.mode === 'ear' ? uniquePitchPositions(candidates, instrument).length : candidates.length),

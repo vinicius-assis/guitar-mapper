@@ -6,7 +6,7 @@ export const MAX_FRET = 24;
 export const FIRST_QUIZ_FRET = 1;
 
 export interface Position {
-  /** 1 (E agudo) … 6 (E grave) */
+  /** Número da corda: 1 (a mais aguda) até a última corda do instrumento (6 no violão, 4 no baixo). */
   string: number;
   /** 0 (solta) … 24 */
   fret: number;

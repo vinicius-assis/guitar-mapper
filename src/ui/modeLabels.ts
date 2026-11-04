@@ -14,7 +14,7 @@ export const MODE_DESCRIPTIONS: Record<QuizMode, string> = {
     'O app pede uma nota numa corda e você toca no braço onde ela está. Treina o caminho inverso, do nome para a posição.',
   flashcard:
     'Olhe o ponto e tente lembrar a nota de cabeça antes de revelar. Sem opções, e você mesmo diz se acertou. É o mais exigente.',
-  ear: 'Ouça uma nota de violão e descubra qual é. Treina o ouvido, sem ver o braço até responder.',
+  ear: 'Ouça uma nota e descubra qual é. Treina o ouvido, sem ver o braço até responder.',
 };
 
 export const EAR_LEVELS: { level: EarLevel; label: 'Fácil' | 'Médio' | 'Difícil'; description: string }[] = [

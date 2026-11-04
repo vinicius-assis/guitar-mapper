@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import type { HistoryEntry } from '../../domain/session';
 import { AppProvider } from '../../state/AppState';
@@ -223,7 +223,7 @@ describe('Progress layout by width', () => {
 
 describe('Progress (bass)', () => {
   function renderBass(progress = {}, guitarProgress = {}) {
-    const storage = seededStorage({ settings: { instrument: 'bass' }, progress: guitarProgress });
+    const storage = seededStorage({ instrument: 'guitar', settings: { instrument: 'bass' }, progress: guitarProgress });
     const data = JSON.parse(storage.getItem('guitar-mapper:v2')!);
     data.instruments.bass.progress = progress;
     storage.setItem('guitar-mapper:v2', JSON.stringify(data));
@@ -244,8 +244,18 @@ describe('Progress (bass)', () => {
   });
 
   it("does not show the guitar's progress", () => {
-    renderBass({}, { '6-3': entry(5) });
+    // '1-3' existe nos dois braços; com o violão ativo conta como dominada.
+    renderBass({}, { '1-3': entry(5) });
     expect(screen.getByText('Nunca vistas: 96')).toBeInTheDocument();
     expect(screen.getByText('Dominadas: 0')).toBeInTheDocument();
+    cleanup();
+    render(
+      <AppProvider storage={seededStorage({ progress: { '1-3': entry(5) } })}>
+        <ConfirmProvider>
+          <Progress onSelect={() => {}} />
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    expect(screen.getByText('Dominadas: 1')).toBeInTheDocument();
   });
 });

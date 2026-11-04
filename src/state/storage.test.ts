@@ -292,6 +292,20 @@ describe('storage v2', () => {
     expect(BACKUP_KEY).toBe('guitar-mapper:v2:backup');
   });
 
+  it.each([['missing', { version: 2, settings: {} }], ['not an object', { version: 2, settings: {}, instruments: 5 }]])(
+    'treats a v2 value whose instruments is %s as unreadable: backs it up and recovers',
+    (_label, value) => {
+      const raw = JSON.stringify(value);
+      const rawV1 = JSON.stringify({ version: 1, settings: {}, progress: {}, history: [] });
+      const storage = createMemoryStorage({ [STORAGE_KEY]: raw, [LEGACY_STORAGE_KEY]: rawV1 });
+      const result = loadData(storage);
+      expect(result.recovered).toBe(true);
+      expect(result.data).toEqual(createDefaultData());
+      expect(storage.dump()[BACKUP_KEY]).toBe(raw);
+      expect(storage.dump()[LEGACY_STORAGE_KEY]).toBe(rawV1);
+    },
+  );
+
   it('sanitizes the bass bucket by its own string count', () => {
     const base = createDefaultData().instruments.bass;
     const raw = v2Raw(

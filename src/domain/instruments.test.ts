@@ -11,6 +11,10 @@ describe('instruments', () => {
     for (let i = 0; i < 4; i++) expect(BASS.tuning[i]).toBe(BASS.openMidi[i] % 12);
     for (let i = 0; i < 6; i++) expect(GUITAR.tuning[i]).toBe(GUITAR.openMidi[i] % 12);
   });
+  it('has an accessible board label per instrument', () => {
+    expect(GUITAR.boardLabel).toBe('Braço da guitarra');
+    expect(BASS.boardLabel).toBe('Braço do baixo');
+  });
   it('looks up by id', () => {
     expect(instrumentById('bass')).toBe(BASS);
     expect(instrumentById('guitar')).toBe(GUITAR);

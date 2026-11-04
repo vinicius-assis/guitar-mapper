@@ -1,5 +1,4 @@
 import {
-  LEGACY_STORAGE_KEY,
   STORAGE_KEY,
   activeView,
   createDefaultData,
@@ -65,24 +64,29 @@ export function seededStorage(
   const data = createDefaultData();
   const { filter, ...globals } = overrides.settings ?? {};
   data.settings = { ...data.settings, ...globals };
-  const bucket = data.instruments[overrides.instrument ?? 'guitar'];
+  const bucket = data.instruments[overrides.instrument ?? overrides.settings?.instrument ?? 'guitar'];
   if (filter) bucket.filter = filter;
   if (overrides.progress) bucket.progress = overrides.progress;
   if (overrides.history) bucket.history = overrides.history;
   return createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(data) });
 }
 
-/** Storage só com a chave antiga (v1), para testar a migração. */
-export function seededLegacyStorage(v1Data: unknown) {
-  return createMemoryStorage({ [LEGACY_STORAGE_KEY]: JSON.stringify(v1Data) });
-}
-
+/**
+ * Visão plana do balde de `instrument` (padrão: violão). Atenção: devolve
+ * `settings.instrument` igual ao argumento, não ao instrumento realmente salvo;
+ * para o valor gravado use `readRawSettings`.
+ */
 export function readSaved(
   storage: { dump(): Record<string, string> },
   instrument: InstrumentId = 'guitar',
 ): ActiveData {
   const data = JSON.parse(storage.dump()[STORAGE_KEY]);
   return activeView({ ...data, settings: { ...data.settings, instrument } });
+}
+
+/** Os `settings` globais exatamente como gravados (inclui o `instrument` ativo real). */
+export function readRawSettings(storage: { dump(): Record<string, string> }): Settings {
+  return JSON.parse(storage.dump()[STORAGE_KEY]).settings;
 }
 
 /** Simula a largura da janela: instala um matchMedia falso que entende `(min-width: Npx)`. */
