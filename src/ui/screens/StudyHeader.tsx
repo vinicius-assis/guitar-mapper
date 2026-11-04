@@ -1,4 +1,5 @@
 import { MODES, modeLabel } from '../modeLabels';
+import { InstrumentBadge } from '../InstrumentBadge';
 import type { QuizMode } from '../../domain/quiz';
 
 interface StudyHeaderProps {
@@ -39,6 +40,7 @@ export function StudyHeader({
           alt="Guitar Mapper"
         />
         <span className="study-header__title">{modeLabel(mode)}</span>
+        <InstrumentBadge />
       </div>
       <button
         type="button"

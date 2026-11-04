@@ -1,3 +1,4 @@
+import { InstrumentBadge } from '../InstrumentBadge';
 import { useFocusFilter, FRET_OPTIONS, FRET_PRESETS } from '../useFocusFilter';
 
 export function Focus() {
@@ -6,7 +7,10 @@ export function Focus() {
 
   return (
     <section className="screen screen--form">
-      <h2>Foco</h2>
+      <div className="title-row">
+        <h2>Foco</h2>
+        <InstrumentBadge />
+      </div>
 
       <h3>Cordas</h3>
       <div className="chips">

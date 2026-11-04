@@ -130,3 +130,40 @@ describe('App layout by width', () => {
     expect(screen.getByLabelText('Mão esquerda')).toBeInTheDocument();
   });
 });
+
+describe('App instrument badge', () => {
+  let viewport: ReturnType<typeof mockViewport> | null = null;
+  afterEach(() => viewport?.restore());
+  const go = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
+
+  it('desktop: the sidebar shows it', () => {
+    viewport = mockViewport(1280);
+    render(<App storage={seededStorage()} />);
+    const nav = screen.getByRole('navigation', { name: 'Principal' });
+    expect(within(nav).getByText('Violão')).toHaveClass('instrument-badge');
+  });
+
+  it('phone: the Estudar header, Progresso and Foco show it; headings keep their names', () => {
+    viewport = mockViewport(390);
+    render(<App storage={seededStorage()} />);
+    const header = screen.getByRole('group', { name: 'Exercício' });
+    expect(within(header).getByText('Violão')).toHaveClass('instrument-badge');
+    go('Progresso');
+    expect(screen.getByRole('heading', { name: 'Progresso' })).toBeInTheDocument();
+    expect(screen.getByText('Violão')).toHaveClass('instrument-badge');
+    go('Foco');
+    expect(screen.getByRole('heading', { name: 'Foco' })).toBeInTheDocument();
+    expect(screen.getByText('Violão')).toHaveClass('instrument-badge');
+  });
+
+  it('updates to Baixo after switching in Ajustes, and is never a button', () => {
+    viewport = mockViewport(390);
+    render(<App storage={seededStorage()} />);
+    go('Ajustes');
+    fireEvent.click(screen.getByLabelText('Baixo'));
+    go('Estudar');
+    const header = screen.getByRole('group', { name: 'Exercício' });
+    expect(within(header).getByText('Baixo')).toHaveClass('instrument-badge');
+    expect(within(header).queryByRole('button', { name: 'Baixo' })).toBeNull();
+  });
+});

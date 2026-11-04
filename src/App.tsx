@@ -6,6 +6,7 @@ import { SoundProvider } from './audio/SoundProvider';
 import { ConfirmProvider } from './ui/ConfirmDialog';
 import { Focus } from './ui/screens/Focus';
 import { Progress } from './ui/screens/Progress';
+import { InstrumentBadge } from './ui/InstrumentBadge';
 import { Settings } from './ui/screens/Settings';
 import { Study } from './ui/screens/Study';
 import { useBreakpoint } from './ui/useBreakpoint';
@@ -85,6 +86,7 @@ function Shell() {
                 alt="Guitar Mapper"
               />
               <span>Guitar Mapper</span>
+              <InstrumentBadge />
             </div>
           )}
           {TABS.map(({ tab: t, label }) => (

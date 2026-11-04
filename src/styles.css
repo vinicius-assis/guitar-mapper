@@ -270,6 +270,9 @@ main { display: flex; flex-direction: column; }
 .focus-rows--stacked dt:first-child { margin-top: 0; }
 .focus-count .static-value { font-size: 1.5rem; }
 .focus-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.instrument-badge { display: inline-block; line-height: 1.2; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.title-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; }
+.screen .title-row h2 { margin: 0; }
 .badge--button { cursor: pointer; color: inherit; }
 .badge--button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #1a1408; }
 .badge--select { appearance: none; -webkit-appearance: none; min-height: 32px; padding-right: 12px; cursor: pointer; color: inherit; }

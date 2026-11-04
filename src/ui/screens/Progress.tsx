@@ -8,6 +8,7 @@ import {
 } from '../../domain/fretboard';
 import { masteryOf, type Mastery } from '../../domain/scheduler';
 import { useAppState } from '../../state/AppState';
+import { InstrumentBadge } from '../InstrumentBadge';
 import { Fretboard, type Mark } from '../Fretboard';
 import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
@@ -44,7 +45,10 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
     <section className="screen">
       <div className="progress-layout">
         <div className="progress-main">
-          <h2>Progresso</h2>
+          <div className="title-row">
+            <h2>Progresso</h2>
+            <InstrumentBadge />
+          </div>
           <Fretboard
             instrument={instrument}
             fit={breakpoint !== 'mobile'}
