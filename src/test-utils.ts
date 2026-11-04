@@ -1,10 +1,13 @@
 import {
+  LEGACY_STORAGE_KEY,
   STORAGE_KEY,
+  activeView,
   createDefaultData,
-  type AppData,
+  type ActiveData,
   type Settings,
   type StorageLike,
 } from './state/storage';
+import type { InstrumentId } from './domain/instruments';
 import type { HistoryEntry } from './domain/session';
 import type { ProgressMap } from './domain/scheduler';
 
@@ -52,20 +55,34 @@ export function createThrowingStorage(failOn: 'read' | 'write' | 'all'): Storage
 }
 
 export function seededStorage(
-  overrides: { settings?: Partial<Settings>; progress?: ProgressMap; history?: HistoryEntry[] } = {},
+  overrides: {
+    settings?: Partial<Settings>;
+    progress?: ProgressMap;
+    history?: HistoryEntry[];
+    instrument?: InstrumentId;
+  } = {},
 ) {
-  const base = createDefaultData();
-  const data: AppData = {
-    version: 1,
-    settings: { ...base.settings, ...overrides.settings },
-    progress: overrides.progress ?? {},
-    history: overrides.history ?? [],
-  };
+  const data = createDefaultData();
+  const { filter, ...globals } = overrides.settings ?? {};
+  data.settings = { ...data.settings, ...globals };
+  const bucket = data.instruments[overrides.instrument ?? 'guitar'];
+  if (filter) bucket.filter = filter;
+  if (overrides.progress) bucket.progress = overrides.progress;
+  if (overrides.history) bucket.history = overrides.history;
   return createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(data) });
 }
 
-export function readSaved(storage: { dump(): Record<string, string> }): AppData {
-  return JSON.parse(storage.dump()[STORAGE_KEY]) as AppData;
+/** Storage só com a chave antiga (v1), para testar a migração. */
+export function seededLegacyStorage(v1Data: unknown) {
+  return createMemoryStorage({ [LEGACY_STORAGE_KEY]: JSON.stringify(v1Data) });
+}
+
+export function readSaved(
+  storage: { dump(): Record<string, string> },
+  instrument: InstrumentId = 'guitar',
+): ActiveData {
+  const data = JSON.parse(storage.dump()[STORAGE_KEY]);
+  return activeView({ ...data, settings: { ...data.settings, instrument } });
 }
 
 /** Simula a largura da janela: instala um matchMedia falso que entende `(min-width: Npx)`. */

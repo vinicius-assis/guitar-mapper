@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { SoundProvider } from '../../audio/SoundProvider';
 import { AppProvider } from '../../state/AppState';
-import { createDefaultData } from '../../state/storage';
+import { activeView, createDefaultData } from '../../state/storage';
 import { createMemoryStorage } from '../../test-utils';
 import { FindQuiz } from './FindQuiz';
 
@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 function renderFind(leftHanded: boolean) {
-  const settings = createDefaultData().settings;
+  const settings = activeView(createDefaultData()).settings;
   settings.leftHanded = leftHanded;
   settings.filter = { strings: [6], fretMin: 12, fretMax: 24, naturalsOnly: false };
   const player = { unlock: () => {}, prepare: () => {}, play: () => {} };

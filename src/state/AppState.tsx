@@ -10,17 +10,22 @@ import {
 import { positionKey, type Position } from '../domain/fretboard';
 import { addToHistory, type HistoryEntry } from '../domain/session';
 import { applyAnswer } from '../domain/scheduler';
+import { instrumentById, type Instrument } from '../domain/instruments';
 import {
+  activeView,
   getBrowserStorage,
   loadData,
   saveData,
+  withActive,
+  type ActiveData,
   type AppData,
   type Settings,
   type StorageLike,
 } from './storage';
 
 interface AppStateValue {
-  data: AppData;
+  data: ActiveData;
+  instrument: Instrument;
   storageAvailable: boolean;
   recovered: boolean;
   recordAnswer(position: Position, correct: boolean): void;
@@ -45,13 +50,13 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
     return { storage: resolved, ...loadData(resolved) };
   });
   const dataRef = useRef<AppData>(init.data);
-  const [data, setData] = useState<AppData>(init.data);
+  const [appData, setAppData] = useState<AppData>(init.data);
   const [storageAvailable, setStorageAvailable] = useState(init.storageAvailable);
 
   const commit = useCallback(
     (next: AppData) => {
       dataRef.current = next;
-      setData(next);
+      setAppData(next);
       if (!saveData(init.storage, next)) setStorageAvailable(false);
     },
     [init.storage],
@@ -61,10 +66,8 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
     (position: Position, correct: boolean) => {
       const current = dataRef.current;
       const key = positionKey(position);
-      commit({
-        ...current,
-        progress: { ...current.progress, [key]: applyAnswer(current.progress[key], correct, now()) },
-      });
+      const { progress } = activeView(current);
+      commit(withActive(current, { progress: { ...progress, [key]: applyAnswer(progress[key], correct, now()) } }));
     },
     [commit, now],
   );
@@ -72,30 +75,36 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
   const updateSettings = useCallback(
     (patch: Partial<Settings>) => {
       const current = dataRef.current;
-      commit({ ...current, settings: { ...current.settings, ...patch } });
+      const { filter, ...globals } = patch;
+      const next: AppData = { ...current, settings: { ...current.settings, ...globals } };
+      commit(filter ? withActive(next, { filter }) : next);
     },
     [commit],
   );
 
   const resetProgress = useCallback(() => {
-    commit({ ...dataRef.current, progress: {} });
+    commit(withActive(dataRef.current, { progress: {} }));
   }, [commit]);
 
   const recordSession = useCallback(
     (entry: HistoryEntry) => {
       const current = dataRef.current;
-      commit({ ...current, history: addToHistory(current.history, entry) });
+      commit(withActive(current, { history: addToHistory(activeView(current).history, entry) }));
     },
     [commit],
   );
 
   const clearHistory = useCallback(() => {
-    commit({ ...dataRef.current, history: [] });
+    commit(withActive(dataRef.current, { history: [] }));
   }, [commit]);
+
+  const data = useMemo(() => activeView(appData), [appData]);
+  const instrument = useMemo(() => instrumentById(appData.settings.instrument), [appData.settings.instrument]);
 
   const value = useMemo<AppStateValue>(
     () => ({
       data,
+      instrument,
       storageAvailable,
       recovered: init.recovered,
       recordAnswer,
@@ -106,6 +115,7 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
     }),
     [
       data,
+      instrument,
       storageAvailable,
       init.recovered,
       recordAnswer,

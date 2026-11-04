@@ -4,7 +4,7 @@ import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
 import type { EarLevel } from '../../domain/quiz';
 import { AppProvider } from '../../state/AppState';
-import { createDefaultData, type Settings } from '../../state/storage';
+import { activeView, createDefaultData, type Settings } from '../../state/storage';
 import { createMemoryStorage } from '../../test-utils';
 import { EarQuiz } from './EarQuiz';
 
@@ -12,7 +12,7 @@ const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play:
 
 // Corda 6, casa 12 = E3 (MIDI 52).
 function setup(level: EarLevel, naturalsOnly = true, filter?: Settings['filter']) {
-  const settings = createDefaultData().settings;
+  const settings = activeView(createDefaultData()).settings;
   settings.notation = 'cifra';
   settings.earLevel = level;
   settings.filter = filter ?? { strings: [6], fretMin: 12, fretMax: 12, naturalsOnly };

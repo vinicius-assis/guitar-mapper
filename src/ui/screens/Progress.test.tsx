@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import type { HistoryEntry } from '../../domain/session';
 import { AppProvider } from '../../state/AppState';
-import { mockBoardWidth, mockViewport, seededStorage } from '../../test-utils';
+import { mockBoardWidth, mockViewport, readSaved, seededStorage } from '../../test-utils';
 import { ConfirmProvider } from '../ConfirmDialog';
 import { Progress } from './Progress';
 
@@ -87,7 +87,7 @@ describe('Progress', () => {
 
     it('resets the progress only after confirming, keeping the history', async () => {
       const storage = renderWith();
-      const saved = () => JSON.parse(storage.dump()['guitar-mapper:v1']);
+      const saved = () => readSaved(storage);
       fireEvent.click(screen.getByRole('button', { name: 'Zerar progresso' }));
       const dialog = screen.getByRole('alertdialog', { name: 'Zerar o progresso?' });
       expect(dialog).toHaveTextContent('Isso não pode ser desfeito.');
@@ -164,11 +164,11 @@ describe('Progress', () => {
       expect(dialog).toHaveTextContent('Isso não pode ser desfeito.');
       fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
       await act(async () => {});
-      expect(JSON.parse(storage.dump()['guitar-mapper:v1']).history).toHaveLength(2);
+      expect(readSaved(storage).history).toHaveLength(2);
       fireEvent.click(screen.getByRole('button', { name: 'Limpar histórico' }));
       fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Limpar' }));
       await act(async () => {});
-      const saved = JSON.parse(storage.dump()['guitar-mapper:v1']);
+      const saved = readSaved(storage);
       expect(saved.history).toEqual([]);
       expect(Object.keys(saved.progress)).toEqual(['6-1']);
       expect(screen.getByText('Nenhuma sessão ainda.')).toBeInTheDocument();
