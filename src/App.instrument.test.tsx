@@ -1,23 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { App } from './App';
-import { useAppState } from './state/AppState';
 import { seededStorage, mockViewport } from './test-utils';
 import { BASS } from './domain/instruments';
 import { positionsInFilter } from './domain/fretboard';
 import { defaultFilterFor } from './state/storage';
-
-// O seletor de instrumento ainda não existe em Ajustes: esta tela de teste faz o papel dele.
-vi.mock('./ui/screens/Settings', () => ({
-  Settings: function FakeSettings() {
-    const { updateSettings } = useAppState();
-    return (
-      <button type="button" onClick={() => updateSettings({ instrument: 'bass' })}>
-        Baixo
-      </button>
-    );
-  },
-}));
 
 describe('App: instrument change', () => {
   it('after a guitar session in progress, Ajustes -> Baixo -> Estudar shows the fresh bass start screen', () => {
@@ -35,7 +22,7 @@ describe('App: instrument change', () => {
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Baixo' }));
+      fireEvent.click(screen.getByRole('radio', { name: 'Baixo' }));
       fireEvent.click(screen.getByRole('button', { name: 'Estudar' }));
 
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();

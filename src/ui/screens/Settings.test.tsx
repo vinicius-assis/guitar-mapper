@@ -54,4 +54,31 @@ describe('Settings', () => {
     expect(credits).toHaveTextContent('FluidR3');
     expect(credits).toHaveTextContent('Creative Commons Attribution 3.0');
   });
+
+  it('picks the instrument globally and leaves the other settings alone', () => {
+    const storage = setup();
+    expect(screen.getByLabelText('Violão')).toBeChecked();
+    const before = readSaved(storage).settings;
+    fireEvent.click(screen.getByLabelText('Baixo'));
+    const after = readSaved(storage).settings;
+    expect(after.instrument).toBe('bass');
+    expect(screen.getByLabelText('Baixo')).toBeChecked();
+    expect({ ...after, instrument: 'guitar' }).toEqual({ ...before, instrument: 'guitar' });
+    fireEvent.click(screen.getByLabelText('Violão'));
+    expect(readSaved(storage).settings.instrument).toBe('guitar');
+  });
+
+  it('places the Instrumento group right before Notação', () => {
+    setup();
+    const groups = screen.getAllByRole('group').map((g) => g.querySelector('legend')?.textContent);
+    expect(groups.indexOf('Instrumento')).toBe(groups.indexOf('Notação') - 1);
+  });
+
+  it('credits both the nylon guitar and the bass sounds', () => {
+    setup();
+    const credits = screen.getByRole('heading', { name: 'Créditos' }).parentElement!;
+    expect(credits).toHaveTextContent('violão de nylon');
+    expect(credits).toHaveTextContent('baixo');
+    expect(credits).toHaveTextContent('Electric Bass (finger)');
+  });
 });

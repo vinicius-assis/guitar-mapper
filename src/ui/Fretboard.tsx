@@ -138,7 +138,7 @@ export function Fretboard({
           ))}
         </div>
       )}
-      <div className="fretboard" ref={scrollRef} role="group" aria-label="Braço da guitarra">
+      <div className="fretboard" ref={scrollRef} role="group" aria-label={instrument.id === 'bass' ? 'Braço do baixo' : 'Braço da guitarra'}>
         <svg
           width={width}
           height={height}

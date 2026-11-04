@@ -1,4 +1,5 @@
 import type { Notation } from '../../domain/notes';
+import { INSTRUMENTS } from '../../domain/instruments';
 import { useAppState } from '../../state/AppState';
 
 const NOTATIONS: { value: Notation; label: string }[] = [
@@ -14,6 +15,21 @@ export function Settings() {
   return (
     <section className="screen screen--form">
       <h2>Ajustes</h2>
+
+      <fieldset>
+        <legend>Instrumento</legend>
+        {INSTRUMENTS.map(({ id, label }) => (
+          <label key={id} className="check">
+            <input
+              type="radio"
+              name="instrument"
+              checked={settings.instrument === id}
+              onChange={() => updateSettings({ instrument: id })}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
 
       <fieldset>
         <legend>Notação</legend>
@@ -52,8 +68,9 @@ export function Settings() {
       <section aria-labelledby="credits-title">
         <h3 id="credits-title">Créditos</h3>
         <p className="hint">
-          Sons de violão de nylon: FluidR3 GM, licença MIT (autor original do FluidR3) e Creative
-          Commons Attribution 3.0, empacotado por midi-js-soundfonts (Benjamin Gleitzman).
+          Sons de violão de nylon e de baixo (Electric Bass (finger)): FluidR3 GM, licença MIT
+          (autor original do FluidR3) e Creative Commons Attribution 3.0, empacotados por
+          midi-js-soundfonts (Benjamin Gleitzman).
         </p>
       </section>
     </section>

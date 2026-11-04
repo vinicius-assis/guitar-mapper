@@ -5,6 +5,14 @@ import { mockBoardWidth } from '../test-utils';
 import { Fretboard } from './Fretboard';
 
 describe('Fretboard', () => {
+  it('labels the board after the instrument', () => {
+    const { rerender } = render(<Fretboard fretMin={0} fretMax={4} marks={[]} />);
+    expect(screen.getByRole('group', { name: 'Braço da guitarra' })).toBeInTheDocument();
+    rerender(<Fretboard fretMin={0} fretMax={4} marks={[]} instrument={BASS} />);
+    expect(screen.getByRole('group', { name: 'Braço do baixo' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Braço da guitarra' })).not.toBeInTheDocument();
+  });
+
   it('renders one cell per string and fret in the window', () => {
     const { container } = render(<Fretboard fretMin={0} fretMax={4} marks={[]} />);
     expect(container.querySelectorAll('[data-testid^="cell-"]')).toHaveLength(30);
