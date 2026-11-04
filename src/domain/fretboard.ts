@@ -1,7 +1,6 @@
 import { isNatural, type NoteIndex } from './notes';
 import { GUITAR, type Instrument } from './instruments';
 
-export const STRING_COUNT = 6;
 export const MAX_FRET = 24;
 /** Primeira casa usada nas perguntas. 1 = sem corda solta; mude para 0 para voltar a incluí-la. */
 export const FIRST_QUIZ_FRET = 1;

@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { BASS } from './instruments';
+import { BASS, GUITAR } from './instruments';
 import { allPositions, noteAt, positionsInFilter } from './fretboard';
 import {
-  HIGHEST_MIDI,
-  LOWEST_MIDI,
-  OPEN_STRING_MIDI,
   pitchOf,
   uniquePitchPositions,
 } from './pitch';
 
+const LOWEST_MIDI = 40;
+const HIGHEST_MIDI = 88;
+
 describe('pitchOf', () => {
   it('knows the open strings (E2 A2 D3 G3 B3 E4)', () => {
-    expect(OPEN_STRING_MIDI).toEqual([64, 59, 55, 50, 45, 40]);
+    expect(GUITAR.openMidi).toEqual([64, 59, 55, 50, 45, 40]);
     expect(pitchOf({ string: 6, fret: 0 })).toBe(40);
     expect(pitchOf({ string: 1, fret: 0 })).toBe(64);
   });
