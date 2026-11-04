@@ -1,3 +1,5 @@
+import { BASS } from '../../domain/instruments';
+import { positionsInFilter } from '../../domain/fretboard';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { AppProvider } from '../../state/AppState';
@@ -65,5 +67,20 @@ describe('Focus', () => {
     const storage = setup();
     fireEvent.click(screen.getByLabelText('Só notas naturais'));
     expect(readSaved(storage).settings.filter.naturalsOnly).toBe(false);
+  });
+});
+
+describe('Focus (bass)', () => {
+  it('shows 4 string chips and counts bass positions', () => {
+    const storage = seededStorage({ instrument: 'bass', settings: { instrument: 'bass' } });
+    render(
+      <AppProvider storage={storage}>
+        <Focus />
+      </AppProvider>,
+    );
+    for (let s = 1; s <= 4; s++) expect(screen.getByRole('button', { name: `Corda ${s}` })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Corda 5' })).not.toBeInTheDocument();
+    const filter = readSaved(storage, 'bass').settings.filter;
+    expect(screen.getByTestId('count')).toHaveTextContent(`${positionsInFilter(filter, BASS).length} posições`);
   });
 });

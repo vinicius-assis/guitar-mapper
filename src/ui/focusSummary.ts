@@ -1,5 +1,5 @@
 import type { Filter } from '../domain/fretboard';
-import { STRING_COUNT } from '../domain/fretboard';
+import { GUITAR, type Instrument } from '../domain/instruments';
 
 export interface FocusSummary {
   strings: string;
@@ -12,11 +12,11 @@ function joinList(items: number[]): string {
   return `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
 }
 
-export function describeFocus(filter: Filter): FocusSummary {
+export function describeFocus(filter: Filter, instrument: Instrument = GUITAR): FocusSummary {
   const strings = [...filter.strings].sort((a, b) => a - b);
   return {
     strings:
-      strings.length === STRING_COUNT ? 'Todas' : strings.length === 0 ? 'Nenhuma' : joinList(strings),
+      strings.length === instrument.stringCount ? 'Todas' : strings.length === 0 ? 'Nenhuma' : joinList(strings),
     frets:
       filter.fretMin === filter.fretMax ? `${filter.fretMin}` : `${filter.fretMin}–${filter.fretMax}`,
     notes: filter.naturalsOnly ? 'Naturais' : 'Com acidentais',

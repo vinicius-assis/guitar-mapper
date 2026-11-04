@@ -1,3 +1,4 @@
+import { BASS } from '../domain/instruments';
 import { describe, it, expect } from 'vitest';
 import type { Filter } from '../domain/fretboard';
 import { describeFocus } from './focusSummary';
@@ -25,5 +26,15 @@ describe('describeFocus', () => {
 
   it('mentions accidentals when they are on', () => {
     expect(describeFocus({ ...base, naturalsOnly: false }).notes).toBe('Com acidentais');
+  });
+});
+
+describe('describeFocus (instrument)', () => {
+  const four: Filter = { ...base, strings: [1, 2, 3, 4] };
+  it('says Todas when all bass strings are selected', () => {
+    expect(describeFocus(four, BASS).strings).toBe('Todas');
+  });
+  it('lists the four strings for the guitar', () => {
+    expect(describeFocus(four).strings).toBe('1, 2, 3 e 4');
   });
 });

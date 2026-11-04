@@ -1,7 +1,7 @@
 import { useFocusFilter, FRET_OPTIONS, FRET_PRESETS } from '../useFocusFilter';
 
 export function Focus() {
-  const { filter, count, toggleString, setRange, setMin, setMax, setNaturalsOnly } =
+  const { filter, count, allStrings, toggleString, setRange, setMin, setMax, setNaturalsOnly } =
     useFocusFilter();
 
   return (
@@ -10,7 +10,7 @@ export function Focus() {
 
       <h3>Cordas</h3>
       <div className="chips">
-        {[1, 2, 3, 4, 5, 6].map((s) => (
+        {allStrings.map((s) => (
           <button
             key={s}
             type="button"

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FIRST_QUIZ_FRET, MAX_FRET, STRING_COUNT, positionsInFilter, type Filter } from '../domain/fretboard';
+import { FIRST_QUIZ_FRET, MAX_FRET, positionsInFilter, type Filter } from '../domain/fretboard';
 import { useAppState } from '../state/AppState';
 
 export const FRET_PRESETS = [
@@ -11,26 +11,30 @@ export const FRET_OPTIONS = Array.from(
   { length: MAX_FRET - FIRST_QUIZ_FRET + 1 },
   (_, i) => FIRST_QUIZ_FRET + i,
 );
-export const ALL_STRINGS = Array.from({ length: STRING_COUNT }, (_, i) => i + 1);
 
 /** Edição do foco (cordas, casas, notas), compartilhada pela aba Foco e pelo cartão do Estudar. */
 export function useFocusFilter() {
-  const { data, updateSettings } = useAppState();
+  const { data, instrument, updateSettings } = useAppState();
   const { filter } = data.settings;
-  const count = useMemo(() => positionsInFilter(filter).length, [filter]);
+  const count = useMemo(() => positionsInFilter(filter, instrument).length, [filter, instrument]);
+  const allStrings = useMemo(
+    () => Array.from({ length: instrument.stringCount }, (_, i) => i + 1),
+    [instrument],
+  );
 
   const setFilter = (patch: Partial<Filter>) => updateSettings({ filter: { ...filter, ...patch } });
 
   return {
     filter,
     count,
+    allStrings,
     toggleString: (s: number) =>
       setFilter({
         strings: filter.strings.includes(s)
           ? filter.strings.filter((x) => x !== s)
           : [...filter.strings, s].sort((a, b) => a - b),
       }),
-    selectAllStrings: () => setFilter({ strings: ALL_STRINGS }),
+    selectAllStrings: () => setFilter({ strings: allStrings }),
     setRange: (min: number, max: number) => setFilter({ fretMin: min, fretMax: max }),
     setMin: (value: string) => {
       const n = Number(value);

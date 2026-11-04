@@ -2,10 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   FIRST_QUIZ_FRET,
   MAX_FRET,
-  STRING_COUNT,
   positionKey,
   type Position,
 } from '../domain/fretboard';
+import { GUITAR, type Instrument } from '../domain/instruments';
 
 export type MarkKind =
   | 'target'
@@ -41,6 +41,8 @@ export interface FretboardProps {
    * fretMin–fretMax. As casas fora desse trecho ficam desabilitadas (escurecidas, sem toque).
    */
   expand?: boolean;
+  /** Instrumento do braço (número de cordas); padrão violão. */
+  instrument?: Instrument;
 }
 
 const NATURAL_FRET_W = 56;
@@ -50,7 +52,6 @@ const MAX_FRET_W = 180;
 const TARGET_FRET_W = 72; // largura desejada por casa quando `expand` abre mais casas
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const INLAYS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21, 24]);
-const STRINGS = [1, 2, 3, 4, 5, 6].slice(0, STRING_COUNT);
 
 export function Fretboard({
   fretMin,
@@ -63,7 +64,10 @@ export function Fretboard({
   fit = false,
   minFretWidth = NATURAL_FRET_W,
   expand = false,
+  instrument = GUITAR,
 }: FretboardProps) {
+  const STRING_COUNT = instrument.stringCount;
+  const STRINGS = Array.from({ length: STRING_COUNT }, (_, i) => i + 1);
   const scrollRef = useRef<HTMLDivElement>(null);
   const focusCount = fretMax - fretMin + 1;
 

@@ -1,3 +1,4 @@
+import { BASS } from '../domain/instruments';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { mockBoardWidth } from '../test-utils';
@@ -240,5 +241,23 @@ describe('Fretboard', () => {
     expect(gutter.children).toHaveLength(7);
     expect(gutter.children[0].textContent).toBe('');
     expect(screen.getByTestId('string-label-1')).toHaveTextContent('E');
+  });
+});
+
+describe('Fretboard (bass)', () => {
+  it('renders 4 strings, a 4-string height and taps on string 4', () => {
+    const onTap = vi.fn();
+    const { container } = render(
+      <Fretboard fretMin={0} fretMax={5} marks={[]} instrument={BASS} onTap={onTap} />,
+    );
+    expect(container.querySelectorAll('[data-testid^="cell-"]')).toHaveLength(24);
+    expect(container.querySelectorAll('line.string')).toHaveLength(4);
+    expect(container.querySelector('svg')).toHaveAttribute('height', String(28 + 4 * 44));
+    fireEvent.click(screen.getByTestId('cell-4-5'));
+    expect(onTap).toHaveBeenCalledWith({ string: 4, fret: 5 });
+  });
+  it('keeps 6 strings without the prop', () => {
+    const { container } = render(<Fretboard fretMin={0} fretMax={4} marks={[]} />);
+    expect(container.querySelectorAll('line.string')).toHaveLength(6);
   });
 });

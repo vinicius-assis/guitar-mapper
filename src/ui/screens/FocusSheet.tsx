@@ -1,6 +1,6 @@
+import { useAppState } from '../../state/AppState';
 import { describeFocus } from '../focusSummary';
 import {
-  ALL_STRINGS,
   FRET_OPTIONS,
   FRET_PRESETS,
   useFocusFilter,
@@ -28,11 +28,12 @@ export function FocusSheet({
   open: openProp,
   onOpenChange,
 }: FocusSheetProps) {
+  const { instrument } = useAppState();
   const open = fixed || openProp;
-  const { filter, toggleString, selectAllStrings, setRange, setMin, setMax, setNaturalsOnly } =
+  const { filter, allStrings, toggleString, selectAllStrings, setRange, setMin, setMax, setNaturalsOnly } =
     useFocusFilter();
-  const summary = describeFocus(filter);
-  const allStrings = ALL_STRINGS.every((s) => filter.strings.includes(s));
+  const summary = describeFocus(filter, instrument);
+  const allSelected = allStrings.every((s) => filter.strings.includes(s));
 
   return (
     <div className={fixed ? 'focus-slot focus-slot--fixed' : 'focus-slot'}>
@@ -82,12 +83,12 @@ export function FocusSheet({
               <button
                 type="button"
                 className="badge badge--button"
-                aria-pressed={allStrings}
+                aria-pressed={allSelected}
                 onClick={selectAllStrings}
               >
                 Todas
               </button>
-              {ALL_STRINGS.map((s) => (
+              {allStrings.map((s) => (
                 <button
                   key={s}
                   type="button"
