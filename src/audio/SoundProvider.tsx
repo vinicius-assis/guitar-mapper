@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { Position } from '../domain/fretboard';
 import type { Instrument, InstrumentId } from '../domain/instruments';
 import { pitchOf } from '../domain/pitch';
@@ -9,6 +9,8 @@ interface SoundApi {
   playPosition(position: Position): void;
   prepare(positions: Position[]): void;
   unlock(): void;
+  playPitches(midis: number[], gapMs?: number): void;
+  preparePitches(midis: number[]): void;
 }
 
 const SoundContext = createContext<SoundApi | null>(null);
@@ -49,6 +51,13 @@ export function SoundProvider({
     players.current.set(instrument.id, notePlayer);
   }
 
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const cancelPending = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+  };
+  useEffect(() => cancelPending, []);
+
   const api = useMemo<SoundApi>(() => {
     const run = (fn: () => void) => {
       if (!enabled) return;
@@ -62,6 +71,16 @@ export function SoundProvider({
       playPosition: (p) => run(() => notePlayer.play(pitchOf(p, instrument))),
       prepare: (ps) => run(() => notePlayer.prepare(ps.map((p) => pitchOf(p, instrument)))),
       unlock: () => run(() => notePlayer.unlock()),
+      playPitches: (midis, gapMs = 700) => {
+        cancelPending();
+        if (!enabled) return;
+        midis.forEach((midi, i) => {
+          const play = () => run(() => notePlayer.play(midi));
+          if (i === 0) play();
+          else timers.current.push(setTimeout(play, i * gapMs));
+        });
+      },
+      preparePitches: (midis) => run(() => notePlayer.prepare(midis)),
     };
   }, [enabled, notePlayer, instrument]);
 

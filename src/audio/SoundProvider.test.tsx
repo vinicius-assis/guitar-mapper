@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BASS, GUITAR, type Instrument } from '../domain/instruments';
 import { AppProvider, useAppState } from '../state/AppState';
 import { seededStorage } from '../test-utils';
@@ -147,5 +147,88 @@ describe('useSound', () => {
 
   it('fails loudly outside a provider', () => {
     expect(() => render(<Probe />)).toThrow(/SoundProvider/);
+  });
+});
+
+describe('playPitches / preparePitches', () => {
+  afterEach(() => vi.useRealTimers());
+
+  function PitchProbe() {
+    const sound = useSound();
+    return (
+      <>
+        <button onClick={() => sound.playPitches([36, 43])}>seq</button>
+        <button onClick={() => sound.playPitches([40, 47])}>seq2</button>
+        <button onClick={() => sound.preparePitches([36, 43])}>prep</button>
+      </>
+    );
+  }
+  const mount = (soundEnabled: boolean) => {
+    vi.useFakeTimers();
+    const player = fakePlayer();
+    const view = render(
+      <AppProvider storage={seededStorage({ settings: { soundEnabled } })}>
+        <SoundProvider player={player}>
+          <PitchProbe />
+        </SoundProvider>
+      </AppProvider>,
+    );
+    return { player, view };
+  };
+
+  it('plays the first now and the next after the gap', () => {
+    const { player } = mount(true);
+    fireEvent.click(screen.getByText('seq'));
+    expect(player.play).toHaveBeenCalledTimes(1);
+    expect(player.play).toHaveBeenCalledWith(36);
+    vi.advanceTimersByTime(699);
+    expect(player.play).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(player.play).toHaveBeenLastCalledWith(43);
+  });
+
+  it('a new call cancels pending notes', () => {
+    const { player } = mount(true);
+    fireEvent.click(screen.getByText('seq'));
+    vi.advanceTimersByTime(300);
+    fireEvent.click(screen.getByText('seq2'));
+    vi.advanceTimersByTime(2000);
+    expect(player.play).not.toHaveBeenCalledWith(43);
+    expect(player.play).toHaveBeenCalledWith(40);
+    expect(player.play).toHaveBeenCalledWith(47);
+  });
+
+  it('prepares pitches', () => {
+    const { player } = mount(true);
+    fireEvent.click(screen.getByText('prep'));
+    expect(player.prepare).toHaveBeenCalledWith([36, 43]);
+  });
+
+  it('does nothing when sound is off', () => {
+    const { player } = mount(false);
+    fireEvent.click(screen.getByText('seq'));
+    fireEvent.click(screen.getByText('prep'));
+    vi.advanceTimersByTime(2000);
+    expect(player.play).not.toHaveBeenCalled();
+    expect(player.prepare).not.toHaveBeenCalled();
+  });
+
+  it('unmounting cancels pending notes', () => {
+    const { player, view } = mount(true);
+    fireEvent.click(screen.getByText('seq'));
+    view.unmount();
+    vi.advanceTimersByTime(2000);
+    expect(player.play).not.toHaveBeenCalledWith(43);
+  });
+
+  it('never throws when the player fails', () => {
+    const { player } = mount(true);
+    vi.mocked(player.play).mockImplementation(() => {
+      throw new Error('boom');
+    });
+    expect(() => {
+      fireEvent.click(screen.getByText('seq'));
+      vi.advanceTimersByTime(2000);
+    }).not.toThrow();
   });
 });
