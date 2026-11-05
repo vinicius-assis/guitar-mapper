@@ -22,7 +22,7 @@ export function Focus() {
         <div className="chips">
           <button
             type="button"
-            className="chip chip--wide"
+            className="chip chip--wide chip--nowrap"
             aria-pressed={focus.intervals.length === INTERVALS.length}
             onClick={focus.selectAllIntervals}
           >
@@ -32,7 +32,7 @@ export function Focus() {
             <button
               key={i.id}
               type="button"
-              className="chip chip--wide"
+              className="chip chip--wide chip--nowrap"
               aria-pressed={focus.intervals.includes(i.id)}
               onClick={() => focus.toggleInterval(i.id)}
             >
