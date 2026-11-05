@@ -71,3 +71,19 @@ export function positionsOfNote(
 ): Position[] {
   return positionsInFilter(filter, instrument).filter((p) => noteAt(p, instrument) === note);
 }
+
+/** Todas as posições de uma nota entre duas casas (inclui a casa 0), ordenadas por corda e casa. */
+export function notePositions(
+  note: NoteIndex,
+  instrument: Instrument = GUITAR,
+  fretMin = 0,
+  fretMax = MAX_FRET,
+): Position[] {
+  const out: Position[] = [];
+  for (let string = 1; string <= instrument.stringCount; string++) {
+    for (let fret = fretMin; fret <= fretMax; fret++) {
+      if (noteAt({ string, fret }, instrument) === note) out.push({ string, fret });
+    }
+  }
+  return out;
+}

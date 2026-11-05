@@ -4,13 +4,14 @@ import {
   MAX_FRET,
   allPositions,
   noteAt,
+  notePositions,
   parsePositionKey,
   positionKey,
   positionsInFilter,
   positionsOfNote,
   type Filter,
 } from './fretboard';
-import { BASS } from './instruments';
+import { BASS, GUITAR } from './instruments';
 
 const filter = (over: Partial<Filter> = {}): Filter => ({
   strings: [1, 2, 3, 4, 5, 6],
@@ -108,5 +109,30 @@ describe('bass', () => {
   it('positionsInFilter ignores strings 5 and 6', () => {
     expect(positionsInFilter(f, BASS).every((p) => p.string <= 4)).toBe(true);
     expect(positionsInFilter(f, BASS)).toHaveLength(12);
+  });
+});
+
+describe('notePositions', () => {
+  it('lists every position of a note in the window, by string then fret', () => {
+    expect(notePositions(0, BASS, 0, 12)).toEqual([
+      { string: 1, fret: 5 },
+      { string: 2, fret: 10 },
+      { string: 3, fret: 3 },
+      { string: 4, fret: 8 },
+    ]);
+    expect(notePositions(7, BASS, 0, 12)).toEqual([
+      { string: 1, fret: 0 },
+      { string: 1, fret: 12 },
+      { string: 2, fret: 5 },
+      { string: 3, fret: 10 },
+      { string: 4, fret: 3 },
+    ]);
+  });
+
+  it('respects fretMin and only returns matching notes', () => {
+    expect(notePositions(7, GUITAR, 1, 12).some((p) => p.fret === 0)).toBe(false);
+    for (const inst of [GUITAR, BASS]) {
+      for (const p of notePositions(4, inst)) expect(noteAt(p, inst)).toBe(4);
+    }
   });
 });
