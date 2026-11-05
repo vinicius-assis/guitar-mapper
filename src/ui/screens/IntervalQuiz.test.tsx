@@ -47,15 +47,17 @@ function setup(
   const player = fakePlayer();
   const onAnswer = vi.fn();
   const onNext = vi.fn();
-  const utils = render(
+  const tree = (withQuiz: boolean) => (
     <AppProvider storage={storage}>
       <SoundProvider player={player}>
         <Shortcuts />
-        <IntervalQuiz item={item} settings={settings} onAnswer={onAnswer} onNext={onNext} />
+        {withQuiz && <IntervalQuiz item={item} settings={settings} onAnswer={onAnswer} onNext={onNext} />}
       </SoundProvider>
-    </AppProvider>,
+    </AppProvider>
   );
-  return { player, onAnswer, onNext, ...utils };
+  const utils = render(tree(true));
+  const removeQuiz = () => utils.rerender(tree(false));
+  return { player, onAnswer, onNext, removeQuiz, ...utils };
 }
 const noteBtn = (name: string) => screen.getByRole('button', { name }) as HTMLButtonElement;
 const noteButtons = () =>
@@ -102,7 +104,7 @@ describe('IntervalQuiz', () => {
     expect(onAnswer).toHaveBeenCalledWith(false);
     expect(noteBtn('E')).toHaveClass('option--wrong');
     expect(noteBtn('G')).toHaveClass('option--correct');
-    expect(screen.getByRole('status')).toHaveTextContent(/Errou.*G/);
+    expect(screen.getByRole('status')).toHaveTextContent('Errou. C + 5ª J = G.');
     expect(noteButtons().every((b) => b.disabled)).toBe(true);
     fireEvent.click(noteBtn('G'));
     expect(onAnswer).toHaveBeenCalledTimes(1);
@@ -125,6 +127,24 @@ describe('IntervalQuiz', () => {
     const labels = [...container.querySelectorAll('g.mark--correct text')].map((t) => t.textContent);
     expect(labels.length).toBeGreaterThan(0);
     expect(labels.every((l) => l === 'Sol')).toBe(true);
+  });
+
+  it('labels the target marks and the feedback in solfejo', () => {
+    const { container } = setup({ notation: 'solfejo' });
+    const labels = [...container.querySelectorAll('g.mark--target text')].map((t) => t.textContent);
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.every((l) => l === 'Dó')).toBe(true);
+    fireEvent.click(noteBtn('Mi'));
+    expect(screen.getByRole('status')).toHaveTextContent('Errou. Dó + 5ª J = Sol.');
+  });
+
+  it('unmounting before the arrival note cancels it', () => {
+    const { player, removeQuiz } = setup();
+    fireEvent.click(noteBtn('G'));
+    expect(player.play).toHaveBeenCalledWith(36);
+    removeQuiz();
+    act(() => void vi.advanceTimersByTime(2000));
+    expect(player.play).not.toHaveBeenCalledWith(43);
   });
 
   it.each([

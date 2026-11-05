@@ -56,7 +56,6 @@ export function SoundProvider({
     timers.current.forEach(clearTimeout);
     timers.current = [];
   };
-  useEffect(() => cancelPending, []);
   useEffect(() => cancelPending, [enabled, instrument.id]);
 
   const api = useMemo<SoundApi>(() => {

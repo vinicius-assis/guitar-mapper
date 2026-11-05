@@ -47,6 +47,10 @@ export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizP
   const { preparePitches } = sound;
   useEffect(() => preparePitches(pitches), [preparePitches, pitches]);
 
+  // Ao sair da pergunta, a nota de chegada pendente não deve soar depois.
+  const { playPitches } = sound;
+  useEffect(() => () => playPitches([]), [playPitches]);
+
   const delay = intervalAdvance === '3s' ? 3000 : intervalAdvance === '5s' ? 5000 : 0;
   useAutoAdvance(answered && delay > 0, onNext, delay);
 
@@ -60,7 +64,7 @@ export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizP
   const marks: Mark[] = notePositions(item.root, instrument, FRET_MIN, FRET_MAX).map((position) => ({
     position,
     kind: 'target',
-    label: noteLabel(item.root, 'cifra'),
+    label: noteLabel(item.root, notation),
   }));
   if (answered) {
     for (const position of notePositions(answer, instrument, FRET_MIN, FRET_MAX)) {
@@ -109,7 +113,7 @@ export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizP
       {answered && (
         <div className="feedback quiz-actions">
           <p role="status">
-            {correct ? 'Correto!' : `Errou. ${interval.label} de ${rootText} é ${answerText}.`}
+            {correct ? 'Correto!' : `Errou. ${rootText} + ${interval.label} = ${answerText}.`}
           </p>
           <button type="button" className="primary" onClick={onNext}>
             Próxima

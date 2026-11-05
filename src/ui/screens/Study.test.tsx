@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { AppProvider } from '../../state/AppState';
+import { AppProvider, useAppState } from '../../state/AppState';
 import { mockBoardWidth, mockViewport, readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
 import { SoundProvider } from '../../audio/SoundProvider';
@@ -1081,6 +1081,13 @@ describe('Study: Intervalos', () => {
     expect(player.prepare).toHaveBeenCalled();
   });
 
+  it('prepares the pitches of the queue', () => {
+    const { player } = setupWithPlayer({ ...bass, intervals: ['5J'], filter: NATURALS });
+    start();
+    const prepared = vi.mocked(player.prepare).mock.calls.flatMap((c) => c[0]);
+    expect(prepared).toEqual(expect.arrayContaining([36, 43]));
+  });
+
   it('counts 35 questions for the default intervals (naturals) and 60 with accidentals', () => {
     setup({ instrument: 'bass', mode: 'interval', filter: NATURALS });
     expect(screen.getByText(/35 perguntas/)).toBeInTheDocument();
@@ -1109,11 +1116,30 @@ describe('Study: Intervalos', () => {
     expect(screen.queryByText(/Pergunta/)).not.toBeInTheDocument();
   });
 
-  it('returns idle after switching to another exercise and back', () => {
-    setup({ ...bass, filter: NATURALS });
-    chooseMode('Flashcard');
-    chooseMode('Intervalos');
-    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+  it('discards the interval session when the instrument changes', () => {
+    function Switcher() {
+      const { instrument, updateSettings } = useAppState();
+      return (
+        <>
+          <button onClick={() => updateSettings({ instrument: 'guitar' })}>trocar</button>
+          <Study key={instrument.id} forced={null} onSessionChange={() => {}} />
+        </>
+      );
+    }
+    const storage = seededStorage({ instrument: 'bass', settings: { ...bass, notation: 'cifra', filter: NATURALS } });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Switcher />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    start();
+    expect(screen.getByText(/Pergunta 1 de/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'trocar' }));
     expect(screen.queryByText(/Pergunta/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
   });
 });
