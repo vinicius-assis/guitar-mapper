@@ -289,4 +289,74 @@ describe('Fretboard inlays follow the string count', () => {
     expect(inlayYs(container, 5)).toEqual([28 + 3 * 44]);
     expect(inlayYs(container, 12)).toEqual([28 + 2 * 44, 28 + 4 * 44]);
   });
+
+  describe('links', () => {
+    const center = (id: string) => {
+      const r = screen.getByTestId(id);
+      return {
+        x: Number(r.getAttribute('x')) + Number(r.getAttribute('width')) / 2,
+        y: Number(r.getAttribute('y')) + Number(r.getAttribute('height')) / 2,
+      };
+    };
+    const link = { from: { string: 3, fret: 3 }, to: { string: 2, fret: 5 } };
+
+    it('draws one dashed line between the cell centers', () => {
+      const { container } = render(
+        <Fretboard fretMin={0} fretMax={12} instrument={BASS} links={[link]} marks={[]} />,
+      );
+      const lines = container.querySelectorAll('line.link');
+      expect(lines).toHaveLength(1);
+      const a = center('cell-3-3');
+      const b = center('cell-2-5');
+      expect(Number(lines[0].getAttribute('x1'))).toBe(a.x);
+      expect(Number(lines[0].getAttribute('y1'))).toBe(a.y);
+      expect(Number(lines[0].getAttribute('x2'))).toBe(b.x);
+      expect(Number(lines[0].getAttribute('y2'))).toBe(b.y);
+      expect(b.x).toBeGreaterThan(a.x);
+      expect(b.y).toBeLessThan(a.y);
+    });
+
+    it('mirrors for left-handed players', () => {
+      const { container } = render(
+        <Fretboard fretMin={0} fretMax={12} instrument={BASS} leftHanded links={[link]} marks={[]} />,
+      );
+      const l = container.querySelector('line.link')!;
+      expect(Number(l.getAttribute('x2'))).toBeLessThan(Number(l.getAttribute('x1')));
+    });
+
+    it('draws nothing without links', () => {
+      const { container } = render(<Fretboard fretMin={0} fretMax={12} marks={[]} />);
+      expect(container.querySelector('.link')).toBeNull();
+    });
+
+    it('skips a link with a fret outside the window', () => {
+      const { container } = render(
+        <Fretboard fretMin={0} fretMax={4} links={[link]} marks={[]} />,
+      );
+      expect(container.querySelector('.link')).toBeNull();
+    });
+
+    it('draws the link below the marks', () => {
+      const { container } = render(
+        <Fretboard
+          fretMin={0}
+          fretMax={12}
+          links={[link]}
+          marks={[{ position: link.from, kind: 'target' }]}
+        />,
+      );
+      const svg = container.querySelector('svg')!;
+      const kids = Array.from(svg.children);
+      expect(kids.indexOf(container.querySelector('line.link')!)).toBeLessThan(
+        kids.indexOf(container.querySelector('.mark')!),
+      );
+    });
+
+    it('supports fret 0 when the window starts at 0', () => {
+      const { container } = render(
+        <Fretboard fretMin={0} fretMax={4} marks={[{ position: { string: 1, fret: 0 }, kind: 'target' }]} />,
+      );
+      expect(container.querySelector('.mark--target')).not.toBeNull();
+    });
+  });
 });

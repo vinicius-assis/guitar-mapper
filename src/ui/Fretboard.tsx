@@ -43,6 +43,8 @@ export interface FretboardProps {
   expand?: boolean;
   /** Instrumento do braço (número de cordas); padrão violão. */
   instrument?: Instrument;
+  /** Ligações tracejadas entre duas posições (desenhadas abaixo das marcas). */
+  links?: { from: Position; to: Position }[];
 }
 
 const NATURAL_FRET_W = 56;
@@ -65,6 +67,7 @@ export function Fretboard({
   minFretWidth = NATURAL_FRET_W,
   expand = false,
   instrument = GUITAR,
+  links,
 }: FretboardProps) {
   const stringCount = instrument.stringCount;
   const STRINGS = Array.from({ length: stringCount }, (_, i) => i + 1);
@@ -120,6 +123,9 @@ export function Fretboard({
   }, [scrollToFret, viewMin, viewMax, leftHanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleMarks = marks.filter((m) => m.position.fret >= viewMin && m.position.fret <= viewMax);
+
+  const inView = (fret: number) => fret >= viewMin && fret <= viewMax;
+  const visibleLinks = (links ?? []).filter((l) => inView(l.from.fret) && inView(l.to.fret));
 
   return (
     <div className={`fretboard-frame${leftHanded ? ' fretboard-frame--mirrored' : ''}`}>
@@ -225,6 +231,18 @@ export function Fretboard({
               y={TOP}
               width={FRET_W}
               height={stringCount * STRING_GAP}
+              pointerEvents="none"
+            />
+          ))}
+          {visibleLinks.map((l, i) => (
+            <line
+              key={`l${i}`}
+              className="link"
+              stroke="currentColor"
+              x1={cx(l.from.fret)}
+              y1={cy(l.from.string)}
+              x2={cx(l.to.fret)}
+              y2={cy(l.to.string)}
               pointerEvents="none"
             />
           ))}
