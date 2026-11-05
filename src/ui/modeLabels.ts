@@ -15,6 +15,8 @@ export const MODE_DESCRIPTIONS: Record<QuizMode, string> = {
   flashcard:
     'Olhe o ponto e tente lembrar a nota de cabeça antes de revelar. Sem opções, e você mesmo diz se acertou. É o mais exigente.',
   ear: 'Ouça uma nota e descubra qual é. Treina o ouvido, sem ver o braço até responder.',
+  interval:
+    'Veja uma nota e um intervalo e escolha a nota de chegada entre as 12. O braço mostra onde ela está.',
 };
 
 export const EAR_LEVELS: { level: EarLevel; label: 'Fácil' | 'Médio' | 'Difícil'; description: string }[] = [

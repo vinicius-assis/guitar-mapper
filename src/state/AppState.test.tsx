@@ -179,3 +179,28 @@ describe('active instrument', () => {
     expect(api.instrument.id).toBe('bass');
   });
 });
+
+describe('interval settings', () => {
+  it('are global: persisted once and unchanged when switching instruments', () => {
+    const storage = createMemoryStorage();
+    let api!: ReturnType<typeof useAppState>;
+    function Capture() {
+      api = useAppState();
+      return null;
+    }
+    render(
+      <AppProvider storage={storage} now={() => 1000}>
+        <Capture />
+      </AppProvider>,
+    );
+    act(() => api.updateSettings({ intervals: ['5J'], intervalAdvance: '3s' }));
+    act(() => api.updateSettings({ instrument: 'bass' }));
+    expect(api.data.settings.intervals).toEqual(['5J']);
+    expect(api.data.settings.intervalAdvance).toBe('3s');
+    const saved = JSON.parse(storage.getItem('guitar-mapper:v2')!);
+    expect(saved.settings.intervals).toEqual(['5J']);
+    expect(saved.settings.intervalAdvance).toBe('3s');
+    expect(saved.instruments.guitar).not.toHaveProperty('intervals');
+    expect(saved.instruments.bass).not.toHaveProperty('intervals');
+  });
+});

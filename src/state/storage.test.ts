@@ -340,3 +340,36 @@ describe('storage v2', () => {
     expect(next.instruments.guitar).toEqual(data.instruments.guitar);
   });
 });
+
+describe('interval settings', () => {
+  const load = (settings: unknown) => loadActive(v2Raw(settings)).settings;
+
+  it('defaults to the standard intervals and manual advance', () => {
+    const d = createDefaultData().settings;
+    expect(d.intervals).toEqual(['3m', '3M', '5J', '7m', '7M']);
+    expect(d.intervalAdvance).toBe('manual');
+    expect(load({}).intervals).toEqual(['3m', '3M', '5J', '7m', '7M']);
+    expect(load({}).intervalAdvance).toBe('manual');
+  });
+
+  it('sanitizes intervals: order kept, invalid and duplicates dropped, empty stays empty', () => {
+    expect(load({ intervals: ['5J', '9M', '3m', '5J'] }).intervals).toEqual(['5J', '3m']);
+    expect(load({ intervals: [] }).intervals).toEqual([]);
+    expect(load({ intervals: 'x' }).intervals).toEqual(['3m', '3M', '5J', '7m', '7M']);
+  });
+
+  it('sanitizes intervalAdvance', () => {
+    expect(load({ intervalAdvance: '7s' }).intervalAdvance).toBe('manual');
+    expect(load({ intervalAdvance: '5s' }).intervalAdvance).toBe('5s');
+  });
+
+  it('accepts the interval mode and keeps interval history without level', () => {
+    expect(load({ mode: 'interval' }).mode).toBe('interval');
+    const h = loadActive(
+      v2Raw({}, { history: [{ mode: 'interval', at: 5, total: 4, correct: 3, averageMs: 1500, level: 'hard' }] }),
+    ).history;
+    expect(h).toHaveLength(1);
+    expect(h[0].mode).toBe('interval');
+    expect(h[0]).not.toHaveProperty('level');
+  });
+});

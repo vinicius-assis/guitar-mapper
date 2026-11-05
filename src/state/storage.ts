@@ -11,10 +11,13 @@ import {
   type Instrument,
   type InstrumentId,
 } from '../domain/instruments';
+import { DEFAULT_INTERVALS, isIntervalId, type IntervalId } from '../domain/intervals';
 import type { Notation } from '../domain/notes';
 import type { EarLevel, QuizMode } from '../domain/quiz';
 import { HISTORY_LIMIT, type HistoryEntry } from '../domain/session';
 import type { Box, PositionProgress, ProgressMap } from '../domain/scheduler';
+
+export type IntervalAdvance = 'manual' | '3s' | '5s';
 
 export interface InstrumentData {
   filter: Filter;
@@ -29,6 +32,8 @@ export interface GlobalSettings {
   soundEnabled: boolean;
   earLevel: EarLevel;
   instrument: InstrumentId;
+  intervals: IntervalId[];
+  intervalAdvance: IntervalAdvance;
 }
 
 /** Visão das configurações para o instrumento ativo (globais + filtro dele). */
@@ -69,6 +74,8 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   soundEnabled: true,
   earLevel: 'easy',
   instrument: 'guitar',
+  intervals: [...DEFAULT_INTERVALS],
+  intervalAdvance: 'manual',
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -92,7 +99,7 @@ function defaultInstrumentData(instrument: Instrument): InstrumentData {
 export function createDefaultData(): AppData {
   return {
     version: 2,
-    settings: { ...DEFAULT_SETTINGS },
+    settings: { ...DEFAULT_SETTINGS, intervals: [...DEFAULT_INTERVALS] },
     instruments: { guitar: defaultInstrumentData(GUITAR), bass: defaultInstrumentData(instrumentById('bass')) },
   };
 }
@@ -140,7 +147,8 @@ function sanitizeFilter(raw: unknown, instrument: Instrument): Filter {
 }
 
 const NOTATIONS: Notation[] = ['cifra', 'solfejo', 'ambos'];
-const MODES: QuizMode[] = ['position-to-note', 'note-to-position', 'flashcard', 'ear'];
+const MODES: QuizMode[] = ['position-to-note', 'note-to-position', 'flashcard', 'ear', 'interval'];
+const ADVANCES: IntervalAdvance[] = ['manual', '3s', '5s'];
 const EAR_LEVELS: EarLevel[] = ['easy', 'medium', 'hard'];
 
 function sanitizeSettings(raw: unknown): GlobalSettings {
@@ -164,6 +172,12 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     instrument: INSTRUMENTS.some((i) => i.id === source.instrument)
       ? (source.instrument as InstrumentId)
       : DEFAULT_SETTINGS.instrument,
+    intervals: Array.isArray(source.intervals)
+      ? [...new Set(source.intervals)].filter(isIntervalId)
+      : [...DEFAULT_INTERVALS],
+    intervalAdvance: ADVANCES.includes(source.intervalAdvance as IntervalAdvance)
+      ? (source.intervalAdvance as IntervalAdvance)
+      : DEFAULT_SETTINGS.intervalAdvance,
   };
 }
 
