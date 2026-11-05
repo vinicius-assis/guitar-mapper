@@ -84,3 +84,39 @@ describe('Focus (bass)', () => {
     expect(screen.getByTestId('count')).toHaveTextContent(`${positionsInFilter(filter, BASS).length} posições`);
   });
 });
+
+describe('Focus in interval mode', () => {
+  function setupInterval() {
+    const storage = seededStorage({ settings: { mode: 'interval' } });
+    render(
+      <AppProvider storage={storage}>
+        <Focus />
+      </AppProvider>,
+    );
+    return storage;
+  }
+
+  it('shows interval controls instead of strings and frets', () => {
+    setupInterval();
+    expect(screen.getByRole('button', { name: 'Todos' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '5ª J' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '2ª m' })).toHaveAttribute('aria-pressed', 'false');
+    for (const n of ['Naturais', 'Manual', '3 s', '5 s']) {
+      expect(screen.getByRole('button', { name: n })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: 'Corda 1' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Casa inicial')).not.toBeInTheDocument();
+  });
+
+  it('toggles intervals, naturals and persists the advance', () => {
+    const storage = setupInterval();
+    fireEvent.click(screen.getByRole('button', { name: '2ª m' }));
+    expect(readSaved(storage).settings.intervals).toContain('2m');
+    fireEvent.click(screen.getByRole('button', { name: 'Com acidentais' }));
+    expect(readSaved(storage).settings.filter.naturalsOnly).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '3 s' }));
+    expect(readSaved(storage).settings.intervalAdvance).toBe('3s');
+    fireEvent.click(screen.getByRole('button', { name: 'Todos' }));
+    expect(screen.getByRole('button', { name: 'Trítono' })).toHaveAttribute('aria-pressed', 'true');
+  });
+});

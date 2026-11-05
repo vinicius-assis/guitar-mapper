@@ -1,10 +1,13 @@
 import { useAppState } from '../../state/AppState';
-import { describeFocus } from '../focusSummary';
+import { INTERVALS } from '../../domain/intervals';
+import { describeFocus, describeIntervalFocus } from '../focusSummary';
+import { ADVANCE_OPTIONS } from '../useIntervalFocus';
 import {
   FRET_OPTIONS,
   FRET_PRESETS,
   useFocusFilter,
 } from '../useFocusFilter';
+import { useIntervalFocus } from '../useIntervalFocus';
 
 interface FocusSheetProps {
   /** Quantas perguntas a sessão terá (posições, ou sons distintos no Ouvido). */
@@ -23,16 +26,20 @@ function summaryText(strings: string, frets: string, notes: string): string {
 
 /** Cartão do Foco: recolhido mostra o resumo; aberto edita cordas, casas e notas na hora. */
 export function FocusSheet({
-  questionCount: count,
+  questionCount,
   fixed = false,
   open: openProp,
   onOpenChange,
 }: FocusSheetProps) {
-  const { instrument } = useAppState();
+  const { instrument, data } = useAppState();
+  const intervalMode = data.settings.mode === 'interval';
+  const focus = useIntervalFocus();
+  const count = intervalMode ? focus.count : questionCount;
   const open = fixed || openProp;
   const { filter, allStrings, toggleString, selectAllStrings, setRange, setMin, setMax, setNaturalsOnly } =
     useFocusFilter();
   const summary = describeFocus(filter, instrument);
+  const intervalSummary = describeIntervalFocus(focus.intervals, filter.naturalsOnly, focus.advance);
   const allSelected = allStrings.every((s) => filter.strings.includes(s));
 
   return (
@@ -65,7 +72,9 @@ export function FocusSheet({
           </svg>
           {!open && (
             <span className="focus-card__summary">
-              {summaryText(summary.strings, summary.frets, summary.notes)}
+              {intervalMode
+                ? `${intervalSummary.intervals} · ${intervalSummary.notes} · ${intervalSummary.advance}`
+                : summaryText(summary.strings, summary.frets, summary.notes)}
             </span>
           )}
         </button>
@@ -78,6 +87,33 @@ export function FocusSheet({
               <span className="static-value">{count}</span>
             </dd>
 
+            {intervalMode ? (
+              <>
+                <dt>Intervalos</dt>
+                <dd className="focus-controls">
+                  <button
+                    type="button"
+                    className="badge badge--button"
+                    aria-pressed={focus.intervals.length === INTERVALS.length}
+                    onClick={focus.selectAllIntervals}
+                  >
+                    Todos
+                  </button>
+                  {INTERVALS.map((i) => (
+                    <button
+                      key={i.id}
+                      type="button"
+                      className="badge badge--button"
+                      aria-pressed={focus.intervals.includes(i.id)}
+                      onClick={() => focus.toggleInterval(i.id)}
+                    >
+                      {i.label}
+                    </button>
+                  ))}
+                </dd>
+              </>
+            ) : (
+              <>
             <dt>Cordas</dt>
             <dd className="focus-controls">
               <button
@@ -145,6 +181,8 @@ export function FocusSheet({
                 ))}
               </select>
             </dd>
+              </>
+            )}
 
             <dt>Notas</dt>
             <dd className="focus-controls">
@@ -165,10 +203,29 @@ export function FocusSheet({
                 Com acidentais
               </button>
             </dd>
+            {intervalMode && (
+              <>
+                <dt>Próxima pergunta</dt>
+                <dd className="focus-controls">
+                  {ADVANCE_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className="badge badge--button"
+                      aria-pressed={focus.advance === o.value}
+                      onClick={() => focus.setAdvance(o.value)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </dd>
+              </>
+            )}
           </dl>
-          {count === 0 && (
+          {count === 0 && !intervalMode && (
             <p className="empty">Nenhuma posição: selecione ao menos uma corda ou inclua acidentais.</p>
           )}
+          {count === 0 && intervalMode && <p className="empty">Nenhuma pergunta: selecione ao menos um intervalo.</p>}
         </div>
       )}
       </div>

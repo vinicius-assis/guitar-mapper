@@ -1,7 +1,8 @@
 import { BASS } from '../domain/instruments';
 import { describe, it, expect } from 'vitest';
 import type { Filter } from '../domain/fretboard';
-import { describeFocus } from './focusSummary';
+import { DEFAULT_INTERVALS, INTERVALS } from '../domain/intervals';
+import { describeFocus, describeIntervalFocus } from './focusSummary';
 
 const base: Filter = { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 5, naturalsOnly: true };
 
@@ -36,5 +37,25 @@ describe('describeFocus (instrument)', () => {
   });
   it('lists the four strings for the guitar', () => {
     expect(describeFocus(four).strings).toBe('1, 2, 3 e 4');
+  });
+});
+
+describe('describeIntervalFocus', () => {
+  it('summarises the default interval focus', () => {
+    expect(describeIntervalFocus(DEFAULT_INTERVALS, true, 'manual')).toEqual({
+      intervals: '3ª m, 3ª M, 5ª J, 7ª m, 7ª M',
+      notes: 'Naturais',
+      advance: 'Manual',
+    });
+  });
+
+  it('says Todos and Nenhuma', () => {
+    expect(describeIntervalFocus(INTERVALS.map((i) => i.id), false, '3s')).toEqual({
+      intervals: 'Todos',
+      notes: 'Com acidentais',
+      advance: '3 s',
+    });
+    expect(describeIntervalFocus([], true, '5s').intervals).toBe('Nenhum');
+    expect(describeIntervalFocus([], true, '5s').advance).toBe('5 s');
   });
 });

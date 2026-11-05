@@ -1,9 +1,88 @@
 import { InstrumentBadge } from '../InstrumentBadge';
+import { INTERVALS } from '../../domain/intervals';
+import { useAppState } from '../../state/AppState';
 import { useFocusFilter, FRET_OPTIONS, FRET_PRESETS } from '../useFocusFilter';
+import { ADVANCE_OPTIONS, useIntervalFocus } from '../useIntervalFocus';
 
 export function Focus() {
   const { filter, count, allStrings, toggleString, setRange, setMin, setMax, setNaturalsOnly } =
     useFocusFilter();
+  const { data } = useAppState();
+  const focus = useIntervalFocus();
+
+  if (data.settings.mode === 'interval') {
+    return (
+      <section className="screen screen--form">
+        <div className="title-row">
+          <h2>Foco</h2>
+          <InstrumentBadge />
+        </div>
+
+        <h3>Intervalos</h3>
+        <div className="chips">
+          <button
+            type="button"
+            className="chip chip--wide"
+            aria-pressed={focus.intervals.length === INTERVALS.length}
+            onClick={focus.selectAllIntervals}
+          >
+            Todos
+          </button>
+          {INTERVALS.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              className="chip chip--wide"
+              aria-pressed={focus.intervals.includes(i.id)}
+              onClick={() => focus.toggleInterval(i.id)}
+            >
+              {i.label}
+            </button>
+          ))}
+        </div>
+
+        <h3>Notas</h3>
+        <div className="chips">
+          <button
+            type="button"
+            className="chip chip--wide"
+            aria-pressed={filter.naturalsOnly}
+            onClick={() => setNaturalsOnly(true)}
+          >
+            Naturais
+          </button>
+          <button
+            type="button"
+            className="chip chip--wide"
+            aria-pressed={!filter.naturalsOnly}
+            onClick={() => setNaturalsOnly(false)}
+          >
+            Com acidentais
+          </button>
+        </div>
+
+        <h3>Próxima pergunta</h3>
+        <div className="chips">
+          {ADVANCE_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              className="chip chip--wide"
+              aria-pressed={focus.advance === o.value}
+              onClick={() => focus.setAdvance(o.value)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
+        <p data-testid="count" className="count">
+          {focus.count} perguntas no foco
+        </p>
+        {focus.count === 0 && <p className="empty">Nenhuma pergunta: selecione ao menos um intervalo.</p>}
+      </section>
+    );
+  }
 
   return (
     <section className="screen screen--form">
