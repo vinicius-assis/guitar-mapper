@@ -231,4 +231,45 @@ describe('playPitches / preparePitches', () => {
       vi.advanceTimersByTime(2000);
     }).not.toThrow();
   });
+
+  function Ctl() {
+    const { updateSettings } = useAppState();
+    return (
+      <>
+        <button onClick={() => updateSettings({ soundEnabled: false })}>mute</button>
+        <button onClick={() => updateSettings({ instrument: 'bass' })}>to-bass</button>
+      </>
+    );
+  }
+  const mountCtl = () => {
+    vi.useFakeTimers();
+    const player = fakePlayer();
+    render(
+      <AppProvider storage={seededStorage({ settings: { soundEnabled: true } })}>
+        <SoundProvider player={player}>
+          <PitchProbe />
+          <Ctl />
+        </SoundProvider>
+      </AppProvider>,
+    );
+    return player;
+  };
+
+  it('turning sound off mid-gap cancels the pending note', () => {
+    const player = mountCtl();
+    fireEvent.click(screen.getByText('seq'));
+    vi.advanceTimersByTime(300);
+    fireEvent.click(screen.getByText('mute'));
+    vi.advanceTimersByTime(2000);
+    expect(player.play).not.toHaveBeenCalledWith(43);
+  });
+
+  it('switching instrument mid-gap cancels the pending note', () => {
+    const player = mountCtl();
+    fireEvent.click(screen.getByText('seq'));
+    vi.advanceTimersByTime(300);
+    fireEvent.click(screen.getByText('to-bass'));
+    vi.advanceTimersByTime(2000);
+    expect(player.play).not.toHaveBeenCalledWith(43);
+  });
 });

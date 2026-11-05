@@ -57,6 +57,7 @@ export function SoundProvider({
     timers.current = [];
   };
   useEffect(() => cancelPending, []);
+  useEffect(() => cancelPending, [enabled, instrument.id]);
 
   const api = useMemo<SoundApi>(() => {
     const run = (fn: () => void) => {
