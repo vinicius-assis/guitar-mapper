@@ -323,7 +323,7 @@ main { display: flex; flex-direction: column; }
 }
 
 @media (min-width: 1024px) {
-  .study-header--tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 8px; padding: 0; }
+  .study-header--tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0 8px; padding: 0; }
   .study-header--tabs button { min-height: 48px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
   .study-header--tabs button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #1a1408; }
   /* Tela de início: texto e Iniciar centralizados na área do exercício; Foco como barra lateral à direita. */

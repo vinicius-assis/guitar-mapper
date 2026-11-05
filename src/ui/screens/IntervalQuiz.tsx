@@ -64,7 +64,7 @@ export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizP
   }));
   if (answered) {
     for (const position of notePositions(answer, instrument, FRET_MIN, FRET_MAX)) {
-      marks.push({ position, kind: 'correct', label: noteLabel(answer, 'cifra') });
+      marks.push({ position, kind: 'correct', label: noteLabel(answer, notation) });
     }
   }
 

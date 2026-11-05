@@ -72,6 +72,21 @@ describe('App', () => {
     expect(nav()).toBeInTheDocument();
   });
 
+  it('a forced Progresso position is ignored when the saved mode is interval', () => {
+    render(
+      <App
+        storage={seededStorage({
+          instrument: 'bass',
+          settings: { notation: 'cifra', mode: 'interval', instrument: 'bass' },
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Progresso' }));
+    fireEvent.click(screen.getByTestId('cell-4-3'));
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Pergunta/)).not.toBeInTheDocument();
+  });
+
   it('opening a position from Progresso starts a session without the tab bar', () => {
     render(<App storage={seededStorage({ settings: { notation: 'cifra' } })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Progresso' }));

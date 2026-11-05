@@ -660,8 +660,9 @@ describe('Study: header menu', () => {
       'Nota → posição',
       'Flashcard',
       'Ouvido',
+      'Intervalos',
     ]);
-    expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false']);
+    expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false', 'false']);
   });
 
   it('choosing an exercise switches mode, saves it, updates the title and closes the menu', () => {
@@ -749,14 +750,14 @@ describe('Study: desktop layout', () => {
   afterEach(() => viewport.restore());
   const exercises = () => screen.queryByRole('group', { name: 'Exercício' });
 
-  it('shows the 4 exercises as buttons instead of the menu, and no logo in the header', () => {
+  it('shows the 5 exercises as buttons instead of the menu, and no logo in the header', () => {
     setup({ filter: THREE });
     const group = exercises()!;
     expect(
       within(group)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard', 'Ouvido']);
+    ).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard', 'Ouvido', 'Intervalos']);
     expect(within(group).getByRole('button', { name: 'Posição → nota' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'Menu de exercícios' })).not.toBeInTheDocument();
     expect(within(group).queryByRole('img')).not.toBeInTheDocument();
@@ -1037,5 +1038,82 @@ describe('Study: bass', () => {
     const f = defaultFilterFor(BASS);
     const n = uniquePitchPositions(positionsInFilter(f, BASS), BASS).length;
     expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent(`${n} perguntas`);
+  });
+});
+
+describe('Study: Intervalos', () => {
+  const bass = { instrument: 'bass' as const, mode: 'interval' as const, intervals: ['5J' as const] };
+  const NATURALS: Settings['filter'] = { strings: [1, 2, 3, 4], fretMin: 0, fretMax: 12, naturalsOnly: true };
+
+  it('is reachable from the phone menu and shows description and interval chips', () => {
+    setup({ filter: NATURALS });
+    chooseMode('Intervalos');
+    expect(screen.getByText(/escolha a nota de chegada/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Foco/ }));
+    expect(screen.queryByText('Corda 1')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /5ª J/ })).toBeInTheDocument();
+  });
+
+  it('runs a full session: 7 questions, 12 notes, history entry, no position progress', async () => {
+    const storage = setup({ ...bass, filter: NATURALS });
+    start();
+    expect(screen.getByText('Pergunta 1 de 7')).toBeInTheDocument();
+    for (let i = 0; i < 7; i++) {
+      expect(document.querySelectorAll('.note-option')).toHaveLength(12);
+      const buttons = [...document.querySelectorAll('.note-option')] as HTMLButtonElement[];
+      fireEvent.click(i % 2 === 0 ? buttons[0] : buttons[1]);
+      fireEvent.click(screen.getByRole('button', { name: /Próxima/ }));
+    }
+    expect(screen.getByText(/Acertos: \d+ de 7/)).toBeInTheDocument();
+    const saved = readSaved(storage, 'bass');
+    expect(saved.history).toHaveLength(1);
+    expect(saved.history[0]).toMatchObject({ mode: 'interval', total: 7 });
+    expect(saved.history[0]).not.toHaveProperty('level');
+    expect(saved.progress).toEqual({});
+    expect(readSaved(storage, 'guitar').history).toEqual([]);
+    expect(readSaved(storage, 'guitar').progress).toEqual({});
+  });
+
+  it('prepares the pitches of all questions on start', () => {
+    const { player } = setupWithPlayer({ ...bass, filter: NATURALS });
+    start();
+    expect(player.unlock).toHaveBeenCalled();
+    expect(player.prepare).toHaveBeenCalled();
+  });
+
+  it('counts 35 questions for the default intervals (naturals) and 60 with accidentals', () => {
+    setup({ instrument: 'bass', mode: 'interval', filter: NATURALS });
+    expect(screen.getByText(/35 perguntas/)).toBeInTheDocument();
+    cleanup();
+    setup({ instrument: 'bass', mode: 'interval', filter: { ...NATURALS, naturalsOnly: false } });
+    expect(screen.getByText(/60 perguntas/)).toBeInTheDocument();
+  });
+
+  it('starts a 35-question session when the Foco says 35', () => {
+    setup({ instrument: 'bass', mode: 'interval', filter: NATURALS });
+    start();
+    expect(screen.getByText('Pergunta 1 de 35')).toBeInTheDocument();
+  });
+
+  it('warns and disables Iniciar when no interval is selected', () => {
+    setup({ ...bass, intervals: [], filter: NATURALS });
+    expect(
+      screen.getByText('Nenhum intervalo no foco. Abra o Foco e marque ao menos um intervalo.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+  });
+
+  it('ignores a forced position while the saved mode is interval', () => {
+    setup({ ...bass, filter: NATURALS }, { string: 4, fret: 3 });
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Pergunta/)).not.toBeInTheDocument();
+  });
+
+  it('returns idle after switching to another exercise and back', () => {
+    setup({ ...bass, filter: NATURALS });
+    chooseMode('Flashcard');
+    chooseMode('Intervalos');
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Pergunta/)).not.toBeInTheDocument();
   });
 });

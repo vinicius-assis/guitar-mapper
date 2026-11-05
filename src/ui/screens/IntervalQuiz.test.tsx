@@ -7,7 +7,20 @@ import { AppProvider } from '../../state/AppState';
 import { activeView, createDefaultData, type Settings } from '../../state/storage';
 import { seededStorage } from '../../test-utils';
 import { useQuizShortcuts } from '../useQuizShortcuts';
+import type { Mark } from '../Fretboard';
 import { IntervalQuiz } from './IntervalQuiz';
+
+const captured: { marks: Mark[] }[] = [];
+vi.mock('../Fretboard', async (orig) => {
+  const mod = await orig<typeof import('../Fretboard')>();
+  return {
+    ...mod,
+    Fretboard: (props: Parameters<typeof mod.Fretboard>[0]) => {
+      captured.push({ marks: props.marks ?? [] });
+      return mod.Fretboard(props);
+    },
+  };
+});
 
 const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn() });
 const item: IntervalItem = { root: 0, interval: '5J' };
@@ -18,12 +31,17 @@ function Shortcuts() {
 }
 
 function setup(
-  opts: { instrument?: 'bass' | 'guitar'; advance?: Settings['intervalAdvance']; leftHanded?: boolean } = {},
+  opts: {
+    instrument?: 'bass' | 'guitar';
+    advance?: Settings['intervalAdvance'];
+    leftHanded?: boolean;
+    notation?: Settings['notation'];
+  } = {},
 ) {
-  const { instrument = 'bass', advance = 'manual', leftHanded = false } = opts;
+  const { instrument = 'bass', advance = 'manual', leftHanded = false, notation = 'cifra' } = opts;
   const storage = seededStorage({ instrument, settings: { instrument } });
   const settings = { ...activeView(createDefaultData()).settings };
-  settings.notation = 'cifra';
+  settings.notation = notation;
   settings.intervalAdvance = advance;
   settings.leftHanded = leftHanded;
   const player = fakePlayer();
@@ -88,6 +106,25 @@ describe('IntervalQuiz', () => {
     expect(noteButtons().every((b) => b.disabled)).toBe(true);
     fireEvent.click(noteBtn('G'));
     expect(onAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts the root C on exactly {1,5},{2,10},{3,3},{4,8} on the bass', () => {
+    captured.length = 0;
+    setup();
+    const targets = captured[captured.length - 1].marks
+      .filter((m) => m.kind === 'target')
+      .map((m) => `${m.position.string}-${m.position.fret}`)
+      .sort();
+    expect(targets).toEqual(['1-5', '2-10', '3-3', '4-8']);
+  });
+
+  it('labels the answer marks and buttons in solfejo when notation is solfejo', () => {
+    const { container } = setup({ notation: 'solfejo' });
+    expect(noteButtons().map((b) => b.textContent)).toContain('Sol');
+    fireEvent.click(noteBtn('Sol'));
+    const labels = [...container.querySelectorAll('g.mark--correct text')].map((t) => t.textContent);
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.every((l) => l === 'Sol')).toBe(true);
   });
 
   it.each([

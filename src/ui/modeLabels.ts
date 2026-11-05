@@ -5,6 +5,7 @@ export const MODES: { mode: QuizMode; label: string }[] = [
   { mode: 'note-to-position', label: 'Nota → posição' },
   { mode: 'flashcard', label: 'Flashcard' },
   { mode: 'ear', label: 'Ouvido' },
+  { mode: 'interval', label: 'Intervalos' },
 ];
 
 export const MODE_DESCRIPTIONS: Record<QuizMode, string> = {
