@@ -1,24 +1,14 @@
+import { EXERCISE_META, QUIZ_MODES } from '../domain/exercises';
 import { EAR_LISTEN_LIMIT, type EarLevel, type QuizMode } from '../domain/quiz';
 
-export const MODES: { mode: QuizMode; label: string }[] = [
-  { mode: 'position-to-note', label: 'Posição → nota' },
-  { mode: 'note-to-position', label: 'Nota → posição' },
-  { mode: 'flashcard', label: 'Flashcard' },
-  { mode: 'ear', label: 'Ouvido' },
-  { mode: 'interval', label: 'Intervalos' },
-];
+export const MODES: { mode: QuizMode; label: string }[] = QUIZ_MODES.map((mode) => ({
+  mode,
+  label: EXERCISE_META[mode].label,
+}));
 
-export const MODE_DESCRIPTIONS: Record<QuizMode, string> = {
-  'position-to-note':
-    'Veja o ponto no braço e escolha a nota entre 4 opções. Treina o caminho da posição para o nome.',
-  'note-to-position':
-    'O app pede uma nota numa corda e você toca no braço onde ela está. Treina o caminho inverso, do nome para a posição.',
-  flashcard:
-    'Olhe o ponto e tente lembrar a nota de cabeça antes de revelar. Sem opções, e você mesmo diz se acertou. É o mais exigente.',
-  ear: 'Ouça uma nota e descubra qual é. Treina o ouvido, sem ver o braço até responder.',
-  interval:
-    'Veja uma nota e um intervalo e escolha a nota de chegada entre as 12. O braço mostra onde ela está.',
-};
+export const MODE_DESCRIPTIONS = Object.fromEntries(
+  QUIZ_MODES.map((mode) => [mode, EXERCISE_META[mode].description]),
+) as Record<QuizMode, string>;
 
 export const EAR_LEVELS: { level: EarLevel; label: 'Fácil' | 'Médio' | 'Difícil'; description: string }[] = [
   {
