@@ -737,3 +737,22 @@ describe('M6 item keys', () => {
     expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
   });
 });
+
+describe('M7 item keys', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps guide and arpeggio keys and old ones, drops malformed ones', () => {
+    const good = ['guide:g7:7', 'arp:dorian:2:3', 'chordplay:e-7:4', 'scaleplay:blues:3:2'];
+    const bad = ['guide:c:0', 'arp:blues:0:6'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+
+  it('does not rewrite a v2 save without the new keys', () => {
+    const raw = v2Raw({}, { items: { 'chordplay:e-7:4': entry } });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: raw });
+    loadData(storage);
+    expect(storage.dump()[STORAGE_KEY]).toBe(raw);
+  });
+});
