@@ -16,7 +16,8 @@ export type MarkKind =
   | 'learning'
   | 'mastered'
   | 'root'
-  | 'scale';
+  | 'scale'
+  | 'chord';
 
 export interface Mark {
   position: Position;
@@ -47,6 +48,10 @@ export interface FretboardProps {
   instrument?: Instrument;
   /** Ligações tracejadas entre duas posições (desenhadas abaixo das marcas). */
   links?: { from: Position; to: Position }[];
+  /** Coluna ao lado do braço: ○ corda solta, × corda abafada (índice 0 = corda 1). */
+  stringMarks?: ('open' | 'muted' | null)[];
+  /** Pestanas: barra translúcida na casa, da corda `fromString` à `toString` (desenhada abaixo das marcas). */
+  barres?: { fret: number; fromString: number; toString: number }[];
 }
 
 const NATURAL_FRET_W = 56;
@@ -70,6 +75,8 @@ export function Fretboard({
   expand = false,
   instrument = GUITAR,
   links,
+  stringMarks,
+  barres,
 }: FretboardProps) {
   const stringCount = instrument.stringCount;
   const STRINGS = Array.from({ length: stringCount }, (_, i) => i + 1);
@@ -129,6 +136,8 @@ export function Fretboard({
   const inView = (fret: number) => fret >= viewMin && fret <= viewMax;
   const visibleLinks = (links ?? []).filter((l) => inView(l.from.fret) && inView(l.to.fret));
 
+  const visibleBarres = (barres ?? []).filter((b) => inView(b.fret));
+
   return (
     <div className={`fretboard-frame${leftHanded ? ' fretboard-frame--mirrored' : ''}`}>
       {stringLabels && (
@@ -142,6 +151,28 @@ export function Fretboard({
           {stringLabels.map((label, i) => (
             <div key={i} className="string-label" data-testid={`string-label-${i + 1}`}>
               {label}
+            </div>
+          ))}
+        </div>
+      )}
+      {stringMarks && (
+        <div
+          className="string-marks"
+          style={{ gridTemplateRows: `${TOP}fr repeat(${stringCount}, ${STRING_GAP}fr)` }}
+          role="group"
+          aria-label="Cordas soltas e abafadas"
+        >
+          <div />
+          {stringMarks.map((mark, i) => (
+            <div
+              key={i}
+              className="string-mark"
+              data-testid={`string-mark-${i + 1}`}
+              {...(mark
+                ? { 'aria-label': `Corda ${i + 1} ${mark === 'open' ? 'solta' : 'abafada'}` }
+                : {})}
+            >
+              {mark === 'open' ? '○' : mark === 'muted' ? '×' : ''}
             </div>
           ))}
         </div>
@@ -245,6 +276,19 @@ export function Fretboard({
               y1={cy(l.from.string)}
               x2={cx(l.to.fret)}
               y2={cy(l.to.string)}
+              pointerEvents="none"
+            />
+          ))}
+          {visibleBarres.map((b, i) => (
+            <rect
+              key={`b${i}`}
+              className="barre"
+              data-fret={b.fret}
+              x={cx(b.fret) - MARK_R}
+              width={2 * MARK_R}
+              y={cy(b.toString) - MARK_R}
+              height={cy(b.fromString) - cy(b.toString) + 2 * MARK_R}
+              rx={MARK_R}
               pointerEvents="none"
             />
           ))}

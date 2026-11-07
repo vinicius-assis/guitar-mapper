@@ -21,6 +21,7 @@ import {
   type HarmonyItem,
   type QualityQuestion,
 } from '../domain/harmonyItems';
+import { chordPool, isChordNameKey, isChordPlayKey, type ChordNameQuestion } from '../domain/chordItems';
 import { intervalItems } from '../domain/intervals';
 import {
   scaleDegreeKey,
@@ -546,5 +547,83 @@ describe('harmonia', () => {
     const sound = { preparePitches } as unknown as Parameters<Exercise['prepareSound']>[0];
     hc().prepareSound(sound, [{ field: 'major', key: 5, degree: 4 }], GUITAR);
     expect(preparePitches).toHaveBeenLastCalledWith([46, 50, 53, 57]);
+  });
+});
+
+describe('acordes', () => {
+  const cn = () => exerciseFor('chord-name');
+  const cp = () => exerciseFor('chord-play');
+  const BASS_MSG = 'Acordes são só para violão. Troque para Violão em Ajustes.';
+  const bassCtx = (settings: Partial<Settings> = {}): ExerciseContext => ({ ...makeCtx(settings), instrument: BASS });
+
+  it('questionCount segue o tamanho do pool no violão e é 0 no baixo', () => {
+    for (const ex of [cn(), cp()]) {
+      expect(ex.questionCount(makeCtx())).toBe(8);
+      expect(ex.questionCount(makeCtx({ chordShapes: 'barre', chordKinds: 'both' }))).toBe(120);
+      expect(ex.questionCount(makeCtx({ chordShapes: 'all', chordKinds: 'sevenths' }))).toBe(83);
+      expect(ex.questionCount(bassCtx())).toBe(0);
+      expect(ex.questionCount(bassCtx({ chordShapes: 'all', chordKinds: 'both' }))).toBe(0);
+    }
+  });
+
+  it('bloqueiam só no baixo e não iniciam por uma posição', () => {
+    for (const ex of [cn(), cp()]) {
+      expect(ex.startBlockers(makeCtx())).toEqual([]);
+      expect(ex.startBlockers(makeCtx({ soundEnabled: false }))).toEqual([]);
+      expect(ex.startBlockers(bassCtx())).toEqual([BASS_MSG]);
+      expect(ex.startsFromPosition(makeCtx())).toBe(false);
+      expect(ex.historyLevel).toBeUndefined();
+    }
+  });
+
+  const ctxAll = (): ExerciseContext => ({
+    ...makeCtx({ chordShapes: 'all', chordKinds: 'both' }),
+    progress: {},
+    limit: 20,
+    now: 0,
+  });
+
+  it('buildQueue: filas distintas e dentro do pool', () => {
+    const qn = cn().buildQueue(ctxAll()) as ChordNameQuestion[];
+    const kn = qn.map((q) => cn().itemKey(q, GUITAR));
+    expect(qn).toHaveLength(20);
+    expect(new Set(kn).size).toBe(20);
+    expect(kn.every(isChordNameKey)).toBe(true);
+    for (const q of qn) expect(q.options).toHaveLength(4);
+    const qp = cp().buildQueue(ctxAll());
+    const kp = qp.map((q) => cp().itemKey(q, GUITAR));
+    expect(qp).toHaveLength(20);
+    expect(new Set(kp).size).toBe(20);
+    expect(kp.every(isChordPlayKey)).toBe(true);
+  });
+
+  it('a revisão prioriza os vencidos', () => {
+    const pool = chordPool('all', 'both');
+    expect(pool).toHaveLength(139);
+    const due = pool.slice(0, 5).map((i) => cp().itemKey(i, GUITAR));
+    const progress: ProgressMap = {};
+    for (const item of pool) {
+      const k = cp().itemKey(item, GUITAR);
+      progress[k] = due.includes(k)
+        ? { box: 1, correct: 0, wrong: 1, lastReview: 0, nextReview: -1000 }
+        : { box: 1, correct: 1, wrong: 0, lastReview: 0, nextReview: 10 ** 12 };
+    }
+    const queue = cp().buildQueue({ ...ctxAll(), progress });
+    const got = queue.map((q) => cp().itemKey(q, GUITAR));
+    for (const k of due) expect(got).toContain(k);
+  });
+
+  it('chaves dos itens', () => {
+    expect(cn().itemKey({ shape: 'am7', root: 9 }, GUITAR)).toBe('chordname:am7:9');
+    expect(cp().itemKey({ shape: 'am7', root: 9 }, GUITAR)).toBe('chordplay:am7:9');
+  });
+
+  it('prepareSound carrega as alturas do desenho', () => {
+    const preparePitches = vi.fn();
+    const sound = { preparePitches } as unknown as Parameters<Exercise['prepareSound']>[0];
+    for (const ex of [cn(), cp()]) {
+      ex.prepareSound(sound, [{ shape: 'c', root: 0 }], GUITAR);
+      expect(preparePitches).toHaveBeenLastCalledWith([48, 52, 55, 60, 64]);
+    }
   });
 });

@@ -21,6 +21,18 @@ import {
   type DegreeQuestion,
   type EarIntervalQuestion,
 } from '../domain/earTraining';
+import {
+  buildChordNameQueue,
+  buildChordPlayQueue,
+  chordNameKey,
+  chordPlayKey,
+  chordPool,
+  type ChordItem,
+  type ChordKindSetting,
+  type ChordNameQuestion,
+  type ChordShapeSetting,
+} from '../domain/chordItems';
+import { chordVoicing, voicingPitches } from '../domain/chords';
 import { chordPitches, type HarmonyFieldSetting } from '../domain/harmony';
 import {
   buildHarmonyQueue,
@@ -67,6 +79,8 @@ import { EarQuiz } from './screens/EarQuiz';
 import { FindQuiz } from './screens/FindQuiz';
 import { Flashcard } from './screens/Flashcard';
 import { IntervalQuiz } from './screens/IntervalQuiz';
+import { ChordNameQuiz } from './screens/ChordNameQuiz';
+import { ChordPlayQuiz } from './screens/ChordPlayQuiz';
 import { HarmonyChordQuiz } from './screens/HarmonyChordQuiz';
 import { HarmonyDegreeQuiz } from './screens/HarmonyDegreeQuiz';
 import { HarmonyQualityQuiz } from './screens/HarmonyQualityQuiz';
@@ -74,7 +88,7 @@ import { HARMONY_KEY_TEXT } from './harmonyText';
 import { ScaleDegreeQuiz } from './screens/ScaleDegreeQuiz';
 import { ScalePlayQuiz } from './screens/ScalePlayQuiz';
 
-export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem | HarmonyItem | QualityQuestion;
+export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem | HarmonyItem | QualityQuestion | ChordItem | ChordNameQuestion;
 
 export interface ExerciseContext {
   settings: Settings;
@@ -583,6 +597,87 @@ const harmonyQuality: Exercise = {
   },
 };
 
+const BASS_NO_CHORDS = 'Acordes são só para violão. Troque para Violão em Ajustes.';
+const SHAPE_OPTIONS: { value: ChordShapeSetting; label: string }[] = [
+  { value: 'open', label: 'Abertas' },
+  { value: 'barre', label: 'Pestana' },
+  { value: 'all', label: 'Todas' },
+];
+const KIND_OPTIONS: { value: ChordKindSetting; label: string }[] = [
+  { value: 'triads', label: 'Tríades' },
+  { value: 'sevenths', label: 'Tétrades' },
+  { value: 'both', label: 'Todos' },
+];
+
+function ChordOptions() {
+  const { data, updateSettings } = useAppState();
+  const { chordShapes, chordKinds } = data.settings;
+  return (
+    <>
+      <div className="level-bar" role="group" aria-label="Formas">
+        {SHAPE_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={chordShapes === value}
+            onClick={() => updateSettings({ chordShapes: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="level-bar" role="group" aria-label="Acordes">
+        {KIND_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={chordKinds === value}
+            onClick={() => updateSettings({ chordKinds: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+const chordItemsPitches = (items: ChordItem[]) =>
+  items.flatMap((i) => voicingPitches(chordVoicing(i.shape, i.root)));
+
+const chordName: Exercise = {
+  ...EXERCISE_META['chord-name'],
+  itemKey: (item) => chordNameKey(item as ChordItem),
+  questionCount: (ctx) =>
+    ctx.instrument.id === 'bass' ? 0 : chordPool(ctx.settings.chordShapes, ctx.settings.chordKinds).length,
+  startBlockers: (ctx) => (ctx.instrument.id === 'bass' ? [BASS_NO_CHORDS] : []),
+  startsFromPosition: () => false,
+  Options: ChordOptions,
+  buildQueue: (ctx) =>
+    buildChordNameQueue(
+      reviewSubset(ctx, chordPool(ctx.settings.chordShapes, ctx.settings.chordKinds), chordNameKey),
+      ctx.rng,
+    ),
+  prepareSound: (sound, items) => sound.preparePitches(chordItemsPitches(items as ChordItem[])),
+  Quiz: function ChordNameExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <ChordNameQuiz question={item as ChordNameQuestion} {...rest} />;
+  },
+};
+
+const chordPlay: Exercise = {
+  ...chordName,
+  ...EXERCISE_META['chord-play'],
+  itemKey: (item) => chordPlayKey(item as ChordItem),
+  buildQueue: (ctx) =>
+    buildChordPlayQueue(
+      reviewSubset(ctx, chordPool(ctx.settings.chordShapes, ctx.settings.chordKinds), chordPlayKey),
+      ctx.rng,
+    ),
+  Quiz: function ChordPlayExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <ChordPlayQuiz question={item as ChordItem} {...rest} />;
+  },
+};
+
 export const EXERCISES: Record<QuizMode, Exercise> = {
   'position-to-note': positionExercise('position-to-note', positionQuiz(ChoiceQuiz)),
   'note-to-position': positionExercise('note-to-position', positionQuiz(FindQuiz)),
@@ -596,6 +691,8 @@ export const EXERCISES: Record<QuizMode, Exercise> = {
   'harmony-chord': harmonyChord,
   'harmony-degree': harmonyDegree,
   'harmony-quality': harmonyQuality,
+  'chord-name': chordName,
+  'chord-play': chordPlay,
 };
 
 export function exerciseFor(mode: QuizMode): Exercise {

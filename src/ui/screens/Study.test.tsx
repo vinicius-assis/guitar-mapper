@@ -652,7 +652,7 @@ describe('Study: header menu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('lists the 12 exercises with the current one checked', () => {
+  it('lists the 14 exercises with the current one checked', () => {
     setup({ mode: 'flashcard', filter: THREE });
     fireEvent.click(menuButton());
     expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
@@ -670,11 +670,15 @@ describe('Study: header menu', () => {
       'Acorde do grau',
       'Grau do acorde',
       'Qualidade do acorde',
+      'Nome do acorde',
+      'Monte o acorde',
     ]);
     expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual([
       'false',
       'false',
       'true',
+      'false',
+      'false',
       'false',
       'false',
       'false',
@@ -701,13 +705,15 @@ describe('Study: header menu', () => {
       'Teoria',
       'Escalas',
       'Harmonia',
+      'Acordes',
     ]);
     expect(labels('Braço')).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard']);
     expect(labels('Ouvido')).toEqual(['Ouvido', 'Ouvir intervalos', 'Ouvir graus']);
     expect(labels('Teoria')).toEqual(['Intervalos']);
     expect(labels('Escalas')).toEqual(['Grau no desenho', 'Toque a escala']);
     expect(labels('Harmonia')).toEqual(['Acorde do grau', 'Grau do acorde', 'Qualidade do acorde']);
-    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(12);
+    expect(labels('Acordes')).toEqual(['Nome do acorde', 'Monte o acorde']);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(14);
     const braco = within(menu).getByRole('group', { name: 'Braço' });
     expect(braco.querySelector('p.menu__group')).toHaveTextContent('Braço');
   });
@@ -797,7 +803,7 @@ describe('Study: desktop layout', () => {
   afterEach(() => viewport.restore());
   const exercises = () => screen.queryByRole('group', { name: 'Exercício' });
 
-  it('shows the 12 exercises as buttons instead of the menu, and no logo in the header', () => {
+  it('shows the 14 exercises as buttons instead of the menu, and no logo in the header', () => {
     setup({ filter: THREE });
     const group = exercises()!;
     expect(
@@ -817,6 +823,8 @@ describe('Study: desktop layout', () => {
       'Acorde do grau',
       'Grau do acorde',
       'Qualidade do acorde',
+      'Nome do acorde',
+      'Monte o acorde',
     ]);
     expect(within(group).getByRole('button', { name: 'Posição → nota' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'Menu de exercícios' })).not.toBeInTheDocument();
@@ -1625,5 +1633,141 @@ describe('Study: harmonia', () => {
     expect(screen.getByText(/^Pergunta 2 de/)).toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     for (const b of document.querySelectorAll(selector)) expect(b).toBeEnabled();
+  });
+});
+
+describe('Study: acordes', () => {
+  const BASS_MSG = 'Acordes são só para violão. Troque para Violão em Ajustes.';
+  const pressed = (group: string, name: string) =>
+    expect(within(screen.getByRole('group', { name: group })).getByRole('button', { name })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+  function setupBass(settings: Partial<Settings>, forced: { string: number; fret: number } | null = null) {
+    const storage = seededStorage({
+      instrument: 'bass',
+      settings: { notation: 'cifra', instrument: 'bass', ...settings },
+    });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Study forced={forced} />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    return storage;
+  }
+
+  it('Nome do acorde has no Foco card and shows the shapes and chords selectors', () => {
+    const storage = setup();
+    chooseMode('Nome do acorde');
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    pressed('Formas', 'Abertas');
+    pressed('Acordes', 'Tríades');
+    expect(screen.getByText('Sessão de 8 perguntas')).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Formas' })).getByRole('button', { name: 'Pestana' }));
+    expect(readRawSettings(storage).chordShapes).toBe('barre');
+    expect(screen.getByText('Sessão de 20 perguntas')).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Acordes' })).getByRole('button', { name: 'Tétrades' }));
+    expect(readRawSettings(storage).chordKinds).toBe('sevenths');
+  });
+
+  it('runs a Monte o acorde session with the sound off, records chordplay: progress and a history entry without level', async () => {
+    const storage = setup({ mode: 'chord-play', soundEnabled: false });
+    start();
+    expect(screen.getByText('Pergunta 1 de 8')).toBeInTheDocument();
+    expect(screen.getByText('Monte o acorde')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('cell-5-1')); // A# nunca está nos acordes abertos em tríade
+    const keys = Object.keys(readSaved(storage).itemProgress);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].startsWith('chordplay:')).toBe(true);
+    await finalize();
+    const entry = readSaved(storage).history[0];
+    expect(entry).toMatchObject({ mode: 'chord-play' });
+    expect(entry).not.toHaveProperty('level');
+  });
+
+  it('a guitar session records under the guitar items only', () => {
+    const storage = setup({ mode: 'chord-name' });
+    start();
+    fireEvent.click(document.querySelector('.note-option, .answer-grid button, .options button') as HTMLButtonElement);
+    expect(Object.keys(readSaved(storage, 'guitar').itemProgress)[0].startsWith('chordname:')).toBe(true);
+    expect(readSaved(storage, 'bass').itemProgress).toEqual({});
+  });
+
+  it.each(['chord-name', 'chord-play'] as const)('%s on the bass: message, disabled Iniciar, no session count', (mode) => {
+    setupBass({ mode });
+    expect(screen.getByText(BASS_MSG)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+    expect(screen.queryByText(/Sessão de/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+  });
+
+  it.each(['chord-name', 'chord-play'] as const)('%s on the bass: a forced position does not start', (mode) => {
+    setupBass({ mode }, { string: 3, fret: 7 });
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+  });
+
+  it('switching from bass to guitar enables Iniciar and shows the count', () => {
+    function Switch() {
+      const { updateSettings } = useAppState();
+      return (
+        <button type="button" onClick={() => updateSettings({ instrument: 'guitar' })}>
+          trocar
+        </button>
+      );
+    }
+    const storage = seededStorage({
+      instrument: 'bass',
+      settings: { notation: 'cifra', instrument: 'bass', mode: 'chord-play' },
+    });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Switch />
+            <Study />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'trocar' }));
+    expect(screen.queryByText(BASS_MSG)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+    expect(screen.getByText('Sessão de 8 perguntas')).toBeInTheDocument();
+  });
+
+  it('desktop: no Foco card and an enabled Iniciar', () => {
+    const viewport = mockViewport(1280);
+    setup({ mode: 'chord-name' });
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+    viewport.restore();
+  });
+
+  it('a position from Progresso does not start a chord-name session on the guitar', () => {
+    setup({ mode: 'chord-name' }, { string: 3, fret: 7 });
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+  });
+
+  it.each([
+    ['chord-name', '.options button, .answer-grid button, .note-option'],
+    ['chord-play', '[data-testid="cell-5-1"]'],
+  ] as const)('%s: the next question is remounted and clears the answer', async (mode, selector) => {
+    setup({ mode });
+    start();
+    fireEvent.click(document.querySelector(selector) as HTMLElement);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    const next = screen.queryByRole('button', { name: 'Próxima' });
+    if (next) fireEvent.click(next);
+    else await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
+    expect(screen.getByText(/^Pergunta 2 de/)).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });

@@ -38,6 +38,16 @@ describe('backup', () => {
     expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
   });
 
+  it('round-trips the chord settings and item keys', () => {
+    const d = createDefaultData();
+    d.settings.chordShapes = 'barre';
+    d.settings.chordKinds = 'sevenths';
+    d.instruments.guitar.items = {
+      'chordplay:a-m7:2': { box: 2, correct: 1, wrong: 0, lastReview: 1, nextReview: 2 },
+    };
+    expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
+  });
+
   it('names the file with the local date', () => {
     expect(exportFilename(new Date(2026, 10, 7, 23, 30))).toBe('guitar-mapper-2026-11-07.json');
   });

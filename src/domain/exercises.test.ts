@@ -16,6 +16,8 @@ describe('exercises', () => {
       'harmony-chord',
       'harmony-degree',
       'harmony-quality',
+      'chord-name',
+      'chord-play',
     ]);
   });
 
@@ -24,7 +26,7 @@ describe('exercises', () => {
   });
 
   it('as trilhas cobrem cada modo exatamente uma vez', () => {
-    expect(TRACKS.map((t) => t.label)).toEqual(['Braço', 'Ouvido', 'Teoria', 'Escalas', 'Harmonia']);
+    expect(TRACKS.map((t) => t.label)).toEqual(['Braço', 'Ouvido', 'Teoria', 'Escalas', 'Harmonia', 'Acordes']);
     expect(TRACKS.flatMap((t) => t.modes)).toEqual(QUIZ_MODES);
   });
 
@@ -77,6 +79,18 @@ describe('exercises', () => {
     expect(EXERCISE_META['harmony-chord'].label).toBe('Acorde do grau');
     expect(EXERCISE_META['harmony-degree'].label).toBe('Grau do acorde');
     expect(EXERCISE_META['harmony-quality'].label).toBe('Qualidade do acorde');
+  });
+
+  it('a trilha Acordes tem os dois modos, sem progresso de posição nem Foco', () => {
+    const modes = ['chord-name', 'chord-play'] as const;
+    expect(TRACKS.find((t) => t.id === 'acordes')!.modes).toEqual(modes);
+    for (const mode of modes) {
+      expect(EXERCISE_META[mode].track).toBe('acordes');
+      expect(EXERCISE_META[mode].recordsPositionProgress).toBe(false);
+      expect(EXERCISE_META[mode].usesFocus).toBe(false);
+    }
+    expect(EXERCISE_META['chord-name'].label).toBe('Nome do acorde');
+    expect(EXERCISE_META['chord-play'].label).toBe('Monte o acorde');
   });
 
   it('rótulos', () => {

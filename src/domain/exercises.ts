@@ -1,6 +1,6 @@
 import type { QuizMode } from './quiz';
 
-export type TrackId = 'braco' | 'ouvido' | 'teoria' | 'escalas' | 'harmonia';
+export type TrackId = 'braco' | 'ouvido' | 'teoria' | 'escalas' | 'harmonia' | 'acordes';
 
 export interface ExerciseMeta {
   mode: QuizMode;
@@ -120,6 +120,24 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     recordsPositionProgress: false,
     usesFocus: false,
   },
+  'chord-name': {
+    mode: 'chord-name',
+    track: 'acordes',
+    label: 'Nome do acorde',
+    description:
+      'O braço mostra o desenho de um acorde, com as cordas soltas (○) e abafadas (×). Escolha o nome dele entre 4 opções. Só no violão.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
+  'chord-play': {
+    mode: 'chord-play',
+    track: 'acordes',
+    label: 'Monte o acorde',
+    description:
+      'O app pede um acorde e a forma, aberta ou de pestana. Toque no braço as casas presas do desenho. Uma nota fora do acorde encerra a pergunta. Só no violão.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
 };
 
 export const QUIZ_MODES: QuizMode[] = [
@@ -135,6 +153,8 @@ export const QUIZ_MODES: QuizMode[] = [
   'harmony-chord',
   'harmony-degree',
   'harmony-quality',
+  'chord-name',
+  'chord-play',
 ];
 
 export const TRACKS: { id: TrackId; label: string; modes: QuizMode[] }[] = [
@@ -143,4 +163,5 @@ export const TRACKS: { id: TrackId; label: string; modes: QuizMode[] }[] = [
   { id: 'teoria', label: 'Teoria', modes: ['interval'] },
   { id: 'escalas', label: 'Escalas', modes: ['scale-degree', 'scale-play'] },
   { id: 'harmonia', label: 'Harmonia', modes: ['harmony-chord', 'harmony-degree', 'harmony-quality'] },
+  { id: 'acordes', label: 'Acordes', modes: ['chord-name', 'chord-play'] },
 ];
