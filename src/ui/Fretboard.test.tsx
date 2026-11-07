@@ -359,4 +359,21 @@ describe('Fretboard inlays follow the string count', () => {
       expect(container.querySelector('.mark--target')).not.toBeNull();
     });
   });
+
+  it('renders root and scale marks tagged with their position', () => {
+    const { container } = render(
+      <Fretboard
+        fretMin={1}
+        fretMax={9}
+        marks={[
+          { position: { string: 6, fret: 5 }, kind: 'root', label: '1' },
+          { position: { string: 5, fret: 5 }, kind: 'scale' },
+        ]}
+      />,
+    );
+    const root = container.querySelector('g.mark--root[data-pos="6-5"]');
+    expect(root).not.toBeNull();
+    expect(root?.querySelector('text')).toHaveTextContent('1');
+    expect(container.querySelector('g.mark--scale[data-pos="5-5"]')).not.toBeNull();
+  });
 });

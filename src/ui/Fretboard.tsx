@@ -14,7 +14,9 @@ export type MarkKind =
   | 'hint'
   | 'unseen'
   | 'learning'
-  | 'mastered';
+  | 'mastered'
+  | 'root'
+  | 'scale';
 
 export interface Mark {
   position: Position;
@@ -254,6 +256,7 @@ export function Fretboard({
               <g
                 key={`m${positionKey(m.position)}-${m.kind}`}
                 className={`mark mark--${m.kind}`}
+                data-pos={positionKey(m.position)}
                 pointerEvents="none"
               >
                 <circle cx={x} cy={y} r={MARK_R} />
