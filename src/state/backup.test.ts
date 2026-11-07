@@ -17,6 +17,16 @@ describe('backup', () => {
     expect(r).toEqual({ ok: true, data: d });
   });
 
+  it('round-trips the scale settings and scale item keys', () => {
+    const d = createDefaultData();
+    d.settings.scale = 'dorian';
+    d.settings.scaleBox = 'all';
+    d.instruments.bass.items = {
+      'scaleplay:dorian:3:2': { box: 2, correct: 1, wrong: 0, lastReview: 1, nextReview: 2 },
+    };
+    expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
+  });
+
   it('names the file with the local date', () => {
     expect(exportFilename(new Date(2026, 10, 7, 23, 30))).toBe('guitar-mapper-2026-11-07.json');
   });

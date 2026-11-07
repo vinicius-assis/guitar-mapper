@@ -13,6 +13,16 @@ import {
   type EarIntervalQuestion,
 } from '../domain/earTraining';
 import { intervalItems } from '../domain/intervals';
+import {
+  scaleDegreeKey,
+  scaleDegreePool,
+  scaleDegreeTarget,
+  scalePlayKey,
+  scalePlayPool,
+  type ScaleDegreeQuestion,
+  type ScalePlayItem,
+} from '../domain/scaleItems';
+import { scaleBox } from '../domain/scales';
 import { ALL_NOTES } from '../domain/notes';
 import { pitchOf, uniquePitchPositions } from '../domain/pitch';
 import type { PositionProgress, ProgressMap } from '../domain/scheduler';
@@ -349,5 +359,96 @@ describe('ouvir intervalos e graus', () => {
     expect(ei().historyLevel?.(s)).toBe('hard');
     expect(ed().historyLevel?.(s)).toBe('easy');
     expect(exerciseFor('interval').historyLevel).toBeUndefined();
+  });
+});
+
+describe('escalas', () => {
+  const sd = () => exerciseFor('scale-degree');
+  const sp = () => exerciseFor('scale-play');
+
+  it('questionCount segue o tamanho do pool', () => {
+    expect(sd().questionCount(makeCtx())).toBe(9);
+    expect(sd().questionCount({ ...makeCtx(), instrument: BASS })).toBe(6);
+    expect(sd().questionCount(makeCtx({ scale: 'major', scaleBox: 'all' }))).toBe(108);
+    expect(sp().questionCount(makeCtx())).toBe(12);
+    expect(sp().questionCount(makeCtx({ scaleBox: 'all' }))).toBe(60);
+  });
+
+  it('nunca bloqueiam o início e não iniciam por uma posição', () => {
+    for (const ex of [sd(), sp()]) {
+      expect(ex.startBlockers(makeCtx({ soundEnabled: false }))).toEqual([]);
+      expect(ex.startBlockers(makeCtx())).toEqual([]);
+      expect(ex.startsFromPosition(makeCtx())).toBe(false);
+      expect(ex.historyLevel).toBeUndefined();
+    }
+  });
+
+  const ctxFor = (instrument: typeof GUITAR, settings: Partial<Settings>): ExerciseContext => ({
+    ...makeCtx(settings),
+    instrument,
+    progress: {},
+    limit: 20,
+    now: 0,
+  });
+
+  it.each([GUITAR, BASS].flatMap((i) => (['major', 'blues'] as const).map((s) => [i, s] as const)))(
+    'buildQueue: 20 itens distintos e no pool (%#)',
+    (instrument, scale) => {
+      const ctx = ctxFor(instrument, { scale, scaleBox: 'all' });
+      const qa = sd().buildQueue(ctx) as ScaleDegreeQuestion[];
+      const degKeys = scaleDegreePool(scale, 'all', instrument).map(scaleDegreeKey);
+      expect(qa).toHaveLength(20);
+      const ka = qa.map((q) => sd().itemKey(q, instrument));
+      expect(new Set(ka).size).toBe(20);
+      for (const k of ka) expect(degKeys).toContain(k);
+      for (const q of qa) {
+        expect(q.root >= 0 && q.root <= 11).toBe(true);
+        expect(scaleDegreeTarget(q, instrument)).toBeDefined();
+      }
+
+      const qb = sp().buildQueue(ctx) as ScalePlayItem[];
+      const playKeys = scalePlayPool(scale, 'all').map(scalePlayKey);
+      expect(qb).toHaveLength(20);
+      const kb = qb.map((q) => sp().itemKey(q, instrument));
+      expect(new Set(kb).size).toBe(20);
+      for (const k of kb) expect(playKeys).toContain(k);
+      for (const q of qb) {
+        for (const n of scaleBox(q.scale, q.box, q.root, instrument).notes) {
+          expect(n.position.fret >= 1 && n.position.fret <= 24).toBe(true);
+        }
+      }
+    },
+  );
+
+  it('a revisão prioriza os vencidos', () => {
+    const pool = scalePlayPool('pent-minor', 'all');
+    expect(pool).toHaveLength(60);
+    const due = pool.slice(0, 5).map(scalePlayKey);
+    const progress: ProgressMap = {};
+    for (const item of pool) {
+      const k = scalePlayKey(item);
+      progress[k] = due.includes(k)
+        ? { box: 1, correct: 0, wrong: 1, lastReview: 0, nextReview: -1000 }
+        : { box: 1, correct: 1, wrong: 0, lastReview: 0, nextReview: 10 ** 12 };
+    }
+    const queue = sp().buildQueue({ ...makeCtx({ scaleBox: 'all' }), progress, limit: 20, now: 0 });
+    const keysOut = queue.map((q) => sp().itemKey(q, GUITAR));
+    for (const k of due) expect(keysOut).toContain(k);
+  });
+
+  it('chaves dos itens', () => {
+    expect(sd().itemKey({ scale: 'pent-minor', box: 1, string: 3, degree: 1, root: 9 }, GUITAR)).toBe(
+      'scaledeg:pent-minor:1:3:1',
+    );
+    expect(sp().itemKey({ scale: 'major', root: 8, box: 7 }, GUITAR)).toBe('scaleplay:major:8:7');
+  });
+
+  it('prepareSound carrega as posições de cada pergunta', () => {
+    const prepare = vi.fn();
+    const sound = { prepare } as unknown as Parameters<Exercise['prepareSound']>[0];
+    sd().prepareSound(sound, [{ scale: 'pent-minor', box: 1, string: 3, degree: 1, root: 9 }], GUITAR);
+    expect(prepare).toHaveBeenLastCalledWith([{ string: 3, fret: 5 }]);
+    sp().prepareSound(sound, [{ scale: 'pent-minor', root: 9, box: 1 }], GUITAR);
+    expect(prepare.mock.lastCall![0]).toHaveLength(12);
   });
 });

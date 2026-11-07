@@ -10,6 +10,7 @@
   --ok: #4caf7a;
   --bad: #e5604d;
   --warn: #d9b93c;
+  --root: #5b9be6;
   --wood: #3a2c20;
   --tap: 48px;
 }
@@ -22,6 +23,7 @@
     --muted: #6d6256;
     --line: #cdbfae;
     --wood: #e9d9c3;
+    --root: #2f78d0;
   }
 }
 
@@ -180,6 +182,10 @@ main { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
 .mark--correct circle { fill: var(--ok); }
 .mark--wrong circle { fill: var(--bad); }
 .mark--hint circle { fill: var(--accent); opacity: 0.55; }
+.mark--root circle { fill: var(--root); }
+.mark--root text { fill: #fff; }
+.mark--scale circle { fill: var(--surface-2); stroke: var(--text); stroke-width: 1.5; }
+.mark--scale text { fill: var(--text); }
 .mark--unseen circle { fill: var(--muted); opacity: 0.35; r: 7; }
 .mark--learning circle { fill: var(--warn); r: 9; }
 .mark--mastered circle { fill: var(--ok); r: 9; }
@@ -219,6 +225,11 @@ legend { padding: 0 8px; color: var(--muted); }
 .swatch--mastered { background: var(--ok); }
 .swatch--learning { background: var(--warn); }
 .swatch--wrong { background: var(--bad); }
+.swatch--root { background: var(--root); }
+.swatch--scale { background: var(--surface-2); border: 1.5px solid var(--text); }
+.swatch--target { background: var(--accent); }
+.scale-title { margin: 0 0 8px; color: var(--muted); font-weight: 600; }
+.scale-remaining { margin: 8px 0; font-weight: 700; }
 .swatch--unseen { background: var(--muted); opacity: 0.5; }
 
 .session-summary { display: grid; gap: 12px; text-align: center; padding: 24px 0; }

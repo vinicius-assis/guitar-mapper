@@ -652,7 +652,7 @@ describe('Study: header menu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('lists the 7 exercises with the current one checked', () => {
+  it('lists the 9 exercises with the current one checked', () => {
     setup({ mode: 'flashcard', filter: THREE });
     fireEvent.click(menuButton());
     expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
@@ -665,11 +665,15 @@ describe('Study: header menu', () => {
       'Ouvir intervalos',
       'Ouvir graus',
       'Intervalos',
+      'Grau no desenho',
+      'Toque a escala',
     ]);
     expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual([
       'false',
       'false',
       'true',
+      'false',
+      'false',
       'false',
       'false',
       'false',
@@ -689,11 +693,13 @@ describe('Study: header menu', () => {
       'Braço',
       'Ouvido',
       'Teoria',
+      'Escalas',
     ]);
     expect(labels('Braço')).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard']);
     expect(labels('Ouvido')).toEqual(['Ouvido', 'Ouvir intervalos', 'Ouvir graus']);
     expect(labels('Teoria')).toEqual(['Intervalos']);
-    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(7);
+    expect(labels('Escalas')).toEqual(['Grau no desenho', 'Toque a escala']);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(9);
     const braco = within(menu).getByRole('group', { name: 'Braço' });
     expect(braco.querySelector('p.menu__group')).toHaveTextContent('Braço');
   });
@@ -783,7 +789,7 @@ describe('Study: desktop layout', () => {
   afterEach(() => viewport.restore());
   const exercises = () => screen.queryByRole('group', { name: 'Exercício' });
 
-  it('shows the 7 exercises as buttons instead of the menu, and no logo in the header', () => {
+  it('shows the 9 exercises as buttons instead of the menu, and no logo in the header', () => {
     setup({ filter: THREE });
     const group = exercises()!;
     expect(
@@ -798,6 +804,8 @@ describe('Study: desktop layout', () => {
       'Ouvir intervalos',
       'Ouvir graus',
       'Intervalos',
+      'Grau no desenho',
+      'Toque a escala',
     ]);
     expect(within(group).getByRole('button', { name: 'Posição → nota' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'Menu de exercícios' })).not.toBeInTheDocument();
@@ -1418,5 +1426,94 @@ describe('Study: ouvir intervalos e graus', () => {
     else await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
     expect(screen.getByText('Pergunta 2 de 3')).toBeInTheDocument();
     expect(options().every((b) => !b.disabled)).toBe(true);
+  });
+});
+
+describe('Study: escalas', () => {
+  it('Grau no desenho has no Foco card and shows the scale and box selectors', () => {
+    const storage = setup();
+    chooseMode('Grau no desenho');
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.getByText('Sessão de 9 perguntas')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Escala' })).toHaveValue('pent-minor');
+    fireEvent.click(within(screen.getByRole('group', { name: 'Desenho' })).getByRole('button', { name: 'Todos' }));
+    expect(readRawSettings(storage).scaleBox).toBe('all');
+    expect(screen.getByText('Sessão de 20 perguntas')).toBeInTheDocument();
+  });
+
+  it('changing to a scale with fewer boxes resets the box to 1', () => {
+    const storage = setup({ mode: 'scale-degree', scale: 'major', scaleBox: 7 });
+    const box = () => within(screen.getByRole('group', { name: 'Desenho' }));
+    expect(box().getByRole('button', { name: '7' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Escala' }), { target: { value: 'pent-minor' } });
+    expect(readRawSettings(storage).scale).toBe('pent-minor');
+    expect(readRawSettings(storage).scaleBox).toBe(1);
+    expect(box().getByRole('button', { name: '1' })).toHaveAttribute('aria-pressed', 'true');
+    expect(box().queryByRole('button', { name: '7' })).not.toBeInTheDocument();
+  });
+
+  it('Toque a escala starts, even with the sound off', () => {
+    setup({ mode: 'scale-play', soundEnabled: false });
+    start();
+    expect(screen.getByText('Pergunta 1 de 12')).toBeInTheDocument();
+    expect(screen.getByText('Toque a escala')).toBeInTheDocument();
+  });
+
+  it('runs a degree session, records scaledeg: progress and a history entry without level', async () => {
+    const storage = setup({ mode: 'scale-degree' });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'Grau 1' }));
+    const keys = Object.keys(readSaved(storage).itemProgress);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].startsWith('scaledeg:')).toBe(true);
+    await finalize();
+    const entry = readSaved(storage).history[0];
+    expect(entry).toMatchObject({ mode: 'scale-degree' });
+    expect(entry).not.toHaveProperty('level');
+  });
+
+  it('desktop: no Foco card, session sentence and an enabled Iniciar', () => {
+    const viewport = mockViewport(1280);
+    setup({ mode: 'scale-play' });
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.getByText('Sessão de 12 perguntas')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+    viewport.restore();
+  });
+
+  it('a position from Progresso does not start a scale-degree session', () => {
+    setup({ mode: 'scale-degree' }, { string: 3, fret: 7 });
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+  });
+
+  it('scale-degree: the next question is remounted and clears the answer', async () => {
+    setup({ mode: 'scale-degree' });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'Grau 1' }));
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    const next = screen.queryByRole('button', { name: 'Próxima' });
+    if (next) fireEvent.click(next);
+    else await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
+    expect(screen.getByText('Pergunta 2 de 9')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    for (const b of document.querySelectorAll('.answer-grid button')) expect(b).toBeEnabled();
+  });
+
+  it('scale-play: the next question is remounted and clears the taps', async () => {
+    setup({ mode: 'scale-play' });
+    start();
+    // Toca casas até uma cair fora da escala (encerra a pergunta com erro).
+    const taps = screen.getAllByRole('button', { name: /^Corda \d+, casa \d+$/ });
+    for (const t of taps) {
+      if (screen.queryByRole('status')) break;
+      fireEvent.click(t);
+    }
+    expect(screen.getByRole('status')).toHaveTextContent(/^Errado/);
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
+    expect(screen.getByText('Pergunta 2 de 12')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(document.querySelector('g.mark--wrong')).toBeNull();
+    expect(screen.getByText(/^Faltam \d+ notas?$/)).toBeInTheDocument();
   });
 });
