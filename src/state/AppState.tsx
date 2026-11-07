@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import { positionKey, type Position } from '../domain/fretboard';
-import { addToHistory, type HistoryEntry } from '../domain/session';
+import { addToHistory, type HistoryEntry, type SessionResult } from '../domain/session';
+import { addSessionToStats } from '../domain/stats';
 import { applyAnswer } from '../domain/scheduler';
 import { instrumentById, type Instrument } from '../domain/instruments';
 import {
@@ -30,6 +31,10 @@ interface AppStateValue {
   storageAvailable: boolean;
   recovered: boolean;
   recordAnswer(position: Position, correct: boolean): void;
+  /** Resposta a um item de Ouvido/Intervalos (`ear:<midi>`, `interval:<raiz>:<id>`). */
+  recordItemAnswer(key: string, correct: boolean): void;
+  /** Soma uma sessão terminada às estatísticas do dia local; sessão vazia não grava nada. */
+  recordStudyDay(results: SessionResult[]): void;
   updateSettings(patch: Partial<Settings>): void;
   resetProgress(): void;
   recordSession(entry: HistoryEntry): void;
@@ -72,6 +77,24 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       const key = positionKey(position);
       const { progress } = activeView(current);
       commit(withActive(current, { progress: { ...progress, [key]: applyAnswer(progress[key], correct, now()) } }));
+    },
+    [commit, now],
+  );
+
+  const recordItemAnswer = useCallback(
+    (key: string, correct: boolean) => {
+      const current = dataRef.current;
+      const { itemProgress } = activeView(current);
+      commit(withActive(current, { items: { ...itemProgress, [key]: applyAnswer(itemProgress[key], correct, now()) } }));
+    },
+    [commit, now],
+  );
+
+  const recordStudyDay = useCallback(
+    (results: SessionResult[]) => {
+      const current = dataRef.current;
+      const stats = addSessionToStats(current.stats, results, new Date(now()));
+      if (stats !== current.stats) commit({ ...current, stats });
     },
     [commit, now],
   );
@@ -126,6 +149,8 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       storageAvailable,
       recovered: init.recovered,
       recordAnswer,
+      recordItemAnswer,
+      recordStudyDay,
       updateSettings,
       resetProgress,
       recordSession,
@@ -139,6 +164,8 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       storageAvailable,
       init.recovered,
       recordAnswer,
+      recordItemAnswer,
+      recordStudyDay,
       updateSettings,
       resetProgress,
       recordSession,
