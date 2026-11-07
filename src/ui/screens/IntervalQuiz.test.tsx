@@ -197,4 +197,62 @@ describe('IntervalQuiz', () => {
     const l = container.querySelector('line.link')!;
     expect(Number(l.getAttribute('x2'))).toBeLessThan(Number(l.getAttribute('x1')));
   });
+
+  describe('keyboard', () => {
+    const press = (key: string, init: KeyboardEventInit = {}) =>
+      fireEvent.keyDown(document.body, { key, ...init });
+
+    it('a letter answers the natural note', () => {
+      const { onAnswer } = setup();
+      press('g');
+      expect(onAnswer).toHaveBeenCalledWith(true);
+      expect(noteBtn('G')).toHaveClass('option--correct');
+    });
+
+    it('uppercase works and Shift+letter answers the sharp', () => {
+      const { onAnswer } = setup();
+      press('F', { shiftKey: true });
+      expect(onAnswer).toHaveBeenCalledWith(false);
+      expect(noteBtn('F#')).toHaveClass('option--wrong');
+    });
+
+    it('Shift+C answers C#, not D', () => {
+      setup();
+      press('C', { shiftKey: true });
+      expect(noteBtn('C#')).toHaveClass('option--wrong');
+      expect(noteBtn('D')).not.toHaveClass('option--wrong');
+    });
+
+    it('Shift+E and Shift+B do nothing', () => {
+      const { onAnswer } = setup();
+      press('E', { shiftKey: true });
+      press('B', { shiftKey: true });
+      expect(onAnswer).not.toHaveBeenCalled();
+      expect(noteButtons().every((b) => !b.disabled)).toBe(true);
+    });
+
+    it('letters use cifra even in solfejo', () => {
+      const { onAnswer } = setup({ notation: 'solfejo' });
+      press('g');
+      expect(onAnswer).toHaveBeenCalledWith(true);
+      expect(noteBtn('Sol')).toHaveClass('option--correct');
+    });
+
+    it('does nothing after answering, or with Ctrl, or non-note keys', () => {
+      const { onAnswer } = setup();
+      press('g', { ctrlKey: true });
+      press('h');
+      expect(onAnswer).not.toHaveBeenCalled();
+      press('g');
+      press('a');
+      expect(onAnswer).toHaveBeenCalledTimes(1);
+    });
+
+    it('Enter after a keyboard answer goes to the next question', () => {
+      const { onNext } = setup();
+      press('g');
+      press('Enter');
+      expect(onNext).toHaveBeenCalledTimes(1);
+    });
+  });
 });

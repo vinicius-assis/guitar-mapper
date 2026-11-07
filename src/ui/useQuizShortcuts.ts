@@ -10,10 +10,22 @@ const click = (el: Element | null | undefined) => {
   return true;
 };
 
+// Letras da cifra → nota (0 = C). As 12 notas só têm sustenidos: Shift soma um
+// semitom, e E/B não têm sustenido próprio (E♯ = F, B♯ = C), então Shift+E/B não faz nada.
+const LETTER_NOTE: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+
+function answerWithLetter(letter: string, sharp: boolean) {
+  const natural = LETTER_NOTE[letter.toUpperCase()];
+  if (sharp && (natural === 4 || natural === 11)) return false;
+  const button = document.querySelectorAll('.note-grid .note-option')[natural + (sharp ? 1 : 0)];
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+  return click(button);
+}
+
 /**
  * Atalhos de teclado das perguntas: 1–9 escolhem a opção, Enter é a ação principal
  * (Iniciar, Mostrar nota, Próxima), R toca o som de novo (Ouvido). Aciona os botões que
- * já estão na tela, então respeita tudo o que eles respeitam (limite de audições, etc.).
+ * já estão na tela (em Intervalos, A–G respondem a nota; Shift = ♯), então respeita tudo o que eles respeitam (limite de audições, etc.).
  */
 export function useQuizShortcuts(active: boolean) {
   useEffect(() => {
@@ -37,6 +49,8 @@ export function useQuizShortcuts(active: boolean) {
         handled =
           click(document.querySelector('.quiz-actions .primary')) ||
           click(document.querySelector('.start:not(:disabled)'));
+      } else if (/^[a-g]$/i.test(event.key) && !event.repeat) {
+        handled = answerWithLetter(event.key, event.shiftKey);
       } else if (event.key === 'r' || event.key === 'R') {
         handled = click(document.querySelector('.ear-play:not(:disabled)'));
       }
