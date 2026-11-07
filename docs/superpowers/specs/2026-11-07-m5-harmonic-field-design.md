@@ -106,7 +106,7 @@ Três ajustes globais novos (valem para os dois instrumentos e para os três exe
 
 ### 8. Som e teclado
 
-- **Som** (só se o Som estiver ligado; não bloqueia o início): depois de responder, toca o acorde arpejado (`playPitches`, 250 ms entre notas), da fundamental para cima, com a fundamental na menor altura da faixa de ouvido do instrumento (`EAR_RANGE`: violão 45–76, baixo 33–60) com aquela classe. O som é cancelado ao sair da pergunta. `prepareSound` carrega as 4 notas (tétrade) de cada pergunta, para servir aos dois tamanhos.
+- **Som** (só se o Som estiver ligado; não bloqueia o início): depois de responder, toca o acorde arpejado (`playPitches`, 150 ms entre notas, para a tétrade terminar antes do avanço automático de 700 ms), da fundamental para cima, com a fundamental na menor altura da faixa de ouvido do instrumento (`EAR_RANGE`: violão 45–76, baixo 33–60) com aquela classe. O som é cancelado ao sair da pergunta. `prepareSound` carrega as 4 notas (tétrade) de cada pergunta, para servir aos dois tamanhos.
 - **Teclado:** Enter = Próxima (já existe). Correção no `useQuizShortcuts`: a busca do botão com `data-shortcut` usa `querySelector('[data-shortcut="${tecla}"]')`, que lança erro com teclas como `"` ou `\` (achado da revisão do M3). Passa a comparar `dataset.shortcut` em `querySelectorAll('[data-shortcut]')`, sem montar seletor; com teste.
 
 ### 9. Leiaute celular
