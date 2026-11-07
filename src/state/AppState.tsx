@@ -12,6 +12,7 @@ import { addToHistory, type HistoryEntry } from '../domain/session';
 import { applyAnswer } from '../domain/scheduler';
 import { instrumentById, type Instrument } from '../domain/instruments';
 import {
+  BACKUP_KEY,
   activeView,
   getBrowserStorage,
   loadData,
@@ -33,6 +34,7 @@ interface AppStateValue {
   resetProgress(): void;
   recordSession(entry: HistoryEntry): void;
   clearHistory(): void;
+  importData(next: AppData): void;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -98,6 +100,18 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
     commit(withActive(dataRef.current, { history: [] }));
   }, [commit]);
 
+  const importData = useCallback(
+    (next: AppData) => {
+      try {
+        init.storage?.setItem(BACKUP_KEY, JSON.stringify(dataRef.current));
+      } catch {
+        // sem backup possível; segue com a importação
+      }
+      commit(next);
+    },
+    [commit, init.storage],
+  );
+
   const data = useMemo(() => activeView(appData), [appData]);
   const instrument = useMemo(() => instrumentById(appData.settings.instrument), [appData.settings.instrument]);
 
@@ -112,6 +126,7 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       resetProgress,
       recordSession,
       clearHistory,
+      importData,
     }),
     [
       data,
@@ -123,6 +138,7 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       resetProgress,
       recordSession,
       clearHistory,
+      importData,
     ],
   );
 

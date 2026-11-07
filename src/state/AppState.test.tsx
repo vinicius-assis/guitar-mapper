@@ -8,6 +8,7 @@ import {
 } from '../test-utils';
 import type { PositionProgress } from '../domain/scheduler';
 import { AppProvider, useAppState } from './AppState';
+import { BACKUP_KEY, createDefaultData, STORAGE_KEY, type AppData } from './storage';
 
 const okProgress: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
 
@@ -202,5 +203,59 @@ describe('interval settings', () => {
     expect(saved.settings.intervalAdvance).toBe('3s');
     expect(saved.instruments.guitar).not.toHaveProperty('intervals');
     expect(saved.instruments.bass).not.toHaveProperty('intervals');
+  });
+});
+
+describe('importData', () => {
+  function Importer({ next }: { next: AppData }) {
+    const s = useAppState();
+    return (
+      <div>
+        <button onClick={() => s.importData(next)}>import</button>
+        <output data-testid="inst">{s.instrument.id}</output>
+        <output data-testid="avail">{String(s.storageAvailable)}</output>
+        <output data-testid="box">{s.data.progress['4-3']?.box ?? 'none'}</output>
+      </div>
+    );
+  }
+  const makeNext = (instrument: 'guitar' | 'bass' = 'guitar') => {
+    const d = createDefaultData();
+    d.settings.instrument = instrument;
+    d.instruments[instrument].progress = { '4-3': okProgress };
+    return d;
+  };
+  const go = (storage: Parameters<typeof AppProvider>[0]['storage'], next: AppData) => {
+    render(
+      <AppProvider storage={storage}>
+        <Importer next={next} />
+      </AppProvider>,
+    );
+    fireEvent.click(screen.getByText('import'));
+  };
+
+  it('saves the new data and keeps the previous JSON as backup', () => {
+    const storage = seededStorage({ progress: { '5-2': okProgress } });
+    const before = storage.dump()[STORAGE_KEY];
+    const next = makeNext();
+    go(storage, next);
+    expect(storage.getItem(BACKUP_KEY)).toBe(before);
+    expect(JSON.parse(storage.dump()[STORAGE_KEY])).toEqual(next);
+    expect(readSaved(storage).progress).toEqual({ '4-3': okProgress });
+  });
+
+  it('works without storage', () => {
+    go(null, makeNext());
+    expect(screen.getByTestId('box').textContent).toBe('3');
+  });
+
+  it('survives write failures', () => {
+    go(createThrowingStorage('write'), makeNext());
+    expect(screen.getByTestId('box').textContent).toBe('3');
+    expect(screen.getByTestId('avail').textContent).toBe('false');
+  });
+
+  it('switches the active instrument', () => {
+    go(createMemoryStorage(), makeNext('bass'));
+    expect(screen.getByTestId('inst').textContent).toBe('bass');
   });
 });

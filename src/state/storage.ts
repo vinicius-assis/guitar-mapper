@@ -122,7 +122,7 @@ export function withActive(data: AppData, patch: Partial<InstrumentData>): AppDa
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -255,7 +255,7 @@ function sanitizeBucket(raw: unknown, instrument: Instrument): InstrumentData {
   };
 }
 
-function sanitizeV2(parsed: Record<string, unknown>): AppData {
+export function sanitizeV2(parsed: Record<string, unknown>): AppData {
   const buckets = isRecord(parsed.instruments) ? parsed.instruments : {};
   return {
     version: 2,
