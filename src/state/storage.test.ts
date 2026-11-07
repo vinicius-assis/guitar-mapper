@@ -643,3 +643,47 @@ describe('M4 item keys', () => {
     expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
   });
 });
+
+describe('M5 harmony settings (additive v2 fields)', () => {
+  const load = (settings: unknown) => loadActive(v2Raw(settings)).settings;
+
+  it('has the defaults', () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({ harmonyField: 'major', harmonySevenths: false, harmonyKeys: 'easy' });
+  });
+
+  it('loads an old v2 save without the fields and does not rewrite it', () => {
+    const text = v2Raw({ notation: 'cifra' });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: text });
+    const { data } = loadData(storage);
+    expect(data.settings).toMatchObject({ harmonyField: 'major', harmonySevenths: false, harmonyKeys: 'easy' });
+    expect(storage.dump()[STORAGE_KEY]).toBe(text);
+  });
+
+  it('keeps valid values', () => {
+    expect(load({ harmonyField: 'both', harmonySevenths: true, harmonyKeys: 'all' })).toMatchObject({
+      harmonyField: 'both',
+      harmonySevenths: true,
+      harmonyKeys: 'all',
+    });
+  });
+
+  it.each(['Major', 'true', 'hard', null])('falls back for invalid %j', (bad) => {
+    expect(load({ harmonyField: bad, harmonySevenths: bad, harmonyKeys: bad })).toMatchObject({
+      harmonyField: 'major',
+      harmonySevenths: false,
+      harmonyKeys: 'easy',
+    });
+  });
+});
+
+describe('M5 item keys', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps harmony keys and old ones, drops malformed ones', () => {
+    const good = ['hchord:major:5:4', 'hdeg:minor:9:7', 'hqual:major:seventh:7', 'scaledeg:pent-minor:1:6:1', 'func:0:1'];
+    const bad = ['hchord:major:5:1', 'hdeg:major:12:2', 'hqual:major:triad:8'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+});

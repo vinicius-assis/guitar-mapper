@@ -18,6 +18,8 @@ import {
   type EarDirectionSetting,
 } from '../domain/earTraining';
 import { isScaleBoxSetting, isScaleDegreeKey, isScalePlayKey, type ScaleBoxSetting } from '../domain/scaleItems';
+import { HARMONY_FIELD_SETTINGS, HARMONY_KEY_LEVELS, type HarmonyFieldSetting, type HarmonyKeyLevel } from '../domain/harmony';
+import { isHarmonyChordKey, isHarmonyDegreeKey, isQualityKey } from '../domain/harmonyItems';
 import { isScaleId, type ScaleId } from '../domain/scales';
 import { QUIZ_MODES } from '../domain/exercises';
 import { LEVELED_MODES } from '../domain/session';
@@ -36,7 +38,9 @@ export interface InstrumentData {
   history: HistoryEntry[];
   /** Progresso por item de Ouvido/Intervalos (`ear:<midi>`, `interval:<raiz>:<id>`,
    * `earint:<raiz>:<semitons>:<up|down>`, `func:<tônica>:<grau>`) e de Escalas
-   * (`scaledeg:<escala>:<desenho>:<corda>:<grau>`, `scaleplay:<escala>:<tônica>:<desenho>`). */
+   * (`scaledeg:<escala>:<desenho>:<corda>:<grau>`, `scaleplay:<escala>:<tônica>:<desenho>`) e de
+   * Harmonia (`hchord:<campo>:<tônica>:<grau>`, `hdeg:<campo>:<tônica>:<grau>`,
+   * `hqual:<campo>:<triad|seventh>:<grau>`). */
   items: ProgressMap;
 }
 
@@ -59,6 +63,10 @@ export interface GlobalSettings {
   /** Escala e desenho do módulo Escalas. */
   scale: ScaleId;
   scaleBox: ScaleBoxSetting;
+  /** Campo harmônico, tétrades e nível de tônicas do módulo Harmonia. */
+  harmonyField: HarmonyFieldSetting;
+  harmonySevenths: boolean;
+  harmonyKeys: HarmonyKeyLevel;
 }
 
 /** Visão das configurações para o instrumento ativo (globais + filtro dele). */
@@ -112,6 +120,9 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   weeklyGoal: 5,
   scale: 'pent-minor',
   scaleBox: 1,
+  harmonyField: 'major',
+  harmonySevenths: false,
+  harmonyKeys: 'easy',
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -235,6 +246,14 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
         : DEFAULT_SETTINGS.weeklyGoal,
     scale,
     scaleBox: isScaleBoxSetting(source.scaleBox, scale) ? source.scaleBox : DEFAULT_SETTINGS.scaleBox,
+    harmonyField: HARMONY_FIELD_SETTINGS.includes(source.harmonyField as HarmonyFieldSetting)
+      ? (source.harmonyField as HarmonyFieldSetting)
+      : DEFAULT_SETTINGS.harmonyField,
+    harmonySevenths:
+      typeof source.harmonySevenths === 'boolean' ? source.harmonySevenths : DEFAULT_SETTINGS.harmonySevenths,
+    harmonyKeys: HARMONY_KEY_LEVELS.includes(source.harmonyKeys as HarmonyKeyLevel)
+      ? (source.harmonyKeys as HarmonyKeyLevel)
+      : DEFAULT_SETTINGS.harmonyKeys,
   };
 }
 
@@ -282,6 +301,7 @@ const INTERVAL_ITEM_KEY = /^interval:(0|[1-9]\d*):(.+)$/;
 function isItemKey(key: string): boolean {
   if (EAR_ITEM_KEY.test(key) || isEarIntervalKey(key) || isDegreeKey(key)) return true;
   if (isScaleDegreeKey(key) || isScalePlayKey(key)) return true;
+  if (isHarmonyChordKey(key) || isHarmonyDegreeKey(key) || isQualityKey(key)) return true;
   const match = INTERVAL_ITEM_KEY.exec(key);
   return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
 }
