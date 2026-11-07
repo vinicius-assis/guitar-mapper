@@ -138,6 +138,9 @@ describe('history level', () => {
     expect(makeHistoryEntry('ear', 1, results, 'hard')?.level).toBe('hard');
     expect(makeHistoryEntry('ear', 1, results)?.level).toBe('easy');
     expect(makeHistoryEntry('flashcard', 1, results, 'hard')).not.toHaveProperty('level');
+    expect(makeHistoryEntry('ear-interval', 1, results, 'medium')?.level).toBe('medium');
+    expect(makeHistoryEntry('ear-degree', 1, results)?.level).toBe('easy');
+    expect(makeHistoryEntry('interval', 1, results, 'hard')).not.toHaveProperty('level');
   });
 });
 

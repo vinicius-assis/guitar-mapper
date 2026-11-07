@@ -121,6 +121,12 @@ describe('Progress', () => {
       return storage;
     };
 
+    it('shows the level next to the new ear modes', () => {
+      renderWith([{ mode: 'ear-interval', level: 'medium', at: 9, total: 4, correct: 2, averageMs: 3000 }]);
+      const items = screen.getAllByRole('listitem').filter((li) => li.closest('.history'));
+      expect(items[0]).toHaveTextContent('Ouvir intervalos · Médio');
+    });
+
     it('shows the level next to Ouvido sessions only', () => {
       renderWith([
         { mode: 'ear', level: 'hard', at: 9, total: 4, correct: 2, averageMs: 3000 },

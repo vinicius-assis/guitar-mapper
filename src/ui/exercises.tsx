@@ -10,23 +10,41 @@ import {
   shuffleIntervalItems,
   type IntervalItem,
 } from '../domain/intervals';
+import {
+  buildDegreeQueue,
+  buildEarIntervalQueue,
+  degreeKey,
+  degreePool,
+  degreeTarget,
+  earIntervalKey,
+  earIntervalPool,
+  type DegreeQuestion,
+  type EarIntervalQuestion,
+} from '../domain/earTraining';
 import { ALL_NOTES, NATURAL_NOTES } from '../domain/notes';
 import { pitchOf, uniquePitchPositions } from '../domain/pitch';
 import { selectForReview } from '../domain/review';
 import type { ProgressMap } from '../domain/scheduler';
-import type { QuizMode } from '../domain/quiz';
+import type { EarLevel, QuizMode } from '../domain/quiz';
 import { buildQueue } from '../domain/session';
 import type { useSound } from '../audio/SoundProvider';
 import { useAppState } from '../state/AppState';
 import type { Settings } from '../state/storage';
-import { EAR_LEVELS } from './modeLabels';
+import {
+  DEGREE_LEVEL_TEXT,
+  EAR_DIRECTION_LABELS,
+  EAR_INTERVAL_LEVEL_TEXT,
+  EAR_LEVELS,
+} from './modeLabels';
+import { DegreeQuiz } from './screens/DegreeQuiz';
+import { EarIntervalQuiz } from './screens/EarIntervalQuiz';
 import { ChoiceQuiz } from './screens/ChoiceQuiz';
 import { EarQuiz } from './screens/EarQuiz';
 import { FindQuiz } from './screens/FindQuiz';
 import { Flashcard } from './screens/Flashcard';
 import { IntervalQuiz } from './screens/IntervalQuiz';
 
-export type QuizItem = Position | IntervalItem;
+export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion;
 
 export interface ExerciseContext {
   settings: Settings;
@@ -58,6 +76,8 @@ export interface Exercise extends ExerciseMeta {
   startBlockers(ctx: ExerciseContext): string[];
   /** Uma posição vinda do Progresso já inicia a sessão? */
   startsFromPosition(ctx: ExerciseContext): boolean;
+  /** Nível a gravar no histórico da sessão (só os modos de Ouvido). */
+  historyLevel?(settings: Settings): EarLevel;
   /** Controles extras na tela de início. */
   Options?: ComponentType;
   buildQueue(ctx: ExerciseContext, forced?: Position | null): QuizItem[];
@@ -141,6 +161,52 @@ function positionExercise(
   };
 }
 
+function LevelBar({ value, onChange }: { value: EarLevel; onChange(level: EarLevel): void }) {
+  return (
+    <div className="level-bar" role="group" aria-label="Nível">
+      {EAR_LEVELS.map(({ level, label }) => (
+        <button key={level} type="button" aria-pressed={value === level} onClick={() => onChange(level)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EarIntervalOptions() {
+  const { data, updateSettings } = useAppState();
+  const { earIntervalLevel, earIntervalDirection } = data.settings;
+  return (
+    <>
+      <LevelBar value={earIntervalLevel} onChange={(level) => updateSettings({ earIntervalLevel: level })} />
+      <p className="mode-description">{EAR_INTERVAL_LEVEL_TEXT[earIntervalLevel]}</p>
+      <div className="level-bar" role="group" aria-label="Direção">
+        {EAR_DIRECTION_LABELS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={earIntervalDirection === value}
+            onClick={() => updateSettings({ earIntervalDirection: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function DegreeOptions() {
+  const { data, updateSettings } = useAppState();
+  const { degreeLevel } = data.settings;
+  return (
+    <>
+      <LevelBar value={degreeLevel} onChange={(level) => updateSettings({ degreeLevel: level })} />
+      <p className="mode-description">{DEGREE_LEVEL_TEXT[degreeLevel]}</p>
+    </>
+  );
+}
+
 function EarOptions() {
   const { data, updateSettings } = useAppState();
   const { earLevel } = data.settings;
@@ -174,6 +240,7 @@ const ear: Exercise = {
   ],
   // Ouvido precisa de som: sem ele, uma posição vinda do Progresso não inicia a sessão.
   startsFromPosition: (ctx) => ctx.settings.soundEnabled,
+  historyLevel: (settings) => settings.earLevel,
   Options: EarOptions,
   buildQueue: (ctx, forced = null) =>
     buildQueue(positionPool(ctx, forced, true), ctx.rng, forced, {
@@ -216,11 +283,66 @@ const interval: Exercise = {
   },
 };
 
+const earIntervalPoolOf = (settings: Settings) =>
+  earIntervalPool(settings.earIntervalLevel, settings.earIntervalDirection);
+
+const earIntervalExercise: Exercise = {
+  ...EXERCISE_META['ear-interval'],
+  itemKey: (item) => earIntervalKey(item as EarIntervalQuestion),
+  questionCount: (ctx) => earIntervalPoolOf(ctx.settings).length,
+  startBlockers: (ctx) => (ctx.settings.soundEnabled ? [] : [EAR_WITHOUT_SOUND]),
+  startsFromPosition: () => false,
+  historyLevel: (settings) => settings.earIntervalLevel,
+  Options: EarIntervalOptions,
+  buildQueue: (ctx) =>
+    buildEarIntervalQueue(
+      reviewSubset(ctx, earIntervalPoolOf(ctx.settings), earIntervalKey),
+      ctx.instrument,
+      ctx.rng,
+    ),
+  prepareSound: (sound, items) =>
+    sound.preparePitches((items as EarIntervalQuestion[]).flatMap((q) => q.pitches)),
+  Quiz: function EarIntervalExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <EarIntervalQuiz question={item as EarIntervalQuestion} {...rest} />;
+  },
+};
+
+const earDegree: Exercise = {
+  ...EXERCISE_META['ear-degree'],
+  itemKey: (item) => degreeKey(item as DegreeQuestion),
+  questionCount: (ctx) => degreePool(ctx.settings.degreeLevel).length,
+  startBlockers: (ctx) => (ctx.settings.soundEnabled ? [] : [EAR_WITHOUT_SOUND]),
+  startsFromPosition: () => false,
+  historyLevel: (settings) => settings.degreeLevel,
+  Options: DegreeOptions,
+  buildQueue: (ctx) =>
+    buildDegreeQueue(
+      reviewSubset(ctx, degreePool(ctx.settings.degreeLevel), degreeKey),
+      ctx.instrument,
+      ctx.rng,
+    ),
+  // O nível não chega aqui: carrega as alturas dos níveis Fácil/Médio (o Difícil usa um subconjunto).
+  prepareSound: (sound, items) =>
+    sound.preparePitches(
+      (items as DegreeQuestion[]).flatMap((q) => [
+        q.tonicMidi,
+        q.tonicMidi + 4,
+        q.tonicMidi + 7,
+        degreeTarget(q),
+      ]),
+    ),
+  Quiz: function DegreeExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <DegreeQuiz question={item as DegreeQuestion} {...rest} />;
+  },
+};
+
 export const EXERCISES: Record<QuizMode, Exercise> = {
   'position-to-note': positionExercise('position-to-note', positionQuiz(ChoiceQuiz)),
   'note-to-position': positionExercise('note-to-position', positionQuiz(FindQuiz)),
   flashcard: positionExercise('flashcard', positionQuiz(Flashcard)),
   ear,
+  'ear-interval': earIntervalExercise,
+  'ear-degree': earDegree,
   interval,
 };
 

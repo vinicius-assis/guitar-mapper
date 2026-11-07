@@ -101,7 +101,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
 
   function finish() {
     const done = resultsRef.current;
-    const entry = makeHistoryEntry(exercise.mode, Date.now(), done, settings.earLevel);
+    const entry = makeHistoryEntry(exercise.mode, Date.now(), done, exercise.historyLevel?.(settings));
     if (entry) recordSession(entry);
     recordStudyDay(done); // sem respostas não grava nada
     setSummary(summarize(done));
@@ -187,12 +187,14 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
               {message}
             </p>
           ))}
-          <FocusSheet
-            questionCount={questionCount}
-            fixed={desktop}
-            open={openPanel === 'focus'}
-            onOpenChange={(open) => setOpenPanel(open ? 'focus' : null)}
-          />
+          {exercise.usesFocus && (
+            <FocusSheet
+              questionCount={questionCount}
+              fixed={desktop}
+              open={openPanel === 'focus'}
+              onOpenChange={(open) => setOpenPanel(open ? 'focus' : null)}
+            />
+          )}
           {questionCount > 0 && (
             <p className="hint">
               {`Sessão de ${Math.min(SESSION_SIZE, questionCount)} ${questionCount === 1 ? 'pergunta' : 'perguntas'}`}

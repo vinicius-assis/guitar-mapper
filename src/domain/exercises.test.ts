@@ -3,7 +3,15 @@ import { EXERCISE_META, QUIZ_MODES, TRACKS } from './exercises';
 
 describe('exercises', () => {
   it('lista os modos na ordem braço, ouvido, teoria', () => {
-    expect(QUIZ_MODES).toEqual(['position-to-note', 'note-to-position', 'flashcard', 'ear', 'interval']);
+    expect(QUIZ_MODES).toEqual([
+      'position-to-note',
+      'note-to-position',
+      'flashcard',
+      'ear',
+      'ear-interval',
+      'ear-degree',
+      'interval',
+    ]);
   });
 
   it('cada modo tem metadados com o próprio id', () => {
@@ -21,6 +29,25 @@ describe('exercises', () => {
     expect(EXERCISE_META.flashcard.recordsPositionProgress).toBe(true);
     expect(EXERCISE_META.ear.recordsPositionProgress).toBe(false);
     expect(EXERCISE_META.interval.recordsPositionProgress).toBe(false);
+  });
+
+  it('a trilha Ouvido tem os três modos, em ordem', () => {
+    expect(TRACKS.find((t) => t.id === 'ouvido')!.modes).toEqual(['ear', 'ear-interval', 'ear-degree']);
+  });
+
+  it('os modos novos de ouvido não registram posição nem usam Foco', () => {
+    for (const mode of ['ear-interval', 'ear-degree'] as const) {
+      expect(EXERCISE_META[mode].recordsPositionProgress).toBe(false);
+      expect(EXERCISE_META[mode].usesFocus).toBe(false);
+    }
+    for (const mode of ['position-to-note', 'note-to-position', 'flashcard', 'ear', 'interval'] as const) {
+      expect(EXERCISE_META[mode].usesFocus).toBe(true);
+    }
+  });
+
+  it('rótulos dos modos novos', () => {
+    expect(EXERCISE_META['ear-interval'].label).toBe('Ouvir intervalos');
+    expect(EXERCISE_META['ear-degree'].label).toBe('Ouvir graus');
   });
 
   it('rótulos', () => {

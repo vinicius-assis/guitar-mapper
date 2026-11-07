@@ -197,6 +197,16 @@ describe('history level', () => {
     expect(load([{ ...base, mode: 'ear', level: 'x' }])[0].level).toBe('easy');
   });
 
+  it('keeps the level on the new ear modes, defaulting to easy', () => {
+    expect(load([{ ...base, mode: 'ear-interval', level: 'hard' }])[0].level).toBe('hard');
+    expect(load([{ ...base, mode: 'ear-degree' }])[0].level).toBe('easy');
+    expect(load([{ ...base, mode: 'ear-degree', level: 'x' }])[0].level).toBe('easy');
+  });
+
+  it('accepts the new modes as the saved mode', () => {
+    expect(loadActive(v2Raw({ mode: 'ear-degree' })).settings.mode).toBe('ear-degree');
+  });
+
   it('drops the level on non-ear entries', () => {
     expect(load([{ ...base, mode: 'flashcard', level: 'hard' }])[0]).not.toHaveProperty('level');
   });

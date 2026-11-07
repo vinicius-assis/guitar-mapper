@@ -18,6 +18,7 @@ import {
   type EarDirectionSetting,
 } from '../domain/earTraining';
 import { QUIZ_MODES } from '../domain/exercises';
+import { LEVELED_MODES } from '../domain/session';
 import { DEFAULT_INTERVALS, isIntervalId, type IntervalId } from '../domain/intervals';
 import { ACCIDENTALS, type Accidentals, type Notation } from '../domain/notes';
 import type { EarLevel, QuizMode } from '../domain/quiz';
@@ -325,7 +326,7 @@ function sanitizeHistory(raw: unknown): HistoryEntry[] {
         total,
         correct,
         averageMs,
-        ...(mode === 'ear'
+        ...(LEVELED_MODES.includes(mode as QuizMode)
           ? { level: EAR_LEVELS.includes(entry.level as EarLevel) ? (entry.level as EarLevel) : 'easy' }
           : {}),
       });
