@@ -425,3 +425,18 @@ describe('Fretboard chord additions', () => {
     expect(container.querySelector('rect.barre')).toBeNull();
   });
 });
+
+describe('Fretboard guide mark', () => {
+  it('renders a guide mark with its label', () => {
+    const { container } = render(
+      <Fretboard
+        fretMin={1}
+        fretMax={5}
+        marks={[{ position: { string: 3, fret: 2 }, kind: 'guide', label: '3' }]}
+      />,
+    );
+    const mark = container.querySelector('g.mark--guide[data-pos="3-2"]')!;
+    expect(mark).not.toBeNull();
+    expect(mark.textContent).toBe('3');
+  });
+});

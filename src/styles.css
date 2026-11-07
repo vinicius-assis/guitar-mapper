@@ -11,6 +11,8 @@
   --bad: #e5604d;
   --warn: #d9b93c;
   --root: #5b9be6;
+  --guide: #c792ea;
+  --guide-text: #111;
   --wood: #3a2c20;
   --tap: 48px;
 }
@@ -24,6 +26,8 @@
     --line: #cdbfae;
     --wood: #e9d9c3;
     --root: #2f78d0;
+    --guide: #6d28d9;
+    --guide-text: #fff;
   }
 }
 
@@ -410,3 +414,6 @@ main { display: flex; flex-direction: column; }
 .string-marks { display: grid; flex: none; width: 20px; }
 .string-mark { display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text); }
 .swatch--chord { background: var(--text); }
+.mark--guide circle { fill: var(--guide); }
+.mark--guide text { fill: var(--guide-text); }
+.swatch--guide { background: var(--guide); }
