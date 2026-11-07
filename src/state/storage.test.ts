@@ -221,6 +221,13 @@ describe('history level', () => {
     expect(loadActive(v2Raw({ mode: 'harmony-chord' })).settings.mode).toBe('harmony-chord');
   });
 
+  it('accepts the chord modes, without a level on their history entries', () => {
+    expect(load([{ ...base, mode: 'chord-name' }])[0]).toMatchObject({ mode: 'chord-name' });
+    expect(load([{ ...base, mode: 'chord-name' }])[0]).not.toHaveProperty('level');
+    expect(load([{ ...base, mode: 'chord-play', level: 'hard' }])[0]).not.toHaveProperty('level');
+    expect(loadActive(v2Raw({ mode: 'chord-play' })).settings.mode).toBe('chord-play');
+  });
+
   it('drops the level on non-ear entries', () => {
     expect(load([{ ...base, mode: 'flashcard', level: 'hard' }])[0]).not.toHaveProperty('level');
   });
