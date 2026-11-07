@@ -214,6 +214,13 @@ describe('history level', () => {
     expect(loadActive(v2Raw({ mode: 'scale-degree' })).settings.mode).toBe('scale-degree');
   });
 
+  it('accepts the harmony modes, without a level on their history entries', () => {
+    expect(load([{ ...base, mode: 'harmony-quality', level: 'hard' }])[0]).toMatchObject({ mode: 'harmony-quality' });
+    expect(load([{ ...base, mode: 'harmony-quality', level: 'hard' }])[0]).not.toHaveProperty('level');
+    expect(load([{ ...base, mode: 'harmony-degree' }])[0]).not.toHaveProperty('level');
+    expect(loadActive(v2Raw({ mode: 'harmony-chord' })).settings.mode).toBe('harmony-chord');
+  });
+
   it('drops the level on non-ear entries', () => {
     expect(load([{ ...base, mode: 'flashcard', level: 'hard' }])[0]).not.toHaveProperty('level');
   });
@@ -638,6 +645,50 @@ describe('M4 item keys', () => {
   it('keeps scale keys and old ones, drops malformed ones', () => {
     const good = ['scaledeg:pent-minor:1:6:1', 'scaleplay:major:11:7', 'ear:52', 'interval:0:3M', 'func:0:1'];
     const bad = ['scaledeg:pent-minor:6:1:1', 'scaleplay:major:12:1', 'scaledeg:x:1:1:1'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+});
+
+describe('M5 harmony settings (additive v2 fields)', () => {
+  const load = (settings: unknown) => loadActive(v2Raw(settings)).settings;
+
+  it('has the defaults', () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({ harmonyField: 'major', harmonySevenths: false, harmonyKeys: 'easy' });
+  });
+
+  it('loads an old v2 save without the fields and does not rewrite it', () => {
+    const text = v2Raw({ notation: 'cifra' });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: text });
+    const { data } = loadData(storage);
+    expect(data.settings).toMatchObject({ harmonyField: 'major', harmonySevenths: false, harmonyKeys: 'easy' });
+    expect(storage.dump()[STORAGE_KEY]).toBe(text);
+  });
+
+  it('keeps valid values', () => {
+    expect(load({ harmonyField: 'both', harmonySevenths: true, harmonyKeys: 'all' })).toMatchObject({
+      harmonyField: 'both',
+      harmonySevenths: true,
+      harmonyKeys: 'all',
+    });
+  });
+
+  it.each(['Major', 'true', 'hard', null])('falls back for invalid %j', (bad) => {
+    expect(load({ harmonyField: bad, harmonySevenths: bad, harmonyKeys: bad })).toMatchObject({
+      harmonyField: 'major',
+      harmonySevenths: false,
+      harmonyKeys: 'easy',
+    });
+  });
+});
+
+describe('M5 item keys', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps harmony keys and old ones, drops malformed ones', () => {
+    const good = ['hchord:major:5:4', 'hdeg:minor:9:7', 'hqual:major:seventh:7', 'scaledeg:pent-minor:1:6:1', 'func:0:1'];
+    const bad = ['hchord:major:5:1', 'hdeg:major:12:2', 'hqual:major:triad:8'];
     const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
     const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
     expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());

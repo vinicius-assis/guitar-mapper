@@ -12,6 +12,15 @@ import {
   type DegreeQuestion,
   type EarIntervalQuestion,
 } from '../domain/earTraining';
+import { harmonyKeys } from '../domain/harmony';
+import {
+  harmonyChordKey,
+  harmonyPool,
+  isHarmonyChordKey,
+  isHarmonyDegreeKey,
+  type HarmonyItem,
+  type QualityQuestion,
+} from '../domain/harmonyItems';
 import { intervalItems } from '../domain/intervals';
 import {
   scaleDegreeKey,
@@ -450,5 +459,92 @@ describe('escalas', () => {
     expect(prepare).toHaveBeenLastCalledWith([{ string: 3, fret: 5 }]);
     sp().prepareSound(sound, [{ scale: 'pent-minor', root: 9, box: 1 }], GUITAR);
     expect(prepare.mock.lastCall![0]).toHaveLength(12);
+  });
+});
+
+describe('harmonia', () => {
+  const hc = () => exerciseFor('harmony-chord');
+  const hd = () => exerciseFor('harmony-degree');
+  const hq = () => exerciseFor('harmony-quality');
+
+  it('questionCount segue o tamanho do pool', () => {
+    expect(hc().questionCount(makeCtx())).toBe(18);
+    expect(hd().questionCount(makeCtx())).toBe(18);
+    expect(hc().questionCount(makeCtx({ harmonyField: 'both', harmonyKeys: 'all' }))).toBe(144);
+    expect(hd().questionCount(makeCtx({ harmonyField: 'both', harmonyKeys: 'all' }))).toBe(144);
+    expect(hq().questionCount(makeCtx())).toBe(7);
+    expect(hq().questionCount(makeCtx({ harmonyField: 'both' }))).toBe(14);
+  });
+
+  it('nunca bloqueiam o início e não iniciam por uma posição', () => {
+    for (const ex of [hc(), hd(), hq()]) {
+      expect(ex.startBlockers(makeCtx({ soundEnabled: false }))).toEqual([]);
+      expect(ex.startBlockers(makeCtx())).toEqual([]);
+      expect(ex.startsFromPosition(makeCtx())).toBe(false);
+      expect(ex.historyLevel).toBeUndefined();
+    }
+  });
+
+  const ctxFor = (instrument: typeof GUITAR, settings: Partial<Settings>): ExerciseContext => ({
+    ...makeCtx(settings),
+    instrument,
+    progress: {},
+    limit: 20,
+    now: 0,
+  });
+
+  it.each([GUITAR, BASS])('buildQueue: filas distintas e dentro do pool (%#)', (instrument) => {
+    const ctx = ctxFor(instrument, { harmonyField: 'both', harmonyKeys: 'all', harmonySevenths: true });
+    const qc = hc().buildQueue(ctx) as HarmonyItem[];
+    const kc = qc.map((q) => hc().itemKey(q, instrument));
+    expect(qc).toHaveLength(20);
+    expect(new Set(kc).size).toBe(20);
+    expect(kc.every(isHarmonyChordKey)).toBe(true);
+    const qd = hd().buildQueue(ctx) as HarmonyItem[];
+    const kd = qd.map((q) => hd().itemKey(q, instrument));
+    expect(qd).toHaveLength(20);
+    expect(new Set(kd).size).toBe(20);
+    expect(kd.every(isHarmonyDegreeKey)).toBe(true);
+
+    const qq = hq().buildQueue(ctx) as QualityQuestion[];
+    expect(qq).toHaveLength(14);
+    for (const q of qq) expect(harmonyKeys(q.field, 'all')).toContain(q.key);
+    const easy = hq().buildQueue(ctxFor(instrument, { harmonyField: 'both', harmonyKeys: 'easy' })) as QualityQuestion[];
+    for (const q of easy) expect(harmonyKeys(q.field, 'easy')).toContain(q.key);
+  });
+
+  it('a revisão prioriza os vencidos', () => {
+    const pool = harmonyPool('both', 'all');
+    expect(pool).toHaveLength(144);
+    const due = pool.slice(0, 5).map(harmonyChordKey);
+    const progress: ProgressMap = {};
+    for (const item of pool) {
+      const k = harmonyChordKey(item);
+      progress[k] = due.includes(k)
+        ? { box: 1, correct: 0, wrong: 1, lastReview: 0, nextReview: -1000 }
+        : { box: 1, correct: 1, wrong: 0, lastReview: 0, nextReview: 10 ** 12 };
+    }
+    const queue = hc().buildQueue({
+      ...makeCtx({ harmonyField: 'both', harmonyKeys: 'all' }),
+      progress,
+      limit: 20,
+      now: 0,
+    });
+    const got = queue.map((q) => hc().itemKey(q, GUITAR));
+    for (const k of due) expect(got).toContain(k);
+  });
+
+  it('chaves dos itens', () => {
+    const item = { field: 'major' as const, key: 5, degree: 4 };
+    expect(hc().itemKey(item, GUITAR)).toBe('hchord:major:5:4');
+    expect(hd().itemKey(item, GUITAR)).toBe('hdeg:major:5:4');
+    expect(hq().itemKey({ field: 'minor', sevenths: false, degree: 3, key: 9 }, GUITAR)).toBe('hqual:minor:triad:3');
+  });
+
+  it('prepareSound carrega as alturas do acorde', () => {
+    const preparePitches = vi.fn();
+    const sound = { preparePitches } as unknown as Parameters<Exercise['prepareSound']>[0];
+    hc().prepareSound(sound, [{ field: 'major', key: 5, degree: 4 }], GUITAR);
+    expect(preparePitches).toHaveBeenLastCalledWith([46, 50, 53, 57]);
   });
 });

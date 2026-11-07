@@ -127,6 +127,12 @@ describe('Progress', () => {
       expect(items[0]).toHaveTextContent('Toque a escala');
     });
 
+    it('shows the label of the harmony modes, with no level', () => {
+      renderWith([{ mode: 'harmony-chord', at: 9, total: 4, correct: 2, averageMs: 3000 }]);
+      const items = screen.getAllByRole('listitem').filter((li) => li.closest('.history'));
+      expect(items[0]).toHaveTextContent('Acorde do grau');
+    });
+
     it('shows the level next to the new ear modes', () => {
       renderWith([{ mode: 'ear-interval', level: 'medium', at: 9, total: 4, correct: 2, averageMs: 3000 }]);
       const items = screen.getAllByRole('listitem').filter((li) => li.closest('.history'));

@@ -44,7 +44,9 @@ export function useQuizShortcuts(active: boolean) {
         event.key !== 'r' &&
         event.key !== 'R'
       ) {
-        const button = document.querySelector(`[data-shortcut="${event.key.toLowerCase()}"]`);
+        const button = Array.from(document.querySelectorAll<HTMLElement>('[data-shortcut]')).find(
+          (el) => el.dataset.shortcut === event.key.toLowerCase(),
+        );
         if (button instanceof HTMLButtonElement && !button.disabled && click(button)) {
           event.preventDefault();
         }
