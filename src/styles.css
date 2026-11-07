@@ -403,3 +403,10 @@ main { display: flex; flex-direction: column; }
 @media (min-width: 768px) {
   .answer-grid--words { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+.mark--chord circle { fill: var(--text); }
+.mark--chord text { fill: var(--surface); }
+.barre { fill: var(--text); opacity: 0.35; }
+.string-marks { display: grid; flex: none; width: 20px; }
+.string-mark { display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text); }
+.swatch--chord { background: var(--text); }

@@ -377,3 +377,51 @@ describe('Fretboard inlays follow the string count', () => {
     expect(container.querySelector('g.mark--scale[data-pos="5-5"]')).not.toBeNull();
   });
 });
+
+describe('Fretboard chord additions', () => {
+  it('renders no string marks or barres by default', () => {
+    const { container } = render(<Fretboard fretMin={1} fretMax={5} marks={[]} />);
+    expect(container.querySelector('.string-marks')).toBeNull();
+    expect(container.querySelector('rect.barre')).toBeNull();
+  });
+
+  it('renders open and muted string marks after the string labels', () => {
+    const { container, getByTestId } = render(
+      <Fretboard
+        fretMin={1}
+        fretMax={5}
+        marks={[]}
+        stringLabels={['E', 'B', 'G', 'D', 'A', 'E']}
+        stringMarks={['open', null, 'open', null, null, 'muted']}
+      />,
+    );
+    expect(getByTestId('string-mark-1')).toHaveTextContent('○');
+    expect(getByTestId('string-mark-1')).toHaveAttribute('aria-label', 'Corda 1 solta');
+    expect(getByTestId('string-mark-2')).toBeEmptyDOMElement();
+    expect(getByTestId('string-mark-6')).toHaveTextContent('×');
+    expect(getByTestId('string-mark-6')).toHaveAttribute('aria-label', 'Corda 6 abafada');
+    const kids = Array.from(container.querySelector('.fretboard-frame')!.children);
+    expect(kids.indexOf(container.querySelector('.string-marks')!)).toBe(
+      kids.indexOf(container.querySelector('.string-labels')!) + 1,
+    );
+    expect(kids.indexOf(container.querySelector('.string-marks')!)).toBeLessThan(
+      kids.indexOf(container.querySelector('.fretboard')!),
+    );
+  });
+
+  it('draws a barre below the marks, only when its fret is in view', () => {
+    const marks = [{ position: { string: 6, fret: 5 }, kind: 'chord' as const }];
+    const { container, rerender } = render(
+      <Fretboard fretMin={4} fretMax={8} marks={marks} barres={[{ fret: 5, fromString: 6, toString: 1 }]} />,
+    );
+    const barre = container.querySelector('rect.barre[data-fret="5"]')!;
+    expect(container.querySelectorAll('rect.barre')).toHaveLength(1);
+    const kids = Array.from(barre.parentElement!.children);
+    expect(kids.indexOf(barre)).toBeLessThan(kids.indexOf(container.querySelector('.mark')!));
+    expect(container.querySelector('g.mark--chord')).not.toBeNull();
+    rerender(
+      <Fretboard fretMin={4} fretMax={8} marks={[]} barres={[{ fret: 12, fromString: 6, toString: 1 }]} />,
+    );
+    expect(container.querySelector('rect.barre')).toBeNull();
+  });
+});
