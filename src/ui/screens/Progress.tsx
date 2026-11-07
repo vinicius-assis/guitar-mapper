@@ -6,6 +6,7 @@ import {
   positionKey,
   type Position,
 } from '../../domain/fretboard';
+import { averageResponseMs, currentStreak, daysStudiedThisWeek } from '../../domain/stats';
 import { masteryOf, type Mastery } from '../../domain/scheduler';
 import { useAppState } from '../../state/AppState';
 import { InstrumentBadge } from '../InstrumentBadge';
@@ -27,7 +28,10 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
   const { data, instrument, clearHistory, resetProgress } = useAppState();
   const confirm = useConfirm();
   const breakpoint = useBreakpoint();
-  const { progress, settings, history } = data;
+  const { progress, settings, history, stats } = data;
+  const today = new Date();
+  const studied = Object.keys(stats).length > 0;
+  const avgMs = averageResponseMs(stats, today);
 
   const { marks, counts } = useMemo(() => {
     const counts: Record<Mastery, number> = { unseen: 0, wrong: 0, learning: 0, mastered: 0 };
@@ -49,6 +53,20 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
             <h2>Progresso</h2>
             <InstrumentBadge />
           </div>
+          <section aria-labelledby="consistency-title">
+            <h3 id="consistency-title">Constância</h3>
+            {studied ? (
+              <ul className="legend">
+                <li>Dias seguidos: {currentStreak(stats, today)}</li>
+                <li>
+                  Esta semana: {daysStudiedThisWeek(stats, today)} de {settings.weeklyGoal} dias
+                </li>
+                {avgMs !== null && <li>Tempo médio (7 dias): {formatSeconds(avgMs)}</li>}
+              </ul>
+            ) : (
+              <p className="hint">Termine uma sessão para começar a contar.</p>
+            )}
+          </section>
           <Fretboard
             instrument={instrument}
             fit={breakpoint !== 'mobile'}

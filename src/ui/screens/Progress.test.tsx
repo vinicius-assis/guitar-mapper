@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import type { HistoryEntry } from '../../domain/session';
 import { AppProvider } from '../../state/AppState';
 import { mockBoardWidth, mockViewport, readSaved, seededStorage } from '../../test-utils';
@@ -257,5 +257,50 @@ describe('Progress (bass)', () => {
       </AppProvider>,
     );
     expect(screen.getByText('Dominadas: 1')).toBeInTheDocument();
+  });
+});
+
+describe('Progress consistency block', () => {
+  const day = { sessions: 1, answered: 2, correct: 2, ms: 4000 };
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 7, 12, 0));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  function renderWith(overrides: Parameters<typeof seededStorage>[0]) {
+    render(
+      <AppProvider storage={seededStorage(overrides)}>
+        <ConfirmProvider>
+          <Progress onSelect={() => {}} />
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+  }
+
+  it('shows only the starter text when nothing was studied', () => {
+    renderWith({});
+    expect(screen.getByText('Termine uma sessão para começar a contar.')).toBeInTheDocument();
+    expect(screen.queryByText(/Dias seguidos/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tempo médio/)).not.toBeInTheDocument();
+  });
+
+  it('shows streak, week and average time', () => {
+    renderWith({
+      stats: { '2026-11-05': day, '2026-11-06': day, '2026-11-07': day },
+    });
+    expect(screen.getByText('Dias seguidos: 3')).toBeInTheDocument();
+    expect(screen.getByText('Esta semana: 3 de 5 dias')).toBeInTheDocument();
+    expect(screen.getByText('Tempo médio (7 dias): 2,0 s')).toBeInTheDocument();
+  });
+
+  it('uses the weekly goal setting', () => {
+    renderWith({ stats: { '2026-11-07': day }, settings: { weeklyGoal: 3 } });
+    expect(screen.getByText('Esta semana: 1 de 3 dias')).toBeInTheDocument();
+  });
+
+  it('keeps the streak when only yesterday was studied', () => {
+    renderWith({ stats: { '2026-11-06': day } });
+    expect(screen.getByText('Dias seguidos: 1')).toBeInTheDocument();
   });
 });
