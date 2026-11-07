@@ -1,4 +1,5 @@
-import { MODES, modeLabel } from '../modeLabels';
+import { modeLabel } from '../modeLabels';
+import { EXERCISE_META, TRACKS } from '../../domain/exercises';
 import { InstrumentBadge } from '../InstrumentBadge';
 import type { QuizMode } from '../../domain/quiz';
 
@@ -22,9 +23,9 @@ export function StudyHeader({
   if (layout === 'tabs') {
     return (
       <div className="study-header study-header--tabs" role="group" aria-label="Exercício">
-        {MODES.map(({ mode: m, label }) => (
+        {TRACKS.flatMap((t) => t.modes).map((m) => (
           <button key={m} type="button" aria-pressed={m === mode} onClick={() => onSelectMode(m)}>
-            {label}
+            {EXERCISE_META[m].label}
           </button>
         ))}
       </div>
@@ -56,17 +57,22 @@ export function StudyHeader({
       </button>
       {menuOpen && (
         <div className="menu" role="menu" aria-label="Exercícios">
-          {MODES.map(({ mode: m, label }) => (
-            <button
-              key={m}
-              type="button"
-              role="menuitemradio"
-              aria-checked={m === mode}
-              onClick={() => onSelectMode(m)}
-            >
-              <span>{label}</span>
-              {m === mode && <span aria-hidden="true">✓</span>}
-            </button>
+          {TRACKS.map((track) => (
+            <div key={track.id} role="group" aria-label={track.label}>
+              <p className="menu__group">{track.label}</p>
+              {track.modes.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={m === mode}
+                  onClick={() => onSelectMode(m)}
+                >
+                  <span>{EXERCISE_META[m].label}</span>
+                  {m === mode && <span aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}

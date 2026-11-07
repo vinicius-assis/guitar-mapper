@@ -10,6 +10,7 @@ import { BASS } from '../../domain/instruments';
 import { positionsInFilter } from '../../domain/fretboard';
 import { uniquePitchPositions } from '../../domain/pitch';
 import { defaultFilterFor } from '../../state/storage';
+import { EXERCISE_META, TRACKS } from '../../domain/exercises';
 import { Study } from './Study';
 
 // Uma única posição candidata: corda 6, casa 12 (nota E).
@@ -665,6 +666,27 @@ describe('Study: header menu', () => {
     expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false', 'false']);
   });
 
+  it('groups the exercises by track, each group titled and in track order', () => {
+    setup({ mode: 'flashcard', filter: THREE });
+    fireEvent.click(menuButton());
+    const menu = screen.getByRole('menu');
+    const labels = (name: string) =>
+      within(within(menu).getByRole('group', { name }))
+        .getAllByRole('menuitemradio')
+        .map((i) => i.textContent?.replace('✓', ''));
+    expect(within(menu).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual([
+      'Braço',
+      'Ouvido',
+      'Teoria',
+    ]);
+    expect(labels('Braço')).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard']);
+    expect(labels('Ouvido')).toEqual(['Ouvido']);
+    expect(labels('Teoria')).toEqual(['Intervalos']);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(5);
+    const braco = within(menu).getByRole('group', { name: 'Braço' });
+    expect(braco.querySelector('p.menu__group')).toHaveTextContent('Braço');
+  });
+
   it('choosing an exercise switches mode, saves it, updates the title and closes the menu', () => {
     const storage = setup({ filter: THREE });
     chooseMode('Ouvido');
@@ -761,6 +783,16 @@ describe('Study: desktop layout', () => {
     expect(within(group).getByRole('button', { name: 'Posição → nota' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'Menu de exercícios' })).not.toBeInTheDocument();
     expect(within(group).queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('lists the exercise buttons in track order', () => {
+    setup({ filter: THREE });
+    const order = TRACKS.flatMap((t) => t.modes).map((m) => EXERCISE_META[m].label);
+    expect(
+      within(exercises()!)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(order);
   });
 
   it('choosing an exercise switches the mode and saves it', () => {
