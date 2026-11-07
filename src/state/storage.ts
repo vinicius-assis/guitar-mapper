@@ -17,6 +17,8 @@ import {
   isEarIntervalKey,
   type EarDirectionSetting,
 } from '../domain/earTraining';
+import { isScaleBoxSetting, isScaleDegreeKey, isScalePlayKey, type ScaleBoxSetting } from '../domain/scaleItems';
+import { isScaleId, type ScaleId } from '../domain/scales';
 import { QUIZ_MODES } from '../domain/exercises';
 import { LEVELED_MODES } from '../domain/session';
 import { DEFAULT_INTERVALS, isIntervalId, type IntervalId } from '../domain/intervals';
@@ -33,7 +35,8 @@ export interface InstrumentData {
   progress: ProgressMap;
   history: HistoryEntry[];
   /** Progresso por item de Ouvido/Intervalos (`ear:<midi>`, `interval:<raiz>:<id>`,
-   * `earint:<raiz>:<semitons>:<up|down>`, `func:<tônica>:<grau>`). */
+   * `earint:<raiz>:<semitons>:<up|down>`, `func:<tônica>:<grau>`) e de Escalas
+   * (`scaledeg:<escala>:<desenho>:<corda>:<grau>`, `scaleplay:<escala>:<tônica>:<desenho>`). */
   items: ProgressMap;
 }
 
@@ -53,6 +56,9 @@ export interface GlobalSettings {
   intervalAdvance: IntervalAdvance;
   /** Meta de dias de estudo por semana (1–7). */
   weeklyGoal: number;
+  /** Escala e desenho do módulo Escalas. */
+  scale: ScaleId;
+  scaleBox: ScaleBoxSetting;
 }
 
 /** Visão das configurações para o instrumento ativo (globais + filtro dele). */
@@ -104,6 +110,8 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   intervals: [...DEFAULT_INTERVALS],
   intervalAdvance: 'manual',
   weeklyGoal: 5,
+  scale: 'pent-minor',
+  scaleBox: 1,
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -183,6 +191,7 @@ const EAR_LEVELS: EarLevel[] = ['easy', 'medium', 'hard'];
 
 function sanitizeSettings(raw: unknown): GlobalSettings {
   const source = isRecord(raw) ? raw : {};
+  const scale = isScaleId(source.scale) ? source.scale : DEFAULT_SETTINGS.scale;
   return {
     notation: NOTATIONS.includes(source.notation as Notation)
       ? (source.notation as Notation)
@@ -224,6 +233,8 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
       Number.isInteger(source.weeklyGoal) && (source.weeklyGoal as number) >= 1 && (source.weeklyGoal as number) <= 7
         ? (source.weeklyGoal as number)
         : DEFAULT_SETTINGS.weeklyGoal,
+    scale,
+    scaleBox: isScaleBoxSetting(source.scaleBox, scale) ? source.scaleBox : DEFAULT_SETTINGS.scaleBox,
   };
 }
 
@@ -270,6 +281,7 @@ const INTERVAL_ITEM_KEY = /^interval:(0|[1-9]\d*):(.+)$/;
 
 function isItemKey(key: string): boolean {
   if (EAR_ITEM_KEY.test(key) || isEarIntervalKey(key) || isDegreeKey(key)) return true;
+  if (isScaleDegreeKey(key) || isScalePlayKey(key)) return true;
   const match = INTERVAL_ITEM_KEY.exec(key);
   return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
 }

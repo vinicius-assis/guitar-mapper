@@ -584,3 +584,55 @@ describe('M3 item keys', () => {
     expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
   });
 });
+
+describe('M4 scale settings (additive v2 fields)', () => {
+  const load = (settings: unknown) => loadActive(v2Raw(settings)).settings;
+
+  it('has the defaults', () => {
+    expect(DEFAULT_SETTINGS.scale).toBe('pent-minor');
+    expect(DEFAULT_SETTINGS.scaleBox).toBe(1);
+  });
+
+  it('loads an old v2 save without the fields and does not rewrite it', () => {
+    const text = v2Raw({ notation: 'cifra' });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: text });
+    const { data } = loadData(storage);
+    expect(data.settings.scale).toBe('pent-minor');
+    expect(data.settings.scaleBox).toBe(1);
+    expect(storage.dump()[STORAGE_KEY]).toBe(text);
+  });
+
+  it('keeps valid values', () => {
+    expect(load({ scale: 'locrian', scaleBox: 7 })).toMatchObject({ scale: 'locrian', scaleBox: 7 });
+    expect(load({ scale: 'blues', scaleBox: 'all' })).toMatchObject({ scale: 'blues', scaleBox: 'all' });
+  });
+
+  it.each(['Blues', 3, null])('falls back for invalid scale %j', (scale) => {
+    expect(load({ scale }).scale).toBe('pent-minor');
+  });
+
+  it.each([
+    [{ scale: 'pent-minor', scaleBox: 7 }],
+    [{ scale: 'pent-minor', scaleBox: '3' }],
+    [{ scale: 'pent-minor', scaleBox: 0 }],
+    [{ scale: 'pent-minor', scaleBox: 'todos' }],
+  ])('falls back for invalid scaleBox %j', (settings) => {
+    expect(load(settings).scaleBox).toBe(1);
+  });
+
+  it('falls back both when the scale is invalid', () => {
+    expect(load({ scale: 'x', scaleBox: 6 })).toMatchObject({ scale: 'pent-minor', scaleBox: 1 });
+  });
+});
+
+describe('M4 item keys', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps scale keys and old ones, drops malformed ones', () => {
+    const good = ['scaledeg:pent-minor:1:6:1', 'scaleplay:major:11:7', 'ear:52', 'interval:0:3M', 'func:0:1'];
+    const bad = ['scaledeg:pent-minor:6:1:1', 'scaleplay:major:12:1', 'scaledeg:x:1:1:1'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+});
