@@ -41,6 +41,24 @@ describe('useIntervalFocus', () => {
     expect(result.current.count).toBe(77);
   });
 
+  it('selects the chord tones and reports when they are exactly selected', () => {
+    const { result } = setup({ intervals: ['2m', '4J'] });
+    expect(result.current.chordTonesSelected).toBe(false);
+    act(() => result.current.selectChordTones());
+    expect(result.current.intervals).toEqual(['3m', '3M', '5J', '7m', '7M']);
+    expect(result.current.chordTonesSelected).toBe(true);
+  });
+
+  it('chord tones are not selected with an extra or missing interval', () => {
+    const { result } = setup();
+    expect(result.current.chordTonesSelected).toBe(true);
+    act(() => result.current.toggleInterval('2m'));
+    expect(result.current.chordTonesSelected).toBe(false);
+    act(() => result.current.toggleInterval('2m'));
+    act(() => result.current.toggleInterval('5J'));
+    expect(result.current.chordTonesSelected).toBe(false);
+  });
+
   it('uses 12 notes with accidentals', () => {
     const { result } = setup({ filter: { strings: [1], fretMin: 1, fretMax: 5, naturalsOnly: false } });
     expect(result.current.count).toBe(60);

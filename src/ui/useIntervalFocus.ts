@@ -1,4 +1,4 @@
-import { INTERVALS, type IntervalId } from '../domain/intervals';
+import { DEFAULT_INTERVALS, INTERVALS, type IntervalId } from '../domain/intervals';
 import { ALL_NOTES, NATURAL_NOTES } from '../domain/notes';
 import { useAppState } from '../state/AppState';
 import type { IntervalAdvance } from '../state/storage';
@@ -18,6 +18,10 @@ export function useIntervalFocus() {
       updateSettings({ intervals: INTERVALS.map((i) => i.id).filter((x) => next.includes(x)) });
     },
     selectAllIntervals: () => updateSettings({ intervals: INTERVALS.map((i) => i.id) }),
+    selectChordTones: () => updateSettings({ intervals: [...DEFAULT_INTERVALS] }),
+    chordTonesSelected:
+      intervals.length === DEFAULT_INTERVALS.length &&
+      DEFAULT_INTERVALS.every((id) => intervals.includes(id)),
     setAdvance: (value: IntervalAdvance) => updateSettings({ intervalAdvance: value }),
   };
 }
