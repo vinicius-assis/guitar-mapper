@@ -21,6 +21,18 @@ import {
   type DegreeQuestion,
   type EarIntervalQuestion,
 } from '../domain/earTraining';
+import { chordPitches, type HarmonyFieldSetting } from '../domain/harmony';
+import {
+  buildHarmonyQueue,
+  buildQualityQueue,
+  harmonyChordKey,
+  harmonyDegreeKey,
+  harmonyPool,
+  qualityKey,
+  qualityPool,
+  type HarmonyItem,
+  type QualityQuestion,
+} from '../domain/harmonyItems';
 import {
   buildScaleDegreeQueue,
   buildScalePlayQueue,
@@ -55,10 +67,14 @@ import { EarQuiz } from './screens/EarQuiz';
 import { FindQuiz } from './screens/FindQuiz';
 import { Flashcard } from './screens/Flashcard';
 import { IntervalQuiz } from './screens/IntervalQuiz';
+import { HarmonyChordQuiz } from './screens/HarmonyChordQuiz';
+import { HarmonyDegreeQuiz } from './screens/HarmonyDegreeQuiz';
+import { HarmonyQualityQuiz } from './screens/HarmonyQualityQuiz';
+import { HARMONY_KEY_TEXT } from './harmonyText';
 import { ScaleDegreeQuiz } from './screens/ScaleDegreeQuiz';
 import { ScalePlayQuiz } from './screens/ScalePlayQuiz';
 
-export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem;
+export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem | HarmonyItem | QualityQuestion;
 
 export interface ExerciseContext {
   settings: Settings;
@@ -446,6 +462,127 @@ const scalePlay: Exercise = {
   },
 };
 
+const FIELD_OPTIONS: { value: HarmonyFieldSetting; label: string }[] = [
+  { value: 'major', label: 'Maior' },
+  { value: 'minor', label: 'Menor' },
+  { value: 'both', label: 'Os dois' },
+];
+const CHORD_OPTIONS = [
+  { value: false, label: 'Tríades' },
+  { value: true, label: 'Tétrades' },
+];
+const KEY_OPTIONS = [
+  { value: 'easy', label: 'Fáceis' },
+  { value: 'medium', label: 'Médias' },
+  { value: 'all', label: 'Todas' },
+] as const;
+
+function HarmonyOptions() {
+  const { data, updateSettings } = useAppState();
+  const { harmonyField, harmonySevenths, harmonyKeys } = data.settings;
+  return (
+    <>
+      <div className="level-bar" role="group" aria-label="Campo">
+        {FIELD_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={harmonyField === value}
+            onClick={() => updateSettings({ harmonyField: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="level-bar" role="group" aria-label="Acordes">
+        {CHORD_OPTIONS.map(({ value, label }) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={harmonySevenths === value}
+            onClick={() => updateSettings({ harmonySevenths: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="level-bar" role="group" aria-label="Tonalidades">
+        {KEY_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={harmonyKeys === value}
+            onClick={() => updateSettings({ harmonyKeys: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="mode-description">{HARMONY_KEY_TEXT[harmonyKeys]}</p>
+    </>
+  );
+}
+
+const chordItemPitches = (items: HarmonyItem[], sevenths: boolean, instrument: Instrument) =>
+  items.flatMap((q) => chordPitches(q.field, q.key, q.degree, sevenths, instrument));
+
+const harmonyChord: Exercise = {
+  ...EXERCISE_META['harmony-chord'],
+  itemKey: (item) => harmonyChordKey(item as HarmonyItem),
+  questionCount: (ctx) => harmonyPool(ctx.settings.harmonyField, ctx.settings.harmonyKeys).length,
+  startBlockers: () => [],
+  startsFromPosition: () => false,
+  Options: HarmonyOptions,
+  buildQueue: (ctx) =>
+    buildHarmonyQueue(
+      reviewSubset(ctx, harmonyPool(ctx.settings.harmonyField, ctx.settings.harmonyKeys), harmonyChordKey),
+      ctx.rng,
+    ),
+  prepareSound: (sound, items, instrument) =>
+    sound.preparePitches(chordItemPitches(items as HarmonyItem[], true, instrument)),
+  Quiz: function HarmonyChordExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <HarmonyChordQuiz item={item as HarmonyItem} {...rest} />;
+  },
+};
+
+const harmonyDegree: Exercise = {
+  ...harmonyChord,
+  ...EXERCISE_META['harmony-degree'],
+  itemKey: (item) => harmonyDegreeKey(item as HarmonyItem),
+  buildQueue: (ctx) =>
+    buildHarmonyQueue(
+      reviewSubset(ctx, harmonyPool(ctx.settings.harmonyField, ctx.settings.harmonyKeys), harmonyDegreeKey),
+      ctx.rng,
+    ),
+  Quiz: function HarmonyDegreeExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <HarmonyDegreeQuiz item={item as HarmonyItem} {...rest} />;
+  },
+};
+
+const harmonyQuality: Exercise = {
+  ...EXERCISE_META['harmony-quality'],
+  itemKey: (item) => qualityKey(item as QualityQuestion),
+  questionCount: (ctx) => qualityPool(ctx.settings.harmonyField, ctx.settings.harmonySevenths).length,
+  startBlockers: () => [],
+  startsFromPosition: () => false,
+  Options: HarmonyOptions,
+  buildQueue: (ctx) =>
+    buildQualityQueue(
+      reviewSubset(ctx, qualityPool(ctx.settings.harmonyField, ctx.settings.harmonySevenths), qualityKey),
+      ctx.settings.harmonyKeys,
+      ctx.rng,
+    ),
+  prepareSound: (sound, items, instrument) =>
+    sound.preparePitches(
+      (items as QualityQuestion[]).flatMap((q) =>
+        chordPitches(q.field, q.key, q.degree, q.sevenths, instrument),
+      ),
+    ),
+  Quiz: function HarmonyQualityExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <HarmonyQualityQuiz question={item as QualityQuestion} {...rest} />;
+  },
+};
+
 export const EXERCISES: Record<QuizMode, Exercise> = {
   'position-to-note': positionExercise('position-to-note', positionQuiz(ChoiceQuiz)),
   'note-to-position': positionExercise('note-to-position', positionQuiz(FindQuiz)),
@@ -456,6 +593,9 @@ export const EXERCISES: Record<QuizMode, Exercise> = {
   interval,
   'scale-degree': scaleDegree,
   'scale-play': scalePlay,
+  'harmony-chord': harmonyChord,
+  'harmony-degree': harmonyDegree,
+  'harmony-quality': harmonyQuality,
 };
 
 export function exerciseFor(mode: QuizMode): Exercise {

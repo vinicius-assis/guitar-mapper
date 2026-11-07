@@ -99,3 +99,22 @@ describe('HarmonyDegreeQuiz', () => {
     expect(b.onAnswer).not.toHaveBeenCalled();
   });
 });
+
+describe('HarmonyDegreeQuiz chord arpeggio', () => {
+  it('stops the pending notes when the screen unmounts', () => {
+    const { player } = setup(G_IN_D);
+    fireEvent.click(buttons()[0]);
+    expect(player.play).toHaveBeenCalledTimes(1);
+    advance(100);
+    cleanup();
+    advance(2000);
+    expect(player.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps arpeggiating while mounted', () => {
+    const { player } = setup(G_IN_D);
+    fireEvent.click(buttons()[0]);
+    advance(2000);
+    expect(player.play.mock.calls.length).toBeGreaterThan(1);
+  });
+});

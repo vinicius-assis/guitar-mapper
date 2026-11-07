@@ -83,3 +83,22 @@ describe('HarmonyQualityQuiz', () => {
     expect(a.onAnswer).toHaveBeenCalledWith(true);
   });
 });
+
+describe('HarmonyQualityQuiz chord arpeggio', () => {
+  it('stops the pending notes when the screen unmounts', () => {
+    const { player } = setup({ field: 'major', sevenths: false, degree: 4, key: 0 });
+    fireEvent.click(buttons()[0]);
+    expect(player.play).toHaveBeenCalledTimes(1);
+    advance(100);
+    cleanup();
+    advance(2000);
+    expect(player.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps arpeggiating while mounted', () => {
+    const { player } = setup({ field: 'major', sevenths: false, degree: 4, key: 0 });
+    fireEvent.click(buttons()[0]);
+    advance(2000);
+    expect(player.play.mock.calls.length).toBeGreaterThan(1);
+  });
+});

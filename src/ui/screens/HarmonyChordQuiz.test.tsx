@@ -110,3 +110,22 @@ describe('HarmonyChordQuiz', () => {
     expect(screen.getByText('F7M: F A C E')).toBeInTheDocument();
   });
 });
+
+describe('HarmonyChordQuiz chord arpeggio', () => {
+  it('stops the pending notes when the screen unmounts', () => {
+    const { player } = setup(IV_OF_F);
+    fireEvent.click(buttons()[0]);
+    expect(player.play).toHaveBeenCalledTimes(1);
+    advance(100);
+    cleanup();
+    advance(2000);
+    expect(player.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps arpeggiating while mounted', () => {
+    const { player } = setup(IV_OF_F);
+    fireEvent.click(buttons()[0]);
+    advance(2000);
+    expect(player.play.mock.calls.length).toBeGreaterThan(1);
+  });
+});
