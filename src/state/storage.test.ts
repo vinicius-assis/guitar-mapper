@@ -207,6 +207,13 @@ describe('history level', () => {
     expect(loadActive(v2Raw({ mode: 'ear-degree' })).settings.mode).toBe('ear-degree');
   });
 
+  it('accepts the scale modes, without a level on their history entries', () => {
+    expect(load([{ ...base, mode: 'scale-play', level: 'hard' }])[0]).toMatchObject({ mode: 'scale-play' });
+    expect(load([{ ...base, mode: 'scale-play', level: 'hard' }])[0]).not.toHaveProperty('level');
+    expect(load([{ ...base, mode: 'scale-degree' }])[0]).not.toHaveProperty('level');
+    expect(loadActive(v2Raw({ mode: 'scale-degree' })).settings.mode).toBe('scale-degree');
+  });
+
   it('drops the level on non-ear entries', () => {
     expect(load([{ ...base, mode: 'flashcard', level: 'hard' }])[0]).not.toHaveProperty('level');
   });

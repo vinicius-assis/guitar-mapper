@@ -21,6 +21,18 @@ import {
   type DegreeQuestion,
   type EarIntervalQuestion,
 } from '../domain/earTraining';
+import {
+  buildScaleDegreeQueue,
+  buildScalePlayQueue,
+  scaleDegreeKey,
+  scaleDegreePool,
+  scaleDegreeTarget,
+  scalePlayKey,
+  scalePlayPool,
+  type ScaleDegreeQuestion,
+  type ScalePlayItem,
+} from '../domain/scaleItems';
+import { SCALES, SCALE_GROUPS, scaleBox, type ScaleId } from '../domain/scales';
 import { ALL_NOTES, NATURAL_NOTES } from '../domain/notes';
 import { pitchOf, uniquePitchPositions } from '../domain/pitch';
 import { selectForReview } from '../domain/review';
@@ -43,8 +55,10 @@ import { EarQuiz } from './screens/EarQuiz';
 import { FindQuiz } from './screens/FindQuiz';
 import { Flashcard } from './screens/Flashcard';
 import { IntervalQuiz } from './screens/IntervalQuiz';
+import { ScaleDegreeQuiz } from './screens/ScaleDegreeQuiz';
+import { ScalePlayQuiz } from './screens/ScalePlayQuiz';
 
-export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion;
+export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem;
 
 export interface ExerciseContext {
   settings: Settings;
@@ -336,6 +350,102 @@ const earDegree: Exercise = {
   },
 };
 
+function ScaleOptions() {
+  const { data, updateSettings } = useAppState();
+  const { scale, scaleBox: box } = data.settings;
+  const boxCount = SCALES[scale].boxCount;
+  const boxes: { value: number | 'all'; label: string }[] = [
+    { value: 'all', label: 'Todos' },
+    ...Array.from({ length: boxCount }, (_, i) => ({ value: i + 1, label: String(i + 1) })),
+  ];
+  return (
+    <>
+      <label>
+        Escala
+        <select
+          value={scale}
+          onChange={(e) => {
+            const next = e.target.value as ScaleId;
+            updateSettings({
+              scale: next,
+              ...(typeof box === 'number' && box > SCALES[next].boxCount ? { scaleBox: 1 } : {}),
+            });
+          }}
+        >
+          {SCALE_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.scales.map((id) => (
+                <option key={id} value={id}>
+                  {SCALES[id].label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      <div className="level-bar" role="group" aria-label="Desenho">
+        {boxes.map(({ value, label }) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={box === value}
+            onClick={() => updateSettings({ scaleBox: value })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+const scaleDegree: Exercise = {
+  ...EXERCISE_META['scale-degree'],
+  itemKey: (item) => scaleDegreeKey(item as ScaleDegreeQuestion),
+  questionCount: (ctx) =>
+    scaleDegreePool(ctx.settings.scale, ctx.settings.scaleBox, ctx.instrument).length,
+  startBlockers: () => [],
+  startsFromPosition: () => false,
+  Options: ScaleOptions,
+  buildQueue: (ctx) =>
+    buildScaleDegreeQueue(
+      reviewSubset(
+        ctx,
+        scaleDegreePool(ctx.settings.scale, ctx.settings.scaleBox, ctx.instrument),
+        scaleDegreeKey,
+      ),
+      ctx.rng,
+    ),
+  prepareSound: (sound, items, instrument) =>
+    sound.prepare((items as ScaleDegreeQuestion[]).map((q) => scaleDegreeTarget(q, instrument).position)),
+  Quiz: function ScaleDegreeExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <ScaleDegreeQuiz question={item as ScaleDegreeQuestion} {...rest} />;
+  },
+};
+
+const scalePlay: Exercise = {
+  ...EXERCISE_META['scale-play'],
+  itemKey: (item) => scalePlayKey(item as ScalePlayItem),
+  questionCount: (ctx) => scalePlayPool(ctx.settings.scale, ctx.settings.scaleBox).length,
+  startBlockers: () => [],
+  startsFromPosition: () => false,
+  Options: ScaleOptions,
+  buildQueue: (ctx) =>
+    buildScalePlayQueue(
+      reviewSubset(ctx, scalePlayPool(ctx.settings.scale, ctx.settings.scaleBox), scalePlayKey),
+      ctx.rng,
+    ),
+  prepareSound: (sound, items, instrument) =>
+    sound.prepare(
+      (items as ScalePlayItem[]).flatMap((q) =>
+        scaleBox(q.scale, q.box, q.root, instrument).notes.map((n) => n.position),
+      ),
+    ),
+  Quiz: function ScalePlayExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <ScalePlayQuiz question={item as ScalePlayItem} {...rest} />;
+  },
+};
+
 export const EXERCISES: Record<QuizMode, Exercise> = {
   'position-to-note': positionExercise('position-to-note', positionQuiz(ChoiceQuiz)),
   'note-to-position': positionExercise('note-to-position', positionQuiz(FindQuiz)),
@@ -344,6 +454,8 @@ export const EXERCISES: Record<QuizMode, Exercise> = {
   'ear-interval': earIntervalExercise,
   'ear-degree': earDegree,
   interval,
+  'scale-degree': scaleDegree,
+  'scale-play': scalePlay,
 };
 
 export function exerciseFor(mode: QuizMode): Exercise {

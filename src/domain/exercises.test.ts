@@ -11,6 +11,8 @@ describe('exercises', () => {
       'ear-interval',
       'ear-degree',
       'interval',
+      'scale-degree',
+      'scale-play',
     ]);
   });
 
@@ -19,7 +21,7 @@ describe('exercises', () => {
   });
 
   it('as trilhas cobrem cada modo exatamente uma vez', () => {
-    expect(TRACKS.map((t) => t.label)).toEqual(['Braço', 'Ouvido', 'Teoria']);
+    expect(TRACKS.map((t) => t.label)).toEqual(['Braço', 'Ouvido', 'Teoria', 'Escalas']);
     expect(TRACKS.flatMap((t) => t.modes)).toEqual(QUIZ_MODES);
   });
 
@@ -48,6 +50,17 @@ describe('exercises', () => {
   it('rótulos dos modos novos', () => {
     expect(EXERCISE_META['ear-interval'].label).toBe('Ouvir intervalos');
     expect(EXERCISE_META['ear-degree'].label).toBe('Ouvir graus');
+  });
+
+  it('a trilha Escalas tem os dois modos, sem progresso de posição nem Foco', () => {
+    expect(TRACKS.find((t) => t.id === 'escalas')!.modes).toEqual(['scale-degree', 'scale-play']);
+    for (const mode of ['scale-degree', 'scale-play'] as const) {
+      expect(EXERCISE_META[mode].track).toBe('escalas');
+      expect(EXERCISE_META[mode].recordsPositionProgress).toBe(false);
+      expect(EXERCISE_META[mode].usesFocus).toBe(false);
+    }
+    expect(EXERCISE_META['scale-degree'].label).toBe('Grau no desenho');
+    expect(EXERCISE_META['scale-play'].label).toBe('Toque a escala');
   });
 
   it('rótulos', () => {

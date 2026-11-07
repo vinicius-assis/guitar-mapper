@@ -1,6 +1,6 @@
 import type { QuizMode } from './quiz';
 
-export type TrackId = 'braco' | 'ouvido' | 'teoria';
+export type TrackId = 'braco' | 'ouvido' | 'teoria' | 'escalas';
 
 export interface ExerciseMeta {
   mode: QuizMode;
@@ -75,6 +75,24 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     recordsPositionProgress: false,
     usesFocus: true,
   },
+  'scale-degree': {
+    mode: 'scale-degree',
+    track: 'escalas',
+    label: 'Grau no desenho',
+    description:
+      'O braço mostra um desenho da escala com as tônicas marcadas e destaca uma nota. Diga qual grau ela é. Treina enxergar a função de cada nota no desenho.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
+  'scale-play': {
+    mode: 'scale-play',
+    track: 'escalas',
+    label: 'Toque a escala',
+    description:
+      'O app pede uma escala e um desenho e marca as tônicas. Toque no braço todas as outras notas do desenho. Um toque fora da escala encerra a pergunta.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
 };
 
 export const QUIZ_MODES: QuizMode[] = [
@@ -85,10 +103,13 @@ export const QUIZ_MODES: QuizMode[] = [
   'ear-interval',
   'ear-degree',
   'interval',
+  'scale-degree',
+  'scale-play',
 ];
 
 export const TRACKS: { id: TrackId; label: string; modes: QuizMode[] }[] = [
   { id: 'braco', label: 'Braço', modes: ['position-to-note', 'note-to-position', 'flashcard'] },
   { id: 'ouvido', label: 'Ouvido', modes: ['ear', 'ear-interval', 'ear-degree'] },
   { id: 'teoria', label: 'Teoria', modes: ['interval'] },
+  { id: 'escalas', label: 'Escalas', modes: ['scale-degree', 'scale-play'] },
 ];
