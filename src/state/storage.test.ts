@@ -749,6 +749,14 @@ describe('M7 item keys', () => {
     expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
   });
 
+  it('keeps ii-V-I keys, drops malformed ones', () => {
+    const good = ['iivi:5:2:v-i'];
+    const bad = ['iivi:1:1:ii-v'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+
   it('does not rewrite a v2 save without the new keys', () => {
     const raw = v2Raw({}, { items: { 'chordplay:e-7:4': entry } });
     const storage = createMemoryStorage({ [STORAGE_KEY]: raw });

@@ -23,6 +23,7 @@ import { isHarmonyChordKey, isHarmonyDegreeKey, isQualityKey } from '../domain/h
 import { CHORD_KIND_SETTINGS, CHORD_SHAPE_SETTINGS, isChordNameKey, isChordPlayKey, type ChordKindSetting, type ChordShapeSetting } from '../domain/chordItems';
 import { isGuideKey } from '../domain/guideTones';
 import { isArpeggioKey } from '../domain/arpeggio';
+import { isIiViKey } from '../domain/progressions';
 import { isScaleId, type ScaleId } from '../domain/scales';
 import { QUIZ_MODES } from '../domain/exercises';
 import { LEVELED_MODES } from '../domain/session';
@@ -45,7 +46,7 @@ export interface InstrumentData {
    * Harmonia (`hchord:<campo>:<tônica>:<grau>`, `hdeg:<campo>:<tônica>:<grau>`,
    * `hqual:<campo>:<triad|seventh>:<grau>`) e de Acordes (`chordname:<forma>:<tônica>`,
    * `chordplay:<forma>:<tônica>`) e de notas-guia/arpejos (`guide:<forma>:<tônica>`,
-   * `arp:<escala>:<tônica>:<desenho>`). */
+   * `arp:<escala>:<tônica>:<desenho>`, `iivi:<tom>:<forma>:<passo>`). */
   items: ProgressMap;
 }
 
@@ -319,7 +320,7 @@ function isItemKey(key: string): boolean {
   if (isScaleDegreeKey(key) || isScalePlayKey(key)) return true;
   if (isHarmonyChordKey(key) || isHarmonyDegreeKey(key) || isQualityKey(key)) return true;
   if (isChordNameKey(key) || isChordPlayKey(key)) return true;
-  if (isGuideKey(key) || isArpeggioKey(key)) return true;
+  if (isGuideKey(key) || isArpeggioKey(key) || isIiViKey(key)) return true;
   const match = INTERVAL_ITEM_KEY.exec(key);
   return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
 }
