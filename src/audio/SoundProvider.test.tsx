@@ -273,3 +273,89 @@ describe('playPitches / preparePitches', () => {
     expect(player.play).not.toHaveBeenCalledWith(43);
   });
 });
+
+describe('playSequence', () => {
+  afterEach(() => vi.useRealTimers());
+
+  function SeqProbe() {
+    const sound = useSound();
+    return (
+      <>
+        <button
+          onClick={() =>
+            sound.playSequence([
+              { midi: 48, atMs: 0 },
+              { midi: 52, atMs: 400 },
+              { midi: 55, atMs: 800 },
+              { midi: 55, atMs: 1800 },
+            ])
+          }
+        >
+          arp
+        </button>
+        <button
+          onClick={() =>
+            sound.playSequence([
+              { midi: 60, atMs: 0 },
+              { midi: 64, atMs: 900 },
+            ])
+          }
+        >
+          two
+        </button>
+        <button onClick={() => sound.playSequence([])}>stop</button>
+      </>
+    );
+  }
+  const mount = (soundEnabled: boolean) => {
+    vi.useFakeTimers();
+    const player = fakePlayer();
+    render(
+      <AppProvider storage={seededStorage({ settings: { soundEnabled } })}>
+        <SoundProvider player={player}>
+          <SeqProbe />
+        </SoundProvider>
+      </AppProvider>,
+    );
+    return { player };
+  };
+  const calls = (player: NotePlayer) =>
+    (player.play as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+
+  it('plays each step at its own time', () => {
+    const { player } = mount(true);
+    fireEvent.click(screen.getByText('arp'));
+    expect(calls(player)).toEqual([48]);
+    vi.advanceTimersByTime(399);
+    expect(player.play).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(player.play).toHaveBeenLastCalledWith(52);
+    vi.advanceTimersByTime(1400);
+    expect(calls(player)).toEqual([48, 52, 55, 55]);
+  });
+
+  it('restarting mid-way drops the pending steps of the first call', () => {
+    const { player } = mount(true);
+    fireEvent.click(screen.getByText('arp'));
+    vi.advanceTimersByTime(500);
+    fireEvent.click(screen.getByText('arp'));
+    vi.advanceTimersByTime(2000);
+    expect(calls(player)).toEqual([48, 52, 48, 52, 55, 55]);
+  });
+
+  it('an empty sequence cancels pending steps', () => {
+    const { player } = mount(true);
+    fireEvent.click(screen.getByText('two'));
+    vi.advanceTimersByTime(300);
+    fireEvent.click(screen.getByText('stop'));
+    vi.advanceTimersByTime(1000);
+    expect(calls(player)).toEqual([60]);
+  });
+
+  it('does nothing when sound is off', () => {
+    const { player } = mount(false);
+    fireEvent.click(screen.getByText('arp'));
+    vi.advanceTimersByTime(2000);
+    expect(player.play).not.toHaveBeenCalled();
+  });
+});
