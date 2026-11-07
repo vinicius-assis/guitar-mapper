@@ -110,6 +110,7 @@ export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizP
           </button>
         ))}
       </div>
+      {!answered && <p className="keyboard-hint">Teclado: A–G · Shift = ♯</p>}
       {answered && (
         <div className="feedback quiz-actions">
           <p role="status">

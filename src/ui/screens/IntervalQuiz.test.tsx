@@ -198,6 +198,13 @@ describe('IntervalQuiz', () => {
     expect(Number(l.getAttribute('x2'))).toBeLessThan(Number(l.getAttribute('x1')));
   });
 
+  it('shows the keyboard hint until the question is answered', () => {
+    setup();
+    expect(screen.getByText('Teclado: A–G · Shift = ♯')).toBeInTheDocument();
+    fireEvent.click(noteBtn('G'));
+    expect(screen.queryByText('Teclado: A–G · Shift = ♯')).not.toBeInTheDocument();
+  });
+
   describe('keyboard', () => {
     const press = (key: string, init: KeyboardEventInit = {}) =>
       fireEvent.keyDown(document.body, { key, ...init });
