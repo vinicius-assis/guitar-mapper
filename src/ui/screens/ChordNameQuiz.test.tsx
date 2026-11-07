@@ -9,6 +9,18 @@ import { createMemoryStorage } from '../../test-utils';
 import { useQuizShortcuts } from '../useQuizShortcuts';
 import { ChordNameQuiz } from './ChordNameQuiz';
 
+const fretboardProps = vi.hoisted(() => ({ calls: [] as Array<{ fit?: boolean; minFretWidth?: number }> }));
+vi.mock('../Fretboard', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../Fretboard')>();
+  return {
+    ...actual,
+    Fretboard: (p: React.ComponentProps<typeof actual.Fretboard>) => {
+      fretboardProps.calls.push({ fit: p.fit, minFretWidth: p.minFretWidth });
+      return actual.Fretboard(p);
+    },
+  };
+});
+
 const fakePlayer = () => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn<NotePlayer['play']>() });
 
 function Harness(props: Parameters<typeof ChordNameQuiz>[0]) {
@@ -54,7 +66,12 @@ function setup(question: ChordNameQuestion = AM7) {
   const utils = render(ui(question, 0));
   const mark = (kind: string, pos: string) =>
     utils.container.querySelector(`g.mark--${kind}[data-pos="${pos}"]`);
-  return { player, onAnswer, onNext, mark, ui, ...utils };
+  const withoutScreen = () => (
+    <AppProvider storage={createMemoryStorage()}>
+      <SoundProvider player={player}>{null}</SoundProvider>
+    </AppProvider>
+  );
+  return { player, onAnswer, onNext, mark, ui, withoutScreen, ...utils };
 }
 const buttons = () => [...document.querySelectorAll('.answer-grid .option')] as HTMLButtonElement[];
 const pick = (label: string) => fireEvent.click(buttons().find((b) => b.textContent === label)!);
@@ -63,6 +80,7 @@ const cell = (testid: string) => screen.queryByTestId(testid);
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
+  fretboardProps.calls.length = 0;
   cleanup();
   vi.useRealTimers();
 });
@@ -155,12 +173,18 @@ describe('ChordNameQuiz', () => {
     expect(buttons().every((b) => !b.disabled)).toBe(true);
   });
 
-  it('stops the strum on unmount', () => {
+  it('fits the fretboard to the viewport', () => {
+    setup();
+    expect(fretboardProps.calls[0]).toEqual({ fit: true, minFretWidth: 40 });
+  });
+
+  it('stops the strum when the screen unmounts mid-strum', () => {
     const a = setup();
     pick('Am7');
     advance(40);
+    expect(a.player.play.mock.calls.length).toBeGreaterThan(1);
     a.player.play.mockClear();
-    a.unmount();
+    a.rerender(a.withoutScreen());
     advance(500);
     expect(a.player.play).not.toHaveBeenCalled();
   });

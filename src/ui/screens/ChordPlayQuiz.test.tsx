@@ -8,6 +8,18 @@ import { activeView, createDefaultData } from '../../state/storage';
 import { createMemoryStorage } from '../../test-utils';
 import { ChordPlayQuiz } from './ChordPlayQuiz';
 
+const fretboardProps = vi.hoisted(() => ({ calls: [] as Array<{ fit?: boolean; minFretWidth?: number }> }));
+vi.mock('../Fretboard', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../Fretboard')>();
+  return {
+    ...actual,
+    Fretboard: (p: React.ComponentProps<typeof actual.Fretboard>) => {
+      fretboardProps.calls.push({ fit: p.fit, minFretWidth: p.minFretWidth });
+      return actual.Fretboard(p);
+    },
+  };
+});
+
 const fakePlayer = () => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn<NotePlayer['play']>() });
 
 const C: ChordItem = { shape: 'c', root: 0 };
@@ -34,11 +46,19 @@ function setup(question: ChordItem = C) {
     const [s, f] = pos.split('-');
     fireEvent.click(screen.getByRole('button', { name: `Corda ${s}, casa ${f}` }));
   };
-  return { player, onAnswer, onNext, mark, tap, ui, ...utils };
+  const withoutScreen = () => (
+    <AppProvider storage={createMemoryStorage()}>
+      <SoundProvider player={player}>{null}</SoundProvider>
+    </AppProvider>
+  );
+  return { player, onAnswer, onNext, mark, tap, ui, withoutScreen, ...utils };
 }
 const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
 
 beforeEach(() => vi.useFakeTimers());
+afterEach(() => {
+  fretboardProps.calls.length = 0;
+});
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -125,12 +145,26 @@ describe('ChordPlayQuiz', () => {
     expect(a.container.querySelector('.mark')).toBeNull();
   });
 
-  it('stops the strum on unmount', () => {
+  it('fits the fretboard to the viewport', () => {
+    setup();
+    expect(fretboardProps.calls[0]).toEqual({ fit: true, minFretWidth: 40 });
+  });
+
+  it('a neutral tap (chord tone outside the shape) plays without ending', () => {
+    const a = setup();
+    a.tap('1-3');
+    expect(a.player.play).toHaveBeenCalledWith(67);
+    expect(a.onAnswer).not.toHaveBeenCalled();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('stops the strum when the screen unmounts mid-strum', () => {
     const a = setup();
     a.tap('2-2');
     advance(40);
+    expect(a.player.play.mock.calls.length).toBeGreaterThan(1);
     a.player.play.mockClear();
-    a.unmount();
+    a.rerender(a.withoutScreen());
     advance(500);
     expect(a.player.play).not.toHaveBeenCalled();
   });
