@@ -36,12 +36,16 @@ function setup(
     advance?: Settings['intervalAdvance'];
     leftHanded?: boolean;
     notation?: Settings['notation'];
+    item?: IntervalItem;
+    accidentals?: Settings['accidentals'];
   } = {},
 ) {
   const { instrument = 'bass', advance = 'manual', leftHanded = false, notation = 'cifra' } = opts;
+  const quizItem = opts.item ?? item;
   const storage = seededStorage({ instrument, settings: { instrument } });
   const settings = { ...activeView(createDefaultData()).settings };
   settings.notation = notation;
+  if (opts.accidentals) settings.accidentals = opts.accidentals;
   settings.intervalAdvance = advance;
   settings.leftHanded = leftHanded;
   const player = fakePlayer();
@@ -51,7 +55,7 @@ function setup(
     <AppProvider storage={storage}>
       <SoundProvider player={player}>
         <Shortcuts />
-        {withQuiz && <IntervalQuiz item={item} settings={settings} onAnswer={onAnswer} onNext={onNext} />}
+        {withQuiz && <IntervalQuiz item={quizItem} settings={settings} onAnswer={onAnswer} onNext={onNext} />}
       </SoundProvider>
     </AppProvider>
   );
@@ -260,6 +264,86 @@ describe('IntervalQuiz', () => {
       press('g');
       press('Enter');
       expect(onNext).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('accidentals', () => {
+    const texts = () => noteButtons().map((b) => b.textContent);
+    const correctLabels = () =>
+      captured[captured.length - 1].marks.filter((m) => m.kind === 'correct').map((m) => m.label);
+    const F_SHARP_3M: IntervalItem = { root: 6, interval: '3M' };
+
+    it('auto: root and 12 buttons follow the auto table, nothing revealed before answering', () => {
+      captured.length = 0;
+      setup({ item: F_SHARP_3M, accidentals: 'auto' });
+      expect(texts()).toEqual(['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']);
+      const eq = document.querySelector('.interval-equation')!;
+      expect(eq.textContent).toContain('F#');
+      expect(eq.querySelector('strong')!.textContent).toBe('?');
+      expect(screen.queryByText(/A#/)).toBeNull();
+      expect(correctLabels()).toEqual([]);
+    });
+
+    it('auto: a right answer shows the degree name and the button name', () => {
+      captured.length = 0;
+      const { onAnswer } = setup({ item: F_SHARP_3M, accidentals: 'auto' });
+      fireEvent.click(noteBtn('Bb'));
+      expect(screen.getByRole('status')).toHaveTextContent('Correto!');
+      expect(document.querySelector('.interval-equation strong')!.textContent).toBe('A# (Bb)');
+      const labels = correctLabels();
+      expect(labels.length).toBeGreaterThan(0);
+      expect(labels.every((l) => l === 'A#')).toBe(true);
+      expect(onAnswer).toHaveBeenCalledWith(true);
+    });
+
+    it('auto: a wrong answer explains with both names', () => {
+      const { onAnswer } = setup({ item: F_SHARP_3M, accidentals: 'auto' });
+      fireEvent.click(noteBtn('C'));
+      expect(screen.getByRole('status')).toHaveTextContent('Errou. F# + 3ª M = A# (Bb).');
+      expect(onAnswer).toHaveBeenCalledWith(false);
+    });
+
+    it('auto: no parenthesis when the degree name matches the button', () => {
+      setup({ item: { root: 0, interval: '3m' }, accidentals: 'auto' });
+      fireEvent.click(noteBtn('D'));
+      expect(screen.getByRole('status')).toHaveTextContent('Errou. C + 3ª m = Eb.');
+    });
+
+    it('auto: a fallback arrival uses the table name', () => {
+      setup({ item: { root: 6, interval: '4A' }, accidentals: 'auto' });
+      fireEvent.click(noteBtn('D'));
+      expect(screen.getByRole('status')).toHaveTextContent('Errou. F# + Trítono = C.');
+    });
+
+    it('auto in solfejo and ambos', () => {
+      captured.length = 0;
+      setup({ item: F_SHARP_3M, accidentals: 'auto', notation: 'solfejo' });
+      fireEvent.click(noteBtn('Dó'));
+      expect(screen.getByRole('status')).toHaveTextContent('Errou. Fá# + 3ª M = Lá# (Sib).');
+      cleanup();
+      captured.length = 0;
+      setup({ item: F_SHARP_3M, accidentals: 'auto', notation: 'ambos' });
+      fireEvent.click(noteBtn('C · Dó'));
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Errou. F# · Fá# + 3ª M = A# · Lá# (Bb · Sib).',
+      );
+      const labels = correctLabels();
+      expect(labels.length).toBeGreaterThan(0);
+      expect(labels.every((l) => l === 'A# · Lá#')).toBe(true);
+    });
+
+    it('flat uses the fixed table, no degree naming', () => {
+      setup({ item: F_SHARP_3M, accidentals: 'flat' });
+      fireEvent.click(noteBtn('C'));
+      expect(screen.getByRole('status')).toHaveTextContent('Errou. Gb + 3ª M = Bb.');
+    });
+
+    it('Shift+A still answers pitch class 10 with flat labels', () => {
+      const { onAnswer } = setup({ item: F_SHARP_3M, accidentals: 'flat' });
+      expect(screen.getByText('Teclado: A–G · Shift = ♯')).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'A', shiftKey: true });
+      expect(onAnswer).toHaveBeenCalledWith(true);
+      expect(noteBtn('Bb')).toHaveClass('option--correct');
     });
   });
 });

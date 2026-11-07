@@ -102,3 +102,30 @@ describe('FindQuiz (bass)', () => {
     for (const s of [5, 6]) expect(container.querySelector(`[data-testid="cell-${s}-1"]`)).toBeNull();
   });
 });
+
+describe('FindQuiz (flats)', () => {
+  it('asks for the note with flats', () => {
+    const settings = {
+      ...activeView(createDefaultData()).settings,
+      notation: 'cifra' as const,
+      accidentals: 'flat' as const,
+    };
+    settings.filter = { strings: [5], fretMin: 1, fretMax: 12, naturalsOnly: false };
+    const player = { unlock: () => {}, prepare: () => {}, play: () => {} };
+    render(
+      <AppProvider storage={createMemoryStorage()}>
+        <SoundProvider player={player}>
+          <FindQuiz
+            position={{ string: 5, fret: 6 }}
+            settings={settings}
+            onAnswer={() => {}}
+            onNext={() => {}}
+          />
+        </SoundProvider>
+      </AppProvider>,
+    );
+    expect(screen.getByText('Encontre Eb na corda 5')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('cell-4-1'));
+    expect(screen.getByRole('status')).toHaveTextContent('Errou. Eb está marcada no braço.');
+  });
+});

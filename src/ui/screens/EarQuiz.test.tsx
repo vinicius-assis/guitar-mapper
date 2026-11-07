@@ -11,10 +11,16 @@ import { EarQuiz } from './EarQuiz';
 const fakePlayer = (): NotePlayer => ({ unlock: vi.fn(), prepare: vi.fn(), play: vi.fn() });
 
 // Corda 6, casa 12 = E3 (MIDI 52).
-function setup(level: EarLevel, naturalsOnly = true, filter?: Settings['filter']) {
+function setup(
+  level: EarLevel,
+  naturalsOnly = true,
+  filter?: Settings['filter'],
+  extra: { accidentals?: Settings['accidentals']; position?: { string: number; fret: number } } = {},
+) {
   const settings = activeView(createDefaultData()).settings;
   settings.notation = 'cifra';
   settings.earLevel = level;
+  settings.accidentals = extra.accidentals ?? 'sharp';
   settings.filter = filter ?? { strings: [6], fretMin: 12, fretMax: 12, naturalsOnly };
   const player = fakePlayer();
   const onAnswer = vi.fn();
@@ -23,7 +29,7 @@ function setup(level: EarLevel, naturalsOnly = true, filter?: Settings['filter']
     <AppProvider storage={createMemoryStorage()}>
       <SoundProvider player={player}>
         <EarQuiz
-          position={{ string: 6, fret: 12 }}
+          position={extra.position ?? { string: 6, fret: 12 }}
           settings={settings}
           onAnswer={onAnswer}
           onNext={onNext}
@@ -172,5 +178,32 @@ describe('EarQuiz (bass)', () => {
     expect(screen.getByText('Correto!')).toBeInTheDocument();
     // mesmo som no baixo: corda 4 casa 12 e corda 2 casa 2
     expect(document.querySelectorAll('.mark--correct')).toHaveLength(2);
+  });
+
+});
+
+describe('EarQuiz (accidentals)', () => {
+  it('hard with accidentals shows the 12 flat labels', () => {
+    setup('hard', false, { strings: [6], fretMin: 12, fretMax: 14, naturalsOnly: false }, {
+      accidentals: 'flat',
+      position: { string: 6, fret: 14 },
+    });
+    expect(options().map((b) => b.textContent)).toEqual(
+      expect.arrayContaining(['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']),
+    );
+    expect(options()).toHaveLength(12);
+    fireEvent.click(options().find((b) => b.textContent === 'C')!);
+    expect(screen.getByRole('status')).toHaveTextContent('Errado. A resposta certa é Gb.');
+    const labels = [...document.querySelectorAll('g.mark--wrong text')].map((t) => t.textContent);
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.every((l) => l === 'Gb')).toBe(true);
+  });
+
+  it('auto shows F# for the same position', () => {
+    setup('hard', false, { strings: [6], fretMin: 12, fretMax: 14, naturalsOnly: false }, {
+      accidentals: 'auto',
+      position: { string: 6, fret: 14 },
+    });
+    expect(options().map((b) => b.textContent)).toContain('F#');
   });
 });

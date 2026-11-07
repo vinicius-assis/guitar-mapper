@@ -12,7 +12,7 @@ import type { QuizProps } from './ChoiceQuiz';
 import { windowFor } from './window';
 
 export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
-  const { filter, notation, leftHanded } = settings;
+  const { filter, notation, accidentals, leftHanded } = settings;
   const { instrument } = useAppState();
   const sound = useSound();
   const breakpoint = useBreakpoint();
@@ -59,7 +59,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
   return (
     <div className="quiz">
       <p className="prompt">
-        Encontre {noteLabel(question.target, notation)} na corda {question.string}
+        Encontre {noteLabel(question.target, notation, accidentals)} na corda {question.string}
       </p>
       <Fretboard
         instrument={instrument}
@@ -76,7 +76,7 @@ export function FindQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
       />
       {tapped && (
         <div className="feedback quiz-actions" role="status">
-          <p>{correct ? 'Correto!' : `Errou. ${noteLabel(question.target, notation)} está marcada no braço.`}</p>
+          <p>{correct ? 'Correto!' : `Errou. ${noteLabel(question.target, notation, accidentals)} está marcada no braço.`}</p>
           {!correct && (
             <button type="button" className="primary" onClick={onNext}>
               Próxima

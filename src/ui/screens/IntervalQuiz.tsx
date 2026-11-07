@@ -8,6 +8,7 @@ import {
   type IntervalItem,
 } from '../../domain/intervals';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
+import { spellInterval, spellingLabel } from '../../domain/spelling';
 import { useAppState } from '../../state/AppState';
 import { useSound } from '../../audio/SoundProvider';
 import type { Settings } from '../../state/storage';
@@ -27,7 +28,7 @@ const FRET_MIN = 0;
 const FRET_MAX = 12;
 
 export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizProps) {
-  const { notation, leftHanded, intervalAdvance } = settings;
+  const { notation, accidentals, leftHanded, intervalAdvance } = settings;
   const { instrument } = useAppState();
   const sound = useSound();
   const interval = intervalById(item.interval);
@@ -64,16 +65,22 @@ export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizP
   const marks: Mark[] = notePositions(item.root, instrument, FRET_MIN, FRET_MAX).map((position) => ({
     position,
     kind: 'target',
-    label: noteLabel(item.root, notation),
+    label: noteLabel(item.root, notation, accidentals),
   }));
+  // Em Automático a chegada é nomeada pelo grau; o botão segue a tabela Automático.
+  const buttonName = noteLabel(answer, notation, accidentals);
+  const arrivalName =
+    accidentals === 'auto'
+      ? spellingLabel(spellInterval(item.root, interval, 'auto'), notation)
+      : buttonName;
+  const answerText = arrivalName === buttonName ? arrivalName : `${arrivalName} (${buttonName})`;
   if (answered) {
     for (const position of notePositions(answer, instrument, FRET_MIN, FRET_MAX)) {
-      marks.push({ position, kind: 'correct', label: noteLabel(answer, notation) });
+      marks.push({ position, kind: 'correct', label: arrivalName });
     }
   }
 
-  const rootText = noteLabel(item.root, notation);
-  const answerText = noteLabel(answer, notation);
+  const rootText = noteLabel(item.root, notation, accidentals);
   return (
     <div className="quiz">
       <p className="prompt">Qual é a nota?</p>
@@ -106,7 +113,7 @@ export function IntervalQuiz({ item, settings, onAnswer, onNext }: IntervalQuizP
             ].join(' ')}
             onClick={() => choose(note)}
           >
-            {noteLabel(note, notation)}
+            {noteLabel(note, notation, accidentals)}
           </button>
         ))}
       </div>

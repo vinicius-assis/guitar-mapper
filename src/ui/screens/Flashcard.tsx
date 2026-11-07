@@ -10,7 +10,7 @@ import type { QuizProps } from './ChoiceQuiz';
 import { windowFor } from './window';
 
 export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
-  const { filter, notation, leftHanded } = settings;
+  const { filter, notation, accidentals, leftHanded } = settings;
   const { instrument } = useAppState();
   const sound = useSound();
   const breakpoint = useBreakpoint();
@@ -40,7 +40,7 @@ export function Flashcard({ position, settings, onAnswer, onNext }: QuizProps) {
           {
             position,
             kind: 'target',
-            label: revealed ? noteLabel(noteAt(position, instrument), notation) : undefined,
+            label: revealed ? noteLabel(noteAt(position, instrument), notation, accidentals) : undefined,
           },
         ]}
       />
