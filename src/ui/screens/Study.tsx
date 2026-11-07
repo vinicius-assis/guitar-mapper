@@ -8,6 +8,7 @@ import {
   type SessionResult,
   type SessionSummary,
 } from '../../domain/session';
+import { SESSION_SIZE } from '../../domain/review';
 import { useAppState } from '../../state/AppState';
 import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
@@ -26,7 +27,15 @@ interface StudyProps {
 }
 
 export function Study({ forced = null, onSessionChange }: StudyProps) {
-  const { data, instrument, recordAnswer, updateSettings, recordSession } = useAppState();
+  const {
+    data,
+    instrument,
+    recordAnswer,
+    recordItemAnswer,
+    updateSettings,
+    recordSession,
+    recordStudyDay,
+  } = useAppState();
   const confirm = useConfirm();
   const sound = useSound();
   const desktop = useBreakpoint() === 'desktop';
@@ -40,6 +49,13 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   const exercise = exerciseFor(settings.mode);
   const ctx: ExerciseContext = { settings, instrument, candidates, rng: Math.random };
   const questionCount = exercise.questionCount(ctx);
+  // A fila é uma seleção de revisão: o progresso certo para o exercício, no instante de montar.
+  const reviewCtx = (): ExerciseContext => ({
+    ...ctx,
+    progress: exercise.recordsPositionProgress ? data.progress : data.itemProgress,
+    now: Date.now(),
+    limit: SESSION_SIZE,
+  });
   const blockers = exercise.startBlockers(ctx);
 
   const startsRunning = Boolean(forced) && exercise.startsFromPosition(ctx);
@@ -47,7 +63,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   const [openPanel, setOpenPanel] = useState<'menu' | 'focus' | null>(null);
   const [phase, setPhase] = useState<Phase>(startsRunning ? 'running' : 'idle');
   const [queue, setQueue] = useState<QuizItem[]>(() =>
-    startsRunning ? exercise.buildQueue(ctx, forced) : [],
+    startsRunning ? exercise.buildQueue(reviewCtx(), forced) : [],
   );
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<SessionResult[]>([]);
@@ -70,7 +86,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
 
   function begin() {
     if (!canStart) return;
-    const nextQueue = exercise.buildQueue(ctx, null);
+    const nextQueue = exercise.buildQueue(reviewCtx(), null);
     sound.unlock(); // dentro do toque em Iniciar: libera o áudio no iPhone
     exercise.prepareSound(sound, nextQueue, instrument);
     setQueue(nextQueue);
@@ -87,6 +103,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
     const done = resultsRef.current;
     const entry = makeHistoryEntry(exercise.mode, Date.now(), done, settings.earLevel);
     if (entry) recordSession(entry);
+    recordStudyDay(done); // sem respostas não grava nada
     setSummary(summarize(done));
     setPhase('summary');
   }
@@ -101,9 +118,11 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   }
 
   function handleAnswer(correct: boolean) {
-    if (!queue[index]) return;
-    // Só os modos de posição mexem no mapa (ouvido e intervalos não).
-    if (exercise.recordsPositionProgress) recordAnswer(queue[index] as Position, correct);
+    const current = queue[index];
+    if (!current) return;
+    // Os modos de posição mexem no mapa; os outros guardam o progresso por item.
+    if (exercise.recordsPositionProgress) recordAnswer(current as Position, correct);
+    else recordItemAnswer(exercise.itemKey(current, instrument), correct);
     resultsRef.current = [...resultsRef.current, { correct, ms: Date.now() - questionStart.current }];
     setResults(resultsRef.current);
   }
@@ -174,6 +193,11 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
             open={openPanel === 'focus'}
             onOpenChange={(open) => setOpenPanel(open ? 'focus' : null)}
           />
+          {questionCount > 0 && (
+            <p className="hint">
+              {`Sessão de ${Math.min(SESSION_SIZE, questionCount)} ${questionCount === 1 ? 'pergunta' : 'perguntas'}`}
+            </p>
+          )}
           <button
             type="button"
             className="primary start"

@@ -46,3 +46,13 @@ describe('backup', () => {
     expect(r.ok && r.data.instruments.guitar.progress).toEqual({});
   });
 });
+
+describe('backup with items and stats', () => {
+  it('preserves valid items and stats on import', () => {
+    const d = createDefaultData();
+    d.instruments.guitar.items = { 'ear:60': { box: 2, correct: 1, wrong: 0, lastReview: 1, nextReview: 2 } };
+    d.stats = { '2026-11-07': { sessions: 1, answered: 2, correct: 1, ms: 4000 } };
+    d.settings.weeklyGoal = 3;
+    expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
+  });
+});

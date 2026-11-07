@@ -5,11 +5,15 @@ import type { Instrument } from '../domain/instruments';
 import {
   buildIntervalQueue,
   intervalById,
+  intervalItems,
   intervalPitches,
+  shuffleIntervalItems,
   type IntervalItem,
 } from '../domain/intervals';
 import { ALL_NOTES, NATURAL_NOTES } from '../domain/notes';
-import { uniquePitchPositions } from '../domain/pitch';
+import { pitchOf, uniquePitchPositions } from '../domain/pitch';
+import { selectForReview } from '../domain/review';
+import type { ProgressMap } from '../domain/scheduler';
 import type { QuizMode } from '../domain/quiz';
 import { buildQueue } from '../domain/session';
 import type { useSound } from '../audio/SoundProvider';
@@ -29,6 +33,12 @@ export interface ExerciseContext {
   instrument: Instrument;
   candidates: Position[];
   rng: () => number;
+  /** Progresso por item: com `limit`, a fila vira uma seleção de revisão. */
+  progress?: ProgressMap;
+  /** Instante da seleção (ms); ausente usa `Date.now()`. */
+  now?: number;
+  /** Tamanho máximo da fila quando há `progress`. */
+  limit?: number;
 }
 
 export interface ExerciseQuizProps {
@@ -42,7 +52,7 @@ type Sound = ReturnType<typeof useSound>;
 
 export interface Exercise extends ExerciseMeta {
   /** Chave estável do item (gancho para o progresso por item). */
-  itemKey(item: QuizItem): string;
+  itemKey(item: QuizItem, instrument: Instrument): string;
   questionCount(ctx: ExerciseContext): number;
   /** Mensagens que impedem o início; vazio = pode iniciar. */
   startBlockers(ctx: ExerciseContext): string[];
@@ -60,12 +70,45 @@ const NO_POSITION =
 const EAR_WITHOUT_SOUND = 'Ligue o Som em Ajustes para treinar de ouvido.';
 const NO_INTERVAL = 'Nenhum intervalo no foco. Abra o Foco e marque ao menos um intervalo.';
 
-function isIntervalItem(item: QuizItem): item is IntervalItem {
-  return !('string' in item);
+const positionItemKey = (item: QuizItem) => positionKey(item as Position);
+const earItemKey = (item: QuizItem, instrument: Instrument) =>
+  `ear:${pitchOf(item as Position, instrument)}`;
+const intervalItemKey = (item: QuizItem) => {
+  const { root, interval } = item as IntervalItem;
+  return `interval:${root}:${interval}`;
+};
+
+/** Com `progress` e `limit`, escolhe até `limit` itens do pool por `selectForReview`; senão, o pool todo. */
+function reviewSubset<T>(ctx: ExerciseContext, pool: T[], keyOf: (item: T) => string, limit?: number): T[] {
+  const max = limit ?? ctx.limit;
+  if (!ctx.progress || max === undefined) return pool;
+  return selectForReview(pool, {
+    keyOf,
+    progress: ctx.progress,
+    now: ctx.now ?? Date.now(),
+    rng: ctx.rng,
+    limit: Math.max(0, max),
+  });
 }
 
-function itemKey(item: QuizItem): string {
-  return isIntervalItem(item) ? `${item.root}:${item.interval}` : positionKey(item);
+/**
+ * Pool das posições na fila de revisão: sem a forçada (e, no Ouvido, sem a mesma altura dela).
+ * Sem `progress`/`limit`, devolve `candidates` intacto (comportamento antigo).
+ */
+function positionPool(
+  ctx: ExerciseContext,
+  forced: Position | null,
+  ear: boolean,
+): Position[] {
+  if (!ctx.progress || ctx.limit === undefined) return ctx.candidates;
+  const base = ear ? uniquePitchPositions(ctx.candidates, ctx.instrument) : ctx.candidates;
+  const forcedKey = forced ? positionKey(forced) : null;
+  const forcedPitch = forced ? pitchOf(forced, ctx.instrument) : null;
+  const pool = base.filter((p) =>
+    ear ? pitchOf(p, ctx.instrument) !== forcedPitch : positionKey(p) !== forcedKey,
+  );
+  const keyOf = ear ? (p: Position) => earItemKey(p, ctx.instrument) : positionKey;
+  return reviewSubset(ctx, pool, keyOf, ctx.limit - (forced ? 1 : 0));
 }
 
 /** Um quiz de posição recebe a posição em vez do item genérico. */
@@ -83,12 +126,12 @@ function positionExercise(
 ): Exercise {
   return {
     ...EXERCISE_META[mode],
-    itemKey,
+    itemKey: positionItemKey,
     questionCount: (ctx) => ctx.candidates.length,
     startBlockers: (ctx) => (ctx.candidates.length === 0 ? [NO_POSITION] : []),
     startsFromPosition: () => true,
     buildQueue: (ctx, forced = null) =>
-      buildQueue(ctx.candidates, ctx.rng, forced, {
+      buildQueue(positionPool(ctx, forced, false), ctx.rng, forced, {
         avoidSameNote: false,
         uniquePitch: false,
         instrument: ctx.instrument,
@@ -122,7 +165,7 @@ function EarOptions() {
 
 const ear: Exercise = {
   ...EXERCISE_META.ear,
-  itemKey,
+  itemKey: earItemKey,
   // Ouvido pergunta cada som uma vez (o mesmo som em cordas diferentes não é outra pergunta).
   questionCount: (ctx) => uniquePitchPositions(ctx.candidates, ctx.instrument).length,
   startBlockers: (ctx) => [
@@ -133,7 +176,7 @@ const ear: Exercise = {
   startsFromPosition: (ctx) => ctx.settings.soundEnabled,
   Options: EarOptions,
   buildQueue: (ctx, forced = null) =>
-    buildQueue(ctx.candidates, ctx.rng, forced, {
+    buildQueue(positionPool(ctx, forced, true), ctx.rng, forced, {
       avoidSameNote: true,
       uniquePitch: true,
       instrument: ctx.instrument,
@@ -148,12 +191,20 @@ function intervalRoots(settings: Settings) {
 
 const interval: Exercise = {
   ...EXERCISE_META.interval,
-  itemKey,
+  itemKey: intervalItemKey,
   // A mesma conta do Foco (useIntervalFocus): notas do foco × intervalos marcados.
   questionCount: (ctx) => intervalRoots(ctx.settings).length * ctx.settings.intervals.length,
   startBlockers: (ctx) => (ctx.settings.intervals.length === 0 ? [NO_INTERVAL] : []),
   startsFromPosition: () => false,
-  buildQueue: (ctx) => buildIntervalQueue(intervalRoots(ctx.settings), ctx.settings.intervals, ctx.rng),
+  buildQueue: (ctx) => {
+    const roots = intervalRoots(ctx.settings);
+    if (!ctx.progress || ctx.limit === undefined) {
+      return buildIntervalQueue(roots, ctx.settings.intervals, ctx.rng);
+    }
+    // A seleção vem agrupada (vencidos, novos, resto): embaralhar remove essa ordem.
+    const selected = reviewSubset(ctx, intervalItems(roots, ctx.settings.intervals), intervalItemKey);
+    return shuffleIntervalItems(selected, ctx.rng);
+  },
   prepareSound: (sound, items, instrument) =>
     sound.preparePitches(
       (items as IntervalItem[]).flatMap((item) =>

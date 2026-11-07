@@ -18,7 +18,7 @@ const okProgress: PositionProgress = { box: 2, correct: 1, wrong: 0, lastReview:
 /** Texto v2 com `settings` globais e os dados do violão; o baixo fica padrão. */
 function v2Raw(
   settings: unknown,
-  guitar: { filter?: unknown; progress?: unknown; history?: unknown } = {},
+  guitar: { filter?: unknown; progress?: unknown; history?: unknown; items?: unknown } = {},
   bass?: unknown,
 ) {
   const base = createDefaultData();
@@ -371,5 +371,123 @@ describe('interval settings', () => {
     expect(h).toHaveLength(1);
     expect(h[0].mode).toBe('interval');
     expect(h[0]).not.toHaveProperty('level');
+  });
+});
+
+describe('items, stats and weeklyGoal (additive v2 fields)', () => {
+  const okItem: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+  const okDay = { sessions: 2, answered: 10, correct: 7, ms: 12000 };
+
+  it('defaults to empty items, empty stats and a weekly goal of 5', () => {
+    const d = createDefaultData();
+    expect(d.instruments.guitar.items).toEqual({});
+    expect(d.instruments.bass.items).toEqual({});
+    expect(d.stats).toEqual({});
+    expect(d.settings.weeklyGoal).toBe(5);
+    expect(DEFAULT_SETTINGS.weeklyGoal).toBe(5);
+  });
+
+  it('loads an old v2 save without the new fields with defaults', () => {
+    const old = {
+      version: 2,
+      settings: { notation: 'cifra' },
+      instruments: {
+        guitar: { filter: createDefaultData().instruments.guitar.filter, progress: {}, history: [] },
+        bass: { filter: createDefaultData().instruments.bass.filter, progress: {}, history: [] },
+      },
+    };
+    const storage = createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(old) });
+    const { data } = loadData(storage);
+    expect(data.instruments.guitar.items).toEqual({});
+    expect(data.instruments.bass.items).toEqual({});
+    expect(data.stats).toEqual({});
+    expect(data.settings.weeklyGoal).toBe(5);
+    // carregar não regrava o armazenamento
+    expect(storage.dump()[STORAGE_KEY]).toBe(JSON.stringify(old));
+  });
+
+  it('gives a migrated v1 save the defaults', () => {
+    const v1 = { version: 1, settings: {}, progress: {}, history: [] };
+    const { data } = loadData(createMemoryStorage({ [LEGACY_STORAGE_KEY]: JSON.stringify(v1) }));
+    expect(data.instruments.guitar.items).toEqual({});
+    expect(data.instruments.bass.items).toEqual({});
+    expect(data.stats).toEqual({});
+    expect(data.settings.weeklyGoal).toBe(5);
+  });
+
+  it('drops invalid item keys and entries, keeps valid ones', () => {
+    const items = {
+      x: okItem,
+      'ear:abc': okItem,
+      'interval:99:3m': okItem,
+      'interval:0:zz': okItem,
+      'ear:61': { ...okItem, box: 9 },
+      'ear:60': okItem,
+      'interval:0:3m': okItem,
+    };
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(data.instruments.guitar.items).toEqual({ 'ear:60': okItem, 'interval:0:3m': okItem });
+  });
+
+  it('drops an ear:60 entry with an invalid box', () => {
+    const items = { 'ear:60': { ...okItem, box: 9 } };
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(data.instruments.guitar.items).toEqual({});
+  });
+
+  it('treats non-object items as empty', () => {
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items: 'x' }) }));
+    expect(data.instruments.guitar.items).toEqual({});
+  });
+
+  it('drops invalid stats days, keeps valid ones', () => {
+    const raw = JSON.parse(v2Raw({}));
+    raw.stats = {
+      hoje: okDay,
+      '2026-11-07': { ...okDay, answered: -1 },
+      '2026-11-08': { ...okDay, correct: 11 },
+      '2026-11-09': { ...okDay, sessions: 1.5 },
+      '2026-11-10': { ...okDay, ms: Infinity },
+      '2026-11-11': 'x',
+      '2026-11-06': okDay,
+    };
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(raw) }));
+    expect(data.stats).toEqual({ '2026-11-06': okDay });
+  });
+
+  it('treats non-object stats as empty', () => {
+    const raw = JSON.parse(v2Raw({}));
+    raw.stats = [okDay];
+    expect(loadData(createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(raw) })).data.stats).toEqual({});
+  });
+
+  it.each([
+    [0, 5],
+    [8, 5],
+    [2.5, 5],
+    ['5', 5],
+    [null, 5],
+    [3, 3],
+    [1, 1],
+    [7, 7],
+  ])('sanitizes weeklyGoal %j to %j', (value, expected) => {
+    expect(loadActive(v2Raw({ weeklyGoal: value })).settings.weeklyGoal).toBe(expected);
+  });
+
+  it('round-trips valid items and stats, and activeView exposes them', () => {
+    const storage = createMemoryStorage();
+    const data = createDefaultData();
+    data.settings.instrument = 'bass';
+    data.instruments.bass.items = { 'ear:40': okItem };
+    data.instruments.guitar.items = { 'interval:3:5J': okItem };
+    data.stats = { '2026-11-07': okDay };
+    data.settings.weeklyGoal = 4;
+    saveData(storage, data);
+    const loaded = loadData(storage).data;
+    expect(loaded).toEqual(data);
+    const view = activeView(loaded);
+    expect(view.itemProgress).toEqual({ 'ear:40': okItem });
+    expect(view.stats).toEqual({ '2026-11-07': okDay });
+    expect(withActive(loaded, { items: {} }).instruments.bass.items).toEqual({});
   });
 });

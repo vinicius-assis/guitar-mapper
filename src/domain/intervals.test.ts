@@ -6,6 +6,7 @@ import {
   instrumentRange,
   intervalAnswer,
   intervalById,
+  intervalItems,
   intervalLink,
   intervalPitches,
   isIntervalId,
@@ -32,6 +33,22 @@ describe('intervals', () => {
     expect(DEFAULT_INTERVALS).toEqual(['3m', '3M', '5J', '7m', '7M']);
     expect(isIntervalId('5J')).toBe(true);
     expect(isIntervalId('9M')).toBe(false);
+  });
+});
+
+describe('intervalItems', () => {
+  it('lists every combination in root × interval order, unshuffled', () => {
+    expect(intervalItems([0, 2], ['3m', '5J'])).toEqual([
+      { root: 0, interval: '3m' },
+      { root: 0, interval: '5J' },
+      { root: 2, interval: '3m' },
+      { root: 2, interval: '5J' },
+    ]);
+  });
+  it('buildIntervalQueue is a permutation of intervalItems', () => {
+    const key = (i: { root: number; interval: string }) => `${i.root}-${i.interval}`;
+    const q = buildIntervalQueue(NATURAL_NOTES, ['3m', '5J'], mulberry32(1));
+    expect(q.map(key).sort()).toEqual(intervalItems(NATURAL_NOTES, ['3m', '5J']).map(key).sort());
   });
 });
 

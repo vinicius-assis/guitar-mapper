@@ -17,6 +17,7 @@ import type { Notation } from '../domain/notes';
 import type { EarLevel, QuizMode } from '../domain/quiz';
 import { HISTORY_LIMIT, type HistoryEntry } from '../domain/session';
 import type { Box, PositionProgress, ProgressMap } from '../domain/scheduler';
+import type { DayStats, StatsMap } from '../domain/stats';
 
 export type IntervalAdvance = 'manual' | '3s' | '5s';
 
@@ -24,6 +25,8 @@ export interface InstrumentData {
   filter: Filter;
   progress: ProgressMap;
   history: HistoryEntry[];
+  /** Progresso por item de Ouvido/Intervalos (`ear:<midi>`, `interval:<raiz>:<id>`). */
+  items: ProgressMap;
 }
 
 export interface GlobalSettings {
@@ -35,6 +38,8 @@ export interface GlobalSettings {
   instrument: InstrumentId;
   intervals: IntervalId[];
   intervalAdvance: IntervalAdvance;
+  /** Meta de dias de estudo por semana (1–7). */
+  weeklyGoal: number;
 }
 
 /** Visão das configurações para o instrumento ativo (globais + filtro dele). */
@@ -44,6 +49,7 @@ export interface AppData {
   version: 2;
   settings: GlobalSettings;
   instruments: Record<InstrumentId, InstrumentData>;
+  stats: StatsMap;
 }
 
 /** Visão plana do instrumento ativo, usada pelas telas. */
@@ -51,6 +57,9 @@ export interface ActiveData {
   settings: Settings;
   progress: ProgressMap;
   history: HistoryEntry[];
+  /** `items` do instrumento ativo. */
+  itemProgress: ProgressMap;
+  stats: StatsMap;
 }
 
 export const STORAGE_KEY = 'guitar-mapper:v2';
@@ -77,6 +86,7 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   instrument: 'guitar',
   intervals: [...DEFAULT_INTERVALS],
   intervalAdvance: 'manual',
+  weeklyGoal: 5,
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -94,7 +104,7 @@ export function getBrowserStorage(): StorageLike | null {
 }
 
 function defaultInstrumentData(instrument: Instrument): InstrumentData {
-  return { filter: defaultFilterFor(instrument), progress: {}, history: [] };
+  return { filter: defaultFilterFor(instrument), progress: {}, history: [], items: {} };
 }
 
 export function createDefaultData(): AppData {
@@ -102,6 +112,7 @@ export function createDefaultData(): AppData {
     version: 2,
     settings: { ...DEFAULT_SETTINGS, intervals: [...DEFAULT_INTERVALS] },
     instruments: { guitar: defaultInstrumentData(GUITAR), bass: defaultInstrumentData(instrumentById('bass')) },
+    stats: {},
   };
 }
 
@@ -111,6 +122,8 @@ export function activeView(data: AppData): ActiveData {
     settings: { ...data.settings, filter: bucket.filter },
     progress: bucket.progress,
     history: bucket.history,
+    itemProgress: bucket.items,
+    stats: data.stats,
   };
 }
 
@@ -178,6 +191,10 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     intervalAdvance: ADVANCES.includes(source.intervalAdvance as IntervalAdvance)
       ? (source.intervalAdvance as IntervalAdvance)
       : DEFAULT_SETTINGS.intervalAdvance,
+    weeklyGoal:
+      Number.isInteger(source.weeklyGoal) && (source.weeklyGoal as number) >= 1 && (source.weeklyGoal as number) <= 7
+        ? (source.weeklyGoal as number)
+        : DEFAULT_SETTINGS.weeklyGoal,
   };
 }
 
@@ -185,23 +202,72 @@ function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
-function sanitizeProgress(raw: unknown, instrument: Instrument): ProgressMap {
+/** Valida uma entrada de progresso (posição ou item); `null` se inválida. */
+function sanitizeProgressEntry(entry: unknown): PositionProgress | null {
+  if (!isRecord(entry)) return null;
+  const { box, correct, wrong, lastReview, nextReview } = entry;
+  if (
+    typeof box === 'number' &&
+    Number.isInteger(box) &&
+    box >= 1 &&
+    box <= 5 &&
+    isCount(correct) &&
+    isCount(wrong) &&
+    isCount(lastReview) &&
+    isCount(nextReview)
+  ) {
+    return { box: box as Box, correct, wrong, lastReview, nextReview };
+  }
+  return null;
+}
+
+function sanitizeProgressMap(raw: unknown, isValidKey: (key: string) => boolean): ProgressMap {
   const out: ProgressMap = {};
   if (!isRecord(raw)) return out;
   for (const [key, entry] of Object.entries(raw)) {
-    if (!parsePositionKey(key, instrument) || !isRecord(entry)) continue;
-    const { box, correct, wrong, lastReview, nextReview } = entry;
+    if (!isValidKey(key)) continue;
+    const valid = sanitizeProgressEntry(entry);
+    if (valid) out[key] = valid;
+  }
+  return out;
+}
+
+function sanitizeProgress(raw: unknown, instrument: Instrument): ProgressMap {
+  return sanitizeProgressMap(raw, (key) => parsePositionKey(key, instrument) !== null);
+}
+
+const EAR_ITEM_KEY = /^ear:(0|[1-9]\d*)$/;
+const INTERVAL_ITEM_KEY = /^interval:(0|[1-9]\d*):(.+)$/;
+
+function isItemKey(key: string): boolean {
+  if (EAR_ITEM_KEY.test(key)) return true;
+  const match = INTERVAL_ITEM_KEY.exec(key);
+  return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
+}
+
+function sanitizeItems(raw: unknown): ProgressMap {
+  return sanitizeProgressMap(raw, isItemKey);
+}
+
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+function sanitizeStats(raw: unknown): StatsMap {
+  const out: StatsMap = {};
+  if (!isRecord(raw)) return out;
+  for (const [key, day] of Object.entries(raw)) {
+    if (!DAY_KEY.test(key) || !isRecord(day)) continue;
+    const { sessions, answered, correct, ms } = day;
     if (
-      typeof box === 'number' &&
-      Number.isInteger(box) &&
-      box >= 1 &&
-      box <= 5 &&
+      isCount(sessions) &&
+      Number.isInteger(sessions) &&
+      isCount(answered) &&
+      Number.isInteger(answered) &&
       isCount(correct) &&
-      isCount(wrong) &&
-      isCount(lastReview) &&
-      isCount(nextReview)
+      Number.isInteger(correct) &&
+      correct <= answered &&
+      isCount(ms)
     ) {
-      const valid: PositionProgress = { box: box as Box, correct, wrong, lastReview, nextReview };
+      const valid: DayStats = { sessions, answered, correct, ms };
       out[key] = valid;
     }
   }
@@ -252,6 +318,7 @@ function sanitizeBucket(raw: unknown, instrument: Instrument): InstrumentData {
     filter: sanitizeFilter(source.filter, instrument),
     progress: sanitizeProgress(source.progress, instrument),
     history: sanitizeHistory(source.history),
+    items: sanitizeItems(source.items),
   };
 }
 
@@ -264,6 +331,7 @@ export function sanitizeV2(parsed: Record<string, unknown>): AppData {
       guitar: sanitizeBucket(buckets.guitar, instrumentById('guitar')),
       bass: sanitizeBucket(buckets.bass, instrumentById('bass')),
     },
+    stats: sanitizeStats(parsed.stats),
   };
 }
 
@@ -279,6 +347,7 @@ function migrateV1(parsed: Record<string, unknown>): AppData {
       ),
       bass: defaultInstrumentData(instrumentById('bass')),
     },
+    stats: {},
   };
 }
 

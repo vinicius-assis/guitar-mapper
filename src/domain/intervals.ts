@@ -66,17 +66,30 @@ function shuffle<T>(items: readonly T[], rng: () => number): T[] {
   return out;
 }
 
+/** Todas as combinações nota × intervalo, uma vez cada, na ordem nota × intervalo. */
+export function intervalItems(
+  roots: readonly NoteIndex[],
+  intervals: readonly IntervalId[],
+): IntervalItem[] {
+  const items: IntervalItem[] = [];
+  for (const root of roots) {
+    for (const interval of intervals) items.push({ root, interval });
+  }
+  return items;
+}
+
+/** Embaralha itens de intervalo (o mesmo embaralhamento de `buildIntervalQueue`). */
+export function shuffleIntervalItems(items: readonly IntervalItem[], rng: () => number): IntervalItem[] {
+  return shuffle(items, rng);
+}
+
 /** Todas as combinações nota × intervalo, uma vez cada, embaralhadas. */
 export function buildIntervalQueue(
   roots: readonly NoteIndex[],
   intervals: readonly IntervalId[],
   rng: () => number,
 ): IntervalItem[] {
-  const items: IntervalItem[] = [];
-  for (const root of roots) {
-    for (const interval of intervals) items.push({ root, interval });
-  }
-  return shuffle(items, rng);
+  return shuffle(intervalItems(roots, intervals), rng);
 }
 
 /** Menor e maior altura MIDI tocáveis (corda solta mais grave até a casa 24 da mais aguda). */

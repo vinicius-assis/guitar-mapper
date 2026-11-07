@@ -9,6 +9,7 @@ import {
 import type { InstrumentId } from './domain/instruments';
 import type { HistoryEntry } from './domain/session';
 import type { ProgressMap } from './domain/scheduler';
+import type { StatsMap } from './domain/stats';
 
 /** RNG determinístico para testes. */
 export function mulberry32(seed: number): () => number {
@@ -58,6 +59,9 @@ export function seededStorage(
     settings?: Partial<Settings>;
     progress?: ProgressMap;
     history?: HistoryEntry[];
+    /** `items` do balde escolhido (mesmo balde de `progress`). */
+    items?: ProgressMap;
+    stats?: StatsMap;
     instrument?: InstrumentId;
   } = {},
 ) {
@@ -68,6 +72,8 @@ export function seededStorage(
   if (filter) bucket.filter = filter;
   if (overrides.progress) bucket.progress = overrides.progress;
   if (overrides.history) bucket.history = overrides.history;
+  if (overrides.items) bucket.items = overrides.items;
+  if (overrides.stats) data.stats = overrides.stats;
   return createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(data) });
 }
 

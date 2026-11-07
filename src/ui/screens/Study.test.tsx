@@ -6,7 +6,8 @@ import type { Settings } from '../../state/storage';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
 import { ConfirmProvider } from '../ConfirmDialog';
-import { BASS } from '../../domain/instruments';
+import { BASS, GUITAR } from '../../domain/instruments';
+import { dayKey } from '../../domain/stats';
 import { positionsInFilter } from '../../domain/fretboard';
 import { uniquePitchPositions } from '../../domain/pitch';
 import { defaultFilterFor } from '../../state/storage';
@@ -754,13 +755,13 @@ describe('Study: Ouvido counts sounds, not positions', () => {
     expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('17 perguntas');
   });
 
-  it('an ear session has one question per sound and never repeats a sound', () => {
+  it('an ear session takes up to 20 of the 48 sounds and never repeats a sound', () => {
     const { player } = setupWithPlayer({ mode: 'ear', filter: FULL });
     start();
-    expect(screen.getByText('Pergunta 1 de 48')).toBeInTheDocument();
+    expect(screen.getByText('Pergunta 1 de 20')).toBeInTheDocument();
     const pitches = vi.mocked(player.prepare).mock.calls[0][0];
-    expect(pitches).toHaveLength(48);
-    expect(new Set(pitches).size).toBe(48);
+    expect(pitches).toHaveLength(20);
+    expect(new Set(pitches).size).toBe(20);
   });
 });
 
@@ -1128,10 +1129,11 @@ describe('Study: Intervalos', () => {
     expect(screen.getByText(/60 perguntas/)).toBeInTheDocument();
   });
 
-  it('starts a 35-question session when the Foco says 35', () => {
+  it('starts a 20-question session when the Foco says 35', () => {
     setup({ instrument: 'bass', mode: 'interval', filter: NATURALS });
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('35 perguntas');
     start();
-    expect(screen.getByText('Pergunta 1 de 35')).toBeInTheDocument();
+    expect(screen.getByText('Pergunta 1 de 20')).toBeInTheDocument();
   });
 
   it('warns and disables Iniciar when no interval is selected', () => {
@@ -1173,5 +1175,132 @@ describe('Study: Intervalos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'trocar' }));
     expect(screen.queryByText(/Pergunta/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Iniciar/ })).toBeInTheDocument();
+  });
+});
+
+describe('Study: review sessions of up to 20 questions', () => {
+  // Todas as cordas do violão, casas 1–12, com acidentais: 72 posições.
+  const FULL12: Settings['filter'] = { strings: [1, 2, 3, 4, 5, 6], fretMin: 1, fretMax: 12, naturalsOnly: false };
+  const FIVE: Settings['filter'] = { strings: [6], fretMin: 1, fretMax: 8, naturalsOnly: true }; // F G A B C
+  const flashAll = (n: number) => {
+    for (let i = 0; i < n; i++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Mostrar nota' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Acertei' }));
+    }
+  };
+
+  it('the start screen says the session has 20 questions when the focus is larger', () => {
+    setup({ mode: 'flashcard', filter: FULL12 });
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('72 perguntas');
+    const hint = screen.getByText('Sessão de 20 perguntas');
+    expect(hint).toHaveClass('hint');
+  });
+
+  it('with a 5-position focus the session has 5 questions', () => {
+    setup({ mode: 'flashcard', filter: FIVE });
+    expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent('5 perguntas');
+    expect(screen.getByText('Sessão de 5 perguntas')).toBeInTheDocument();
+  });
+
+  it('with a 1-position focus the hint is singular', () => {
+    setup({ mode: 'flashcard', filter: { strings: [6], fretMin: 1, fretMax: 1, naturalsOnly: true } });
+    expect(screen.getByText('Sessão de 1 pergunta')).toBeInTheDocument();
+    expect(screen.queryByText(/Sessão de 1 perguntas/)).not.toBeInTheDocument();
+  });
+
+  it('with an empty focus no session hint is shown', () => {
+    setup({ mode: 'flashcard', filter: { strings: [], fretMin: 1, fretMax: 12, naturalsOnly: false } });
+    expect(screen.queryByText(/Sessão de/)).not.toBeInTheDocument();
+  });
+
+  it('a started session has 20 questions', () => {
+    setup({ mode: 'flashcard', filter: FULL12 });
+    start();
+    expect(screen.getByText('Pergunta 1 de 20')).toBeInTheDocument();
+  });
+
+  it('Ouvido records the answer under ear:<MIDI> and leaves position progress alone', () => {
+    const storage = setup({ mode: 'ear' });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'E' }));
+    const saved = readSaved(storage);
+    expect(saved.itemProgress['ear:52']).toMatchObject({ correct: 1, wrong: 0 });
+    expect(saved.progress).toEqual({});
+  });
+
+  it('Intervalos records the answer under interval:<root>:<id>', () => {
+    const storage = setup({
+      instrument: 'bass',
+      mode: 'interval',
+      intervals: ['5J'],
+      filter: { strings: [1, 2, 3, 4], fretMin: 0, fretMax: 12, naturalsOnly: true },
+    });
+    start();
+    fireEvent.click(document.querySelector('.note-option') as HTMLButtonElement);
+    const saved = readSaved(storage, 'bass');
+    const keys = Object.keys(saved.itemProgress);
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatch(/^interval:\d+:5J$/);
+    expect(saved.progress).toEqual({});
+  });
+
+  it('a position mode records only position progress, not items', () => {
+    const storage = setup({ mode: 'position-to-note' });
+    start();
+    fireEvent.click(screen.getByRole('button', { name: 'E' }));
+    const saved = readSaved(storage);
+    expect(saved.progress['6-12'].correct).toBe(1);
+    expect(saved.itemProgress).toEqual({});
+  });
+
+  it('prioritises due positions: all 8 due ones are asked among the 20', () => {
+    const candidates = positionsInFilter(FULL12, GUITAR);
+    const entry = (nextReview: number) => ({ box: 1 as const, correct: 1, wrong: 0, lastReview: 0, nextReview });
+    const progress: Record<string, ReturnType<typeof entry>> = {};
+    const due = candidates.slice(0, 8).map((p) => `${p.string}-${p.fret}`);
+    for (const key of due) progress[key] = entry(0);
+    for (const p of candidates.slice(8, 38)) progress[`${p.string}-${p.fret}`] = entry(1e13);
+    const storage = seededStorage({
+      settings: { notation: 'cifra', mode: 'flashcard', filter: FULL12 },
+      progress,
+    });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Study />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    start();
+    flashAll(20);
+    expect(screen.getByText('Sessão concluída')).toBeInTheDocument();
+    const saved = readSaved(storage).progress;
+    for (const key of due) expect(saved[key].correct + saved[key].wrong, key).toBe(2);
+  });
+
+  it('finishing a session records the study day', async () => {
+    const storage = setup({ mode: 'flashcard', filter: FULL12 });
+    start();
+    flashAll(2);
+    await finalize();
+    const key = dayKey(new Date(Date.now()));
+    expect(readSaved(storage).stats[key]).toMatchObject({ sessions: 1, answered: 2, correct: 2 });
+  });
+
+  it('finishing with no answers records neither stats nor history', async () => {
+    const storage = setup({ mode: 'flashcard', filter: FULL12 });
+    start();
+    await finalize();
+    const saved = readSaved(storage);
+    expect(saved.stats).toEqual({});
+    expect(saved.history).toEqual([]);
+  });
+
+  it('a forced position opens the session with it, in a 20-question session', () => {
+    setup({ mode: 'note-to-position', filter: FULL12 }, { string: 3, fret: 7 });
+    expect(screen.getByText('Encontre D na corda 3')).toBeInTheDocument();
+    expect(screen.getByText('Pergunta 1 de 20')).toBeInTheDocument();
   });
 });

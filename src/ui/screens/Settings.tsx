@@ -124,6 +124,21 @@ export function Settings() {
       </label>
       <p className="hint">No iPhone, o som não toca com o aparelho no modo silencioso.</p>
 
+      <label className="check">
+        Meta semanal (dias)
+        <select
+          value={settings.weeklyGoal}
+          onChange={(e) => updateSettings({ weeklyGoal: Number(e.target.value) })}
+        >
+          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="hint">Dias por semana em que você quer terminar ao menos uma sessão.</p>
+
       <section aria-labelledby="data-title">
         <h3 id="data-title">Dados</h3>
         <button type="button" onClick={handleExport}>

@@ -259,3 +259,120 @@ describe('importData', () => {
     expect(screen.getByTestId('inst').textContent).toBe('bass');
   });
 });
+
+describe('recordItemAnswer', () => {
+  let api: ReturnType<typeof useAppState>;
+  function Capture() {
+    api = useAppState();
+    return null;
+  }
+  const mount = (storage: ReturnType<typeof createMemoryStorage>) =>
+    render(
+      <AppProvider storage={storage} now={() => 1000}>
+        <Capture />
+      </AppProvider>,
+    );
+  const savedRaw = (storage: ReturnType<typeof createMemoryStorage>) => JSON.parse(storage.dump()[STORAGE_KEY]);
+
+  it('records into the active instrument items, not progress', () => {
+    const storage = createMemoryStorage();
+    mount(storage);
+    act(() => api.recordItemAnswer('ear:60', true));
+    expect(api.data.itemProgress['ear:60'].box).toBe(2);
+    expect(savedRaw(storage).instruments.guitar.items['ear:60'].box).toBe(2);
+    expect(savedRaw(storage).instruments.guitar.items['ear:60'].lastReview).toBe(1000);
+    expect(api.data.progress).toEqual({});
+    expect(savedRaw(storage).instruments.guitar.progress).toEqual({});
+    act(() => api.recordItemAnswer('ear:60', false));
+    expect(savedRaw(storage).instruments.guitar.items['ear:60'].box).toBe(1);
+  });
+
+  it('writes into the bass bucket when the bass is active', () => {
+    const storage = createMemoryStorage();
+    mount(storage);
+    act(() => api.updateSettings({ instrument: 'bass' }));
+    act(() => api.recordItemAnswer('ear:40', true));
+    expect(savedRaw(storage).instruments.bass.items).toHaveProperty('ear:40');
+    expect(savedRaw(storage).instruments.guitar.items).toEqual({});
+  });
+
+  it('leaves position answers going to progress', () => {
+    const storage = createMemoryStorage();
+    mount(storage);
+    act(() => api.recordAnswer({ string: 6, fret: 0 }, true));
+    expect(savedRaw(storage).instruments.guitar.progress['6-0'].box).toBe(2);
+    expect(savedRaw(storage).instruments.guitar.items).toEqual({});
+  });
+});
+
+describe('recordStudyDay', () => {
+  let api: ReturnType<typeof useAppState>;
+  function Capture() {
+    api = useAppState();
+    return null;
+  }
+  const at = new Date(2026, 10, 7, 15, 30).getTime();
+
+  it('adds a session to the local day stats and persists it', () => {
+    const storage = createMemoryStorage();
+    render(
+      <AppProvider storage={storage} now={() => at}>
+        <Capture />
+      </AppProvider>,
+    );
+    act(() =>
+      api.recordStudyDay([
+        { correct: true, ms: 1000 },
+        { correct: false, ms: 3000 },
+      ]),
+    );
+    const expected = { sessions: 1, answered: 2, correct: 1, ms: 4000 };
+    expect(api.data.stats['2026-11-07']).toEqual(expected);
+    expect(JSON.parse(storage.dump()[STORAGE_KEY]).stats['2026-11-07']).toEqual(expected);
+  });
+
+  it('does nothing for an empty session: no state change, no storage write', () => {
+    const real = createMemoryStorage();
+    let writes = 0;
+    const storage = {
+      ...real,
+      setItem: (k: string, v: string) => {
+        writes++;
+        real.setItem(k, v);
+      },
+    };
+    render(
+      <AppProvider storage={storage} now={() => at}>
+        <Capture />
+      </AppProvider>,
+    );
+    const before = api.data;
+    act(() => api.recordStudyDay([]));
+    expect(writes).toBe(0);
+    expect(api.data).toBe(before);
+    expect(api.data.stats).toEqual({});
+  });
+});
+
+describe('seededStorage items and stats', () => {
+  it('seeds items into the chosen bucket and stats globally', () => {
+    let api!: ReturnType<typeof useAppState>;
+    function Capture() {
+      api = useAppState();
+      return null;
+    }
+    const day = { sessions: 1, answered: 3, correct: 2, ms: 900 };
+    const storage = seededStorage({
+      settings: { instrument: 'bass' },
+      items: { 'ear:40': okProgress },
+      stats: { '2026-11-06': day },
+    });
+    render(
+      <AppProvider storage={storage} now={() => 1000}>
+        <Capture />
+      </AppProvider>,
+    );
+    expect(api.data.itemProgress).toEqual({ 'ear:40': okProgress });
+    expect(api.data.stats).toEqual({ '2026-11-06': day });
+  });
+});

@@ -203,3 +203,15 @@ describe('Settings', () => {
     });
   });
 });
+
+describe('Settings weekly goal', () => {
+  it('defaults to 5, offers 1 to 7 and saves the choice', () => {
+    const storage = setup();
+    const select = screen.getByLabelText('Meta semanal (dias)') as HTMLSelectElement;
+    expect(select.value).toBe('5');
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+    fireEvent.change(select, { target: { value: '3' } });
+    expect(readRawSettings(storage).weeklyGoal).toBe(3);
+    expect(screen.getByText('Dias por semana em que você quer terminar ao menos uma sessão.')).toBeInTheDocument();
+  });
+});
