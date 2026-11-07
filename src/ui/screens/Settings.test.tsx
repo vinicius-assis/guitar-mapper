@@ -1,6 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider } from '../../state/AppState';
+import { IMPORT_ERROR, parseImport } from '../../state/backup';
+import { BACKUP_KEY, createDefaultData } from '../../state/storage';
 import { readRawSettings, readSaved, seededStorage } from '../../test-utils';
 import { ConfirmProvider } from '../ConfirmDialog';
 import { Settings } from './Settings';
@@ -82,5 +84,104 @@ describe('Settings', () => {
     expect(credits).toHaveTextContent('violão de nylon');
     expect(credits).toHaveTextContent('baixo');
     expect(credits).toHaveTextContent('Electric Bass (finger)');
+  });
+
+  describe('Dados', () => {
+    function otherData(instrument: 'guitar' | 'bass' = 'guitar') {
+      const d = createDefaultData();
+      d.settings.instrument = instrument;
+      d.instruments.guitar.progress = {
+        '1-2': { box: 2, correct: 4, wrong: 1, lastReview: 0, nextReview: 0 },
+      };
+      return d;
+    }
+    const fileOf = (text: string) => new File([text], 'x.json', { type: 'application/json' });
+    const input = () => screen.getByLabelText('Importar dados', { selector: 'input' }) as HTMLInputElement;
+    const pick = (text: string) =>
+      fireEvent.change(input(), { target: { files: [fileOf(text)] } });
+
+    it('exports the whole data as a dated JSON download', async () => {
+      const create = vi.fn(() => 'blob:x');
+      const revoke = vi.fn();
+      vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke }));
+      let download = '';
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        download = this.download;
+      });
+      setup();
+      fireEvent.click(screen.getByRole('button', { name: 'Exportar dados' }));
+      expect(create).toHaveBeenCalledTimes(1);
+      const blob = (create.mock.calls[0] as unknown as [Blob])[0];
+      expect(blob.type).toBe('application/json');
+      const text = await new Promise<string>((res) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result));
+        r.readAsText(blob);
+      });
+      const parsed = parseImport(text);
+      expect(parsed.ok).toBe(true);
+      if (parsed.ok) expect(parsed.data.instruments.guitar.progress['6-0']).toBeDefined();
+      expect(download).toMatch(/^guitar-mapper-\d{4}-\d{2}-\d{2}\.json$/);
+      expect(revoke).toHaveBeenCalledWith('blob:x');
+    });
+
+    it('imports a valid file after confirmation, keeping a backup', async () => {
+      const storage = setup();
+      const before = storage.dump()['guitar-mapper:v2'] ?? null;
+      pick(JSON.stringify(otherData()));
+      fireEvent.click(await screen.findByRole('button', { name: 'Importar' }));
+      expect(await screen.findByText('Dados importados.')).toBeInTheDocument();
+      const saved = readSaved(storage);
+      expect(saved.progress['1-2']).toBeDefined();
+      expect(saved.progress['6-0']).toBeUndefined();
+      const backup = JSON.parse(storage.dump()[BACKUP_KEY]);
+      expect(backup.instruments.guitar.progress['6-0']).toBeDefined();
+      expect(before).not.toBeNull();
+    });
+
+    it('opens the confirmation dialog with the title Importar dados?', async () => {
+      setup();
+      pick(JSON.stringify(otherData()));
+      expect(await screen.findByRole('heading', { name: 'Importar dados?' })).toBeInTheDocument();
+    });
+
+    it('changes nothing when the confirmation is cancelled', async () => {
+      const storage = setup();
+      const before = JSON.stringify(readSaved(storage));
+      pick(JSON.stringify(otherData()));
+      fireEvent.click(await screen.findByRole('button', { name: 'Cancelar' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'Importar dados?' })).not.toBeInTheDocument(),
+      );
+      expect(JSON.stringify(readSaved(storage))).toBe(before);
+      expect(storage.dump()[BACKUP_KEY]).toBeUndefined();
+      expect(screen.queryByText('Dados importados.')).not.toBeInTheDocument();
+    });
+
+    it('rejects an invalid file with an alert, no dialog, no backup, data untouched', async () => {
+      const storage = setup();
+      const before = JSON.stringify(readSaved(storage));
+      pick('não é json');
+      expect((await screen.findByRole('alert')).textContent).toBe(IMPORT_ERROR);
+      expect(screen.queryByRole('heading', { name: 'Importar dados?' })).not.toBeInTheDocument();
+      expect(JSON.stringify(readSaved(storage))).toBe(before);
+      expect(storage.dump()[BACKUP_KEY]).toBeUndefined();
+    });
+
+    it('resets the input so the same file can be chosen again', async () => {
+      setup();
+      pick('não é json');
+      await screen.findByRole('alert');
+      expect(input().value).toBe('');
+    });
+
+    it('switches the instrument radio after importing a bass file', async () => {
+      setup();
+      expect(screen.getByLabelText('Violão')).toBeChecked();
+      pick(JSON.stringify(otherData('bass')));
+      fireEvent.click(await screen.findByRole('button', { name: 'Importar' }));
+      await screen.findByText('Dados importados.');
+      expect(screen.getByLabelText('Baixo')).toBeChecked();
+    });
   });
 });

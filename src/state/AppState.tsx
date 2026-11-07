@@ -35,6 +35,8 @@ interface AppStateValue {
   recordSession(entry: HistoryEntry): void;
   clearHistory(): void;
   importData(next: AppData): void;
+  /** O AppData inteiro (todos os instrumentos), para exportar. */
+  exportData(): AppData;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -112,6 +114,8 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
     [commit, init.storage],
   );
 
+  const exportData = useCallback(() => dataRef.current, []);
+
   const data = useMemo(() => activeView(appData), [appData]);
   const instrument = useMemo(() => instrumentById(appData.settings.instrument), [appData.settings.instrument]);
 
@@ -127,6 +131,7 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       recordSession,
       clearHistory,
       importData,
+      exportData,
     }),
     [
       data,
@@ -139,6 +144,7 @@ export function AppProvider({ storage, now = Date.now, children }: AppProviderPr
       recordSession,
       clearHistory,
       importData,
+      exportData,
     ],
   );
 
