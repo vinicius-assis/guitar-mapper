@@ -9,7 +9,6 @@ import { ScaleLegend } from '../ScaleLegend';
 import { scaleNoteName, scaleTitle } from '../scaleText';
 import { stringLabels } from '../stringLabels';
 import { useAutoAdvance } from '../useAutoAdvance';
-import { useBreakpoint } from '../useBreakpoint';
 
 interface Props {
   question: ScaleDegreeQuestion;
@@ -23,7 +22,6 @@ export function ScaleDegreeQuiz({ question, settings, onAnswer, onNext }: Props)
   const { scale, box, root } = question;
   const { instrument } = useAppState();
   const sound = useSound();
-  const fit = useBreakpoint() !== 'mobile';
   const degrees = SCALES[scale].degrees;
   const shape = useMemo(() => scaleBox(scale, box, root, instrument), [scale, box, root, instrument]);
   const target = useMemo(() => scaleDegreeTarget(question, instrument), [question, instrument]);
@@ -55,7 +53,7 @@ export function ScaleDegreeQuiz({ question, settings, onAnswer, onNext }: Props)
       <p className="scale-title">{scaleTitle(scale, root, box, notation, accidentals)}</p>
       <Fretboard
         instrument={instrument}
-        fit={fit}
+        fit
         minFretWidth={40}
         fretMin={shape.fretMin}
         fretMax={shape.fretMax}
