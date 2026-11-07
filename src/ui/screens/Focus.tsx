@@ -28,6 +28,15 @@ export function Focus() {
           >
             Todos
           </button>
+          <button
+            type="button"
+            className="chip chip--wide chip--nowrap"
+            title="3ª, 5ª e 7ª"
+            aria-pressed={focus.chordTonesSelected}
+            onClick={focus.selectChordTones}
+          >
+            Acordes
+          </button>
           {INTERVALS.map((i) => (
             <button
               key={i.id}

@@ -24,6 +24,18 @@ describe('FocusSheet', () => {
     expect(readSaved(storage).settings.intervalAdvance).toBe('5s');
   });
 
+  it('Acordes chip is pressed by default and restores the chord tones', () => {
+    setup('interval', true);
+    const chip = screen.getByRole('button', { name: 'Acordes' });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Todos' }));
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '2ª m' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: '5ª J' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('summarises the interval focus when closed', () => {
     setup('interval', false);
     expect(screen.getByRole('group', { name: 'Foco' })).toHaveTextContent(

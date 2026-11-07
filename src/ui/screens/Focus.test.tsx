@@ -96,6 +96,18 @@ describe('Focus in interval mode', () => {
     return storage;
   }
 
+  it('Acordes selects the chord tones and is pressed only for that set', () => {
+    const storage = setupInterval();
+    const chip = screen.getByRole('button', { name: 'Acordes' });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Todos' }));
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(readSaved(storage).settings.intervals).toEqual(['3m', '3M', '5J', '7m', '7M']);
+    expect(screen.getByRole('button', { name: 'Todos' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('shows interval controls instead of strings and frets', () => {
     setupInterval();
     expect(screen.getByRole('button', { name: 'Todos' })).toBeInTheDocument();

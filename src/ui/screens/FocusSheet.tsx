@@ -99,6 +99,15 @@ export function FocusSheet({
                   >
                     Todos
                   </button>
+                  <button
+                    type="button"
+                    className="badge badge--button"
+                    title="3ª, 5ª e 7ª"
+                    aria-pressed={focus.chordTonesSelected}
+                    onClick={focus.selectChordTones}
+                  >
+                    Acordes
+                  </button>
                   {INTERVALS.map((i) => (
                     <button
                       key={i.id}
