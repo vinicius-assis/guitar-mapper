@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AppProvider, useAppState } from '../../state/AppState';
-import { mockBoardWidth, mockViewport, readSaved, seededStorage } from '../../test-utils';
+import { mockBoardWidth, mockViewport, readRawSettings, readSaved, seededStorage } from '../../test-utils';
 import type { Settings } from '../../state/storage';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
@@ -652,7 +652,7 @@ describe('Study: header menu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('lists the 4 exercises with the current one checked', () => {
+  it('lists the 7 exercises with the current one checked', () => {
     setup({ mode: 'flashcard', filter: THREE });
     fireEvent.click(menuButton());
     expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
@@ -662,9 +662,19 @@ describe('Study: header menu', () => {
       'Nota → posição',
       'Flashcard',
       'Ouvido',
+      'Ouvir intervalos',
+      'Ouvir graus',
       'Intervalos',
     ]);
-    expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false', 'false']);
+    expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual([
+      'false',
+      'false',
+      'true',
+      'false',
+      'false',
+      'false',
+      'false',
+    ]);
   });
 
   it('groups the exercises by track, each group titled and in track order', () => {
@@ -681,9 +691,9 @@ describe('Study: header menu', () => {
       'Teoria',
     ]);
     expect(labels('Braço')).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard']);
-    expect(labels('Ouvido')).toEqual(['Ouvido']);
+    expect(labels('Ouvido')).toEqual(['Ouvido', 'Ouvir intervalos', 'Ouvir graus']);
     expect(labels('Teoria')).toEqual(['Intervalos']);
-    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(5);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(7);
     const braco = within(menu).getByRole('group', { name: 'Braço' });
     expect(braco.querySelector('p.menu__group')).toHaveTextContent('Braço');
   });
@@ -773,14 +783,22 @@ describe('Study: desktop layout', () => {
   afterEach(() => viewport.restore());
   const exercises = () => screen.queryByRole('group', { name: 'Exercício' });
 
-  it('shows the 5 exercises as buttons instead of the menu, and no logo in the header', () => {
+  it('shows the 7 exercises as buttons instead of the menu, and no logo in the header', () => {
     setup({ filter: THREE });
     const group = exercises()!;
     expect(
       within(group)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard', 'Ouvido', 'Intervalos']);
+    ).toEqual([
+      'Posição → nota',
+      'Nota → posição',
+      'Flashcard',
+      'Ouvido',
+      'Ouvir intervalos',
+      'Ouvir graus',
+      'Intervalos',
+    ]);
     expect(within(group).getByRole('button', { name: 'Posição → nota' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'Menu de exercícios' })).not.toBeInTheDocument();
     expect(within(group).queryByRole('img')).not.toBeInTheDocument();
@@ -1302,5 +1320,103 @@ describe('Study: review sessions of up to 20 questions', () => {
     setup({ mode: 'note-to-position', filter: FULL12 }, { string: 3, fret: 7 });
     expect(screen.getByText('Encontre D na corda 3')).toBeInTheDocument();
     expect(screen.getByText('Pergunta 1 de 20')).toBeInTheDocument();
+  });
+});
+
+describe('Study: ouvir intervalos e graus', () => {
+  it('Ouvir intervalos has no Foco card, shows level and direction options', () => {
+    const storage = setup();
+    chooseMode('Ouvir intervalos');
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.getByText('Sessão de 20 perguntas')).toBeInTheDocument();
+    const level = screen.getByRole('group', { name: 'Nível' });
+    fireEvent.click(within(level).getByRole('button', { name: 'Médio' }));
+    expect(readRawSettings(storage).earIntervalLevel).toBe('medium');
+    expect(screen.getByText('Sete intervalos, os mais comuns em melodias.')).toBeInTheDocument();
+    const direction = screen.getByRole('group', { name: 'Direção' });
+    fireEvent.click(within(direction).getByRole('button', { name: 'Os dois' }));
+    expect(readRawSettings(storage).earIntervalDirection).toBe('both');
+  });
+
+  it.each(['ear-interval', 'ear-degree'] as const)('%s without sound cannot start', (mode) => {
+    setup({ soundEnabled: false, mode });
+    expect(screen.getByText('Ligue o Som em Ajustes para treinar de ouvido.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+  });
+
+  it('runs an interval session, records earint: progress and the history level', async () => {
+    const storage = setup({ mode: 'ear-interval' });
+    start();
+    expect(screen.getByText('Pergunta 1 de 20')).toBeInTheDocument();
+    expect(screen.getByText('Qual é o intervalo?')).toBeInTheDocument();
+    fireEvent.click(document.querySelector('.answer-grid button')!);
+    const keys = Object.keys(readSaved(storage).itemProgress);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].startsWith('earint:')).toBe(true);
+    await finalize();
+    expect(readSaved(storage).history[0]).toMatchObject({ mode: 'ear-interval', level: 'easy' });
+  });
+
+  it('runs a degree session, records func: progress and the history level', async () => {
+    const storage = setup({ mode: 'ear-degree', degreeLevel: 'hard' });
+    start();
+    expect(screen.getByText('Qual grau da escala maior?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Grau 1' }));
+    const keys = Object.keys(readSaved(storage).itemProgress);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].startsWith('func:')).toBe(true);
+    await finalize();
+    expect(readSaved(storage).history[0]).toMatchObject({ mode: 'ear-degree', level: 'hard' });
+  });
+
+  it('desktop: no Foco card, still shows the session sentence and an enabled Iniciar', () => {
+    const viewport = mockViewport(1280);
+    setup({ mode: 'ear-degree' });
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.getByText('Sessão de 20 perguntas')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+    viewport.restore();
+  });
+
+  it('a position from Progresso does not start an interval session', () => {
+    setup({ mode: 'ear-interval' }, { string: 3, fret: 7 });
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+  });
+
+  it.each([
+    ['ear-interval', 'Qual é o intervalo?', () => document.querySelector('.answer-grid button')!],
+    ['ear-degree', 'Qual grau da escala maior?', () => screen.getByRole('button', { name: 'Grau 1' })],
+  ] as const)('%s: the next question is remounted, plays its sound and clears the answer', async (mode, prompt, answerButton) => {
+    const { player } = setupWithPlayer({ mode });
+    start();
+    expect(screen.getByText(prompt)).toBeInTheDocument();
+    const play = vi.mocked(player.play);
+    const playedBefore = play.mock.calls.length;
+    expect(playedBefore).toBeGreaterThan(0);
+    fireEvent.click(answerButton());
+    expect(document.querySelector('.ear-detail')).toBeInTheDocument();
+    // Errou: botão Próxima. Acertou: avanço automático após 700 ms.
+    const next = screen.queryByRole('button', { name: 'Próxima' });
+    if (next) fireEvent.click(next);
+    else await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
+    expect(screen.getByText('Pergunta 2 de 20')).toBeInTheDocument();
+    expect(document.querySelector('.ear-detail')).not.toBeInTheDocument();
+    for (const b of document.querySelectorAll('.answer-grid button')) expect(b).toBeEnabled();
+    expect(play.mock.calls.length).toBeGreaterThan(playedBefore);
+  });
+
+  it('existing modes still reset between questions', async () => {
+    setup({ mode: 'ear', filter: THREE, earLevel: 'hard' });
+    start();
+    const options = () => [...document.querySelectorAll('.option')] as HTMLButtonElement[];
+    fireEvent.click(options()[0]);
+    expect(options().every((b) => b.disabled)).toBe(true);
+    // Errou: botão Próxima. Acertou: avanço automático após 700 ms.
+    const next = screen.queryByRole('button', { name: 'Próxima' });
+    if (next) fireEvent.click(next);
+    else await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
+    expect(screen.getByText('Pergunta 2 de 3')).toBeInTheDocument();
+    expect(options().every((b) => !b.disabled)).toBe(true);
   });
 });

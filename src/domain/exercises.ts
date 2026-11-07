@@ -8,6 +8,8 @@ export interface ExerciseMeta {
   label: string;
   description: string;
   recordsPositionProgress: boolean;
+  /** O exercício usa o cartão de Foco (cordas, casas, notas)? */
+  usesFocus: boolean;
 }
 
 export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
@@ -18,6 +20,7 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     description:
       'Veja o ponto no braço e escolha a nota entre 4 opções. Treina o caminho da posição para o nome.',
     recordsPositionProgress: true,
+    usesFocus: true,
   },
   'note-to-position': {
     mode: 'note-to-position',
@@ -26,6 +29,7 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     description:
       'O app pede uma nota numa corda e você toca no braço onde ela está. Treina o caminho inverso, do nome para a posição.',
     recordsPositionProgress: true,
+    usesFocus: true,
   },
   flashcard: {
     mode: 'flashcard',
@@ -34,6 +38,7 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     description:
       'Olhe o ponto e tente lembrar a nota de cabeça antes de revelar. Sem opções, e você mesmo diz se acertou. É o mais exigente.',
     recordsPositionProgress: true,
+    usesFocus: true,
   },
   ear: {
     mode: 'ear',
@@ -41,6 +46,25 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     label: 'Ouvido',
     description: 'Ouça uma nota e descubra qual é. Treina o ouvido, sem ver o braço até responder.',
     recordsPositionProgress: false,
+    usesFocus: true,
+  },
+  'ear-interval': {
+    mode: 'ear-interval',
+    track: 'ouvido',
+    label: 'Ouvir intervalos',
+    description:
+      'Ouça duas notas, uma depois da outra, e diga o intervalo entre elas. Treina reconhecer distâncias de ouvido.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
+  'ear-degree': {
+    mode: 'ear-degree',
+    track: 'ouvido',
+    label: 'Ouvir graus',
+    description:
+      'O app toca a tônica de uma tonalidade e depois uma nota. Diga qual grau da escala maior ela é. A tonalidade muda a cada pergunta.',
+    recordsPositionProgress: false,
+    usesFocus: false,
   },
   interval: {
     mode: 'interval',
@@ -49,13 +73,22 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     description:
       'Veja uma nota e um intervalo e escolha a nota de chegada entre as 12. O braço mostra onde ela está.',
     recordsPositionProgress: false,
+    usesFocus: true,
   },
 };
 
-export const QUIZ_MODES: QuizMode[] = ['position-to-note', 'note-to-position', 'flashcard', 'ear', 'interval'];
+export const QUIZ_MODES: QuizMode[] = [
+  'position-to-note',
+  'note-to-position',
+  'flashcard',
+  'ear',
+  'ear-interval',
+  'ear-degree',
+  'interval',
+];
 
 export const TRACKS: { id: TrackId; label: string; modes: QuizMode[] }[] = [
   { id: 'braco', label: 'Braço', modes: ['position-to-note', 'note-to-position', 'flashcard'] },
-  { id: 'ouvido', label: 'Ouvido', modes: ['ear'] },
+  { id: 'ouvido', label: 'Ouvido', modes: ['ear', 'ear-interval', 'ear-degree'] },
   { id: 'teoria', label: 'Teoria', modes: ['interval'] },
 ];

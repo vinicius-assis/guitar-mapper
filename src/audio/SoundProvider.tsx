@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { Position } from '../domain/fretboard';
 import type { Instrument, InstrumentId } from '../domain/instruments';
+import type { SoundStep } from '../domain/earTraining';
 import { pitchOf } from '../domain/pitch';
 import { useAppState } from '../state/AppState';
 import { createNotePlayer, type AudioContextLike, type NotePlayer } from './player';
@@ -9,6 +10,7 @@ interface SoundApi {
   playPosition(position: Position): void;
   prepare(positions: Position[]): void;
   unlock(): void;
+  playSequence(steps: SoundStep[]): void;
   playPitches(midis: number[], gapMs?: number): void;
   preparePitches(midis: number[]): void;
 }
@@ -67,19 +69,22 @@ export function SoundProvider({
         // som nunca derruba o estudo
       }
     };
+    const playSequence = (steps: SoundStep[]) => {
+      cancelPending();
+      if (!enabled) return;
+      steps.forEach(({ midi, atMs }) => {
+        const play = () => run(() => notePlayer.play(midi));
+        if (atMs <= 0) play();
+        else timers.current.push(setTimeout(play, atMs));
+      });
+    };
     return {
       playPosition: (p) => run(() => notePlayer.play(pitchOf(p, instrument))),
       prepare: (ps) => run(() => notePlayer.prepare(ps.map((p) => pitchOf(p, instrument)))),
       unlock: () => run(() => notePlayer.unlock()),
-      playPitches: (midis, gapMs = 700) => {
-        cancelPending();
-        if (!enabled) return;
-        midis.forEach((midi, i) => {
-          const play = () => run(() => notePlayer.play(midi));
-          if (i === 0) play();
-          else timers.current.push(setTimeout(play, i * gapMs));
-        });
-      },
+      playSequence,
+      playPitches: (midis, gapMs = 700) =>
+        playSequence(midis.map((midi, i) => ({ midi, atMs: i * gapMs }))),
       preparePitches: (midis) => run(() => notePlayer.prepare(midis)),
     };
   }, [enabled, notePlayer, instrument]);

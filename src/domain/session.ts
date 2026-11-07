@@ -6,6 +6,9 @@ import type { EarLevel, QuizMode } from './quiz';
 
 export const HISTORY_LIMIT = 20;
 
+/** Modos de Ouvido: a sessão guarda o nível no histórico. */
+export const LEVELED_MODES: readonly QuizMode[] = ['ear', 'ear-interval', 'ear-degree'];
+
 export interface SessionResult {
   correct: boolean;
   ms: number;
@@ -25,7 +28,7 @@ export interface HistoryEntry {
   total: number;
   correct: number;
   averageMs: number;
-  /** Só nas sessões de Ouvido. */
+  /** Só nas sessões de Ouvido (`LEVELED_MODES`). */
   level?: EarLevel;
 }
 
@@ -107,7 +110,7 @@ export function makeHistoryEntry(
 ): HistoryEntry | null {
   if (results.length === 0) return null;
   const { total, correct, averageMs } = summarize(results);
-  return { mode, at, total, correct, averageMs, ...(mode === 'ear' ? { level: level ?? 'easy' } : {}) };
+  return { mode, at, total, correct, averageMs, ...(LEVELED_MODES.includes(mode) ? { level: level ?? 'easy' } : {}) };
 }
 
 export function addToHistory(history: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {

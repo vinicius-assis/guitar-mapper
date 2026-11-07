@@ -72,3 +72,12 @@ describe('backup with accidentals', () => {
     },
   );
 });
+
+describe('backup with M3 ear settings and keys', () => {
+  it('round-trips earIntervalDirection and a func item', () => {
+    const d = createDefaultData();
+    d.settings.earIntervalDirection = 'down';
+    d.instruments.bass.items = { 'func:3:5': { box: 2, correct: 1, wrong: 0, lastReview: 1, nextReview: 2 } };
+    expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
+  });
+});

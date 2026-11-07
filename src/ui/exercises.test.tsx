@@ -1,14 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { QUIZ_MODES } from '../domain/exercises';
 import { noteAt, positionKey, positionsInFilter, type Position } from '../domain/fretboard';
-import { GUITAR } from '../domain/instruments';
+import { BASS, GUITAR } from '../domain/instruments';
+import {
+  degreeKey,
+  degreePool,
+  degreeSequence,
+  earIntervalKey,
+  earIntervalPool,
+  earRange,
+  type DegreeQuestion,
+  type EarIntervalQuestion,
+} from '../domain/earTraining';
 import { intervalItems } from '../domain/intervals';
 import { ALL_NOTES } from '../domain/notes';
 import { pitchOf, uniquePitchPositions } from '../domain/pitch';
 import type { PositionProgress, ProgressMap } from '../domain/scheduler';
 import { activeView, createDefaultData, type Settings } from '../state/storage';
 import { mulberry32 } from '../test-utils';
-import { EXERCISES, exerciseFor, type ExerciseContext } from './exercises';
+import { EXERCISES, exerciseFor, type Exercise, type ExerciseContext } from './exercises';
 
 function makeCtx(overrides: Partial<Settings> = {}, candidates?: Position[]): ExerciseContext {
   const settings = { ...activeView(createDefaultData()).settings, ...overrides };
@@ -223,5 +233,121 @@ describe('fila de revisão (progress + limit)', () => {
       reviewCtx({}, { filter: { ...BIG, naturalsOnly: true }, intervals: ['5J'] }),
     );
     expect(intervals).toHaveLength(7);
+  });
+});
+
+describe('ouvir intervalos e graus', () => {
+  const NOTHING = { earIntervalLevel: 'easy', earIntervalDirection: 'up' } as const;
+  const ei = () => exerciseFor('ear-interval');
+  const ed = () => exerciseFor('ear-degree');
+
+  it('questionCount segue o tamanho do pool', () => {
+    expect(ei().questionCount(makeCtx({ ...NOTHING }))).toBe(36);
+    expect(ei().questionCount(makeCtx({ earIntervalLevel: 'easy', earIntervalDirection: 'both' }))).toBe(72);
+    expect(ei().questionCount(makeCtx({ earIntervalLevel: 'hard', earIntervalDirection: 'both' }))).toBe(300);
+    expect(ed().questionCount(makeCtx({ degreeLevel: 'easy' }))).toBe(36);
+    expect(ed().questionCount(makeCtx({ degreeLevel: 'medium' }))).toBe(60);
+    expect(ed().questionCount(makeCtx({ degreeLevel: 'hard' }))).toBe(84);
+  });
+
+  it('exigem som e nunca iniciam por uma posição', () => {
+    for (const ex of [ei(), ed()]) {
+      expect(ex.startBlockers(makeCtx({ soundEnabled: false }))).toEqual([
+        'Ligue o Som em Ajustes para treinar de ouvido.',
+      ]);
+      expect(ex.startBlockers(makeCtx({ soundEnabled: true }))).toEqual([]);
+      expect(ex.startsFromPosition(makeCtx())).toBe(false);
+    }
+  });
+
+  const ctxFor = (instrument: typeof GUITAR, settings: Partial<Settings>): ExerciseContext => ({
+    ...makeCtx(settings),
+    instrument,
+    progress: {},
+    limit: 20,
+    now: 0,
+  });
+
+  it.each([GUITAR, BASS])('buildQueue: 20 itens distintos, no pool e dentro da faixa (%#)', (instrument) => {
+    const [lo, hi] = earRange(instrument);
+    const a = ctxFor(instrument, { earIntervalLevel: 'hard', earIntervalDirection: 'both' });
+    const qa = ei().buildQueue(a) as EarIntervalQuestion[];
+    const poolKeys = earIntervalPool('hard', 'both').map(earIntervalKey);
+    expect(qa).toHaveLength(20);
+    const ka = qa.map((q) => ei().itemKey(q, instrument));
+    expect(new Set(ka).size).toBe(20);
+    for (const k of ka) expect(poolKeys).toContain(k);
+    for (const q of qa) for (const p of q.pitches) expect(p >= lo && p <= hi).toBe(true);
+
+    const b = ctxFor(instrument, { degreeLevel: 'hard' });
+    const qb = ed().buildQueue(b) as DegreeQuestion[];
+    const kb = qb.map((q) => ed().itemKey(q, instrument));
+    expect(qb).toHaveLength(20);
+    expect(new Set(kb).size).toBe(20);
+    const degKeys = degreePool('hard').map(degreeKey);
+    for (const k of kb) expect(degKeys).toContain(k);
+    for (const q of qb) {
+      for (const s of degreeSequence(q, 'hard')) expect(s.midi >= lo && s.midi <= hi).toBe(true);
+    }
+  });
+
+  it('a revisão prioriza os vencidos', () => {
+    const pool = earIntervalPool('hard', 'both');
+    const due = pool.slice(0, 5).map(earIntervalKey);
+    const progress: ProgressMap = {};
+    pool.forEach((item) => {
+      const k = earIntervalKey(item);
+      progress[k] = due.includes(k)
+        ? { box: 1, correct: 0, wrong: 1, lastReview: 0, nextReview: 0 }
+        : { box: 2, correct: 1, wrong: 0, lastReview: 0, nextReview: 10 };
+    });
+    const queue = ei().buildQueue({
+      ...makeCtx({ earIntervalLevel: 'hard', earIntervalDirection: 'both' }),
+      progress,
+      limit: 20,
+      now: 0,
+    }) as EarIntervalQuestion[];
+    const got = queue.map((q) => ei().itemKey(q, GUITAR));
+    for (const k of due) expect(got).toContain(k);
+
+    const dpool = degreePool('hard');
+    const ddue = dpool.slice(0, 5).map(degreeKey);
+    const dprogress: ProgressMap = {};
+    dpool.forEach((item) => {
+      const k = degreeKey(item);
+      dprogress[k] = ddue.includes(k)
+        ? { box: 1, correct: 0, wrong: 1, lastReview: 0, nextReview: 0 }
+        : { box: 2, correct: 1, wrong: 0, lastReview: 0, nextReview: 10 };
+    });
+    const dq = ed().buildQueue({
+      ...makeCtx({ degreeLevel: 'hard' }),
+      progress: dprogress,
+      limit: 20,
+      now: 0,
+    }) as DegreeQuestion[];
+    const dgot = dq.map((q) => ed().itemKey(q, GUITAR));
+    for (const k of ddue) expect(dgot).toContain(k);
+  });
+
+  it('itemKey', () => {
+    expect(ei().itemKey({ root: 0, semitones: 4, direction: 'up', pitches: [48, 52] }, GUITAR)).toBe('earint:0:4:up');
+    expect(ed().itemKey({ tonic: 0, degree: 5, tonicMidi: 48 }, GUITAR)).toBe('func:0:5');
+  });
+
+  it('prepareSound carrega todas as alturas', () => {
+    const preparePitches = vi.fn();
+    const sound = { preparePitches } as unknown as Parameters<Exercise['prepareSound']>[0];
+    ei().prepareSound(sound, [{ root: 0, semitones: 4, direction: 'up', pitches: [48, 52] }], GUITAR);
+    expect(preparePitches).toHaveBeenLastCalledWith([48, 52]);
+    ed().prepareSound(sound, [{ tonic: 0, degree: 5, tonicMidi: 48 }], GUITAR);
+    expect(preparePitches).toHaveBeenLastCalledWith([48, 52, 55, 55]);
+  });
+
+  it('historyLevel por modo', () => {
+    const s = makeCtx({ earLevel: 'medium', earIntervalLevel: 'hard', degreeLevel: 'easy' }).settings;
+    expect(exerciseFor('ear').historyLevel?.(s)).toBe('medium');
+    expect(ei().historyLevel?.(s)).toBe('hard');
+    expect(ed().historyLevel?.(s)).toBe('easy');
+    expect(exerciseFor('interval').historyLevel).toBeUndefined();
   });
 });
