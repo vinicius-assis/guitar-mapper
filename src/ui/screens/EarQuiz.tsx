@@ -13,7 +13,7 @@ import type { QuizProps } from './ChoiceQuiz';
 import { windowFor } from './window';
 
 export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
-  const { filter, notation, leftHanded, earLevel } = settings;
+  const { filter, notation, accidentals, leftHanded, earLevel } = settings;
   const { instrument } = useAppState();
   const sound = useSound();
   const breakpoint = useBreakpoint();
@@ -92,7 +92,7 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
             ].join(' ')}
             onClick={() => choose(note)}
           >
-            {noteLabel(note, notation)}
+            {noteLabel(note, notation, accidentals)}
           </button>
         ))}
       </div>
@@ -110,14 +110,14 @@ export function EarQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
             marks={soundPositions.map((p) => ({
               position: p,
               kind: correct ? 'correct' : 'wrong',
-              label: noteLabel(question.answer, notation),
+              label: noteLabel(question.answer, notation, accidentals),
             }))}
           />
           <div className="feedback quiz-actions">
             <p role="status" className={correct ? undefined : 'sr-only'}>
               {correct
                 ? 'Correto!'
-                : `Errado. A resposta certa é ${noteLabel(question.answer, notation)}.`}
+                : `Errado. A resposta certa é ${noteLabel(question.answer, notation, accidentals)}.`}
             </p>
             {!correct && (
               <button type="button" className="primary" onClick={onNext}>

@@ -491,3 +491,33 @@ describe('items, stats and weeklyGoal (additive v2 fields)', () => {
     expect(withActive(loaded, { items: {} }).instruments.bass.items).toEqual({});
   });
 });
+
+describe('accidentals (additive v2 field)', () => {
+  it('defaults to sharp', () => {
+    expect(createDefaultData().settings.accidentals).toBe('sharp');
+    expect(DEFAULT_SETTINGS.accidentals).toBe('sharp');
+  });
+
+  it('loads an old v2 save without the field, without rewriting it', () => {
+    const raw = v2Raw({ notation: 'cifra' });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: raw });
+    const { data } = loadData(storage);
+    expect(data.settings.accidentals).toBe('sharp');
+    expect(storage.dump()[STORAGE_KEY]).toBe(raw);
+  });
+
+  it.each(['flat', 'auto', 'sharp'])('keeps a valid value (%s)', (accidentals) => {
+    expect(loadActive(v2Raw({ accidentals })).settings.accidentals).toBe(accidentals);
+  });
+
+  it.each(['Flat', 'bemol', 1, null, true, {}])('falls back to sharp for %j', (accidentals) => {
+    expect(loadActive(v2Raw({ accidentals })).settings.accidentals).toBe('sharp');
+  });
+
+  it('gives a migrated v1 save sharp', () => {
+    const storage = createMemoryStorage({
+      [LEGACY_STORAGE_KEY]: JSON.stringify({ version: 1, settings: {}, progress: {}, history: [] }),
+    });
+    expect(loadData(storage).data.settings.accidentals).toBe('sharp');
+  });
+});

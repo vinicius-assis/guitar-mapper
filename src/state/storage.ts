@@ -13,7 +13,7 @@ import {
 } from '../domain/instruments';
 import { QUIZ_MODES } from '../domain/exercises';
 import { DEFAULT_INTERVALS, isIntervalId, type IntervalId } from '../domain/intervals';
-import type { Notation } from '../domain/notes';
+import { ACCIDENTALS, type Accidentals, type Notation } from '../domain/notes';
 import type { EarLevel, QuizMode } from '../domain/quiz';
 import { HISTORY_LIMIT, type HistoryEntry } from '../domain/session';
 import type { Box, PositionProgress, ProgressMap } from '../domain/scheduler';
@@ -31,6 +31,8 @@ export interface InstrumentData {
 
 export interface GlobalSettings {
   notation: Notation;
+  /** Grafia dos acidentes (só exibição). Ausente em dados anteriores ao M2. */
+  accidentals: Accidentals;
   leftHanded: boolean;
   mode: QuizMode;
   soundEnabled: boolean;
@@ -79,6 +81,7 @@ export const DEFAULT_FILTER: Filter = defaultFilterFor(GUITAR);
 
 export const DEFAULT_SETTINGS: GlobalSettings = {
   notation: 'ambos',
+  accidentals: 'sharp',
   leftHanded: false,
   mode: 'position-to-note',
   soundEnabled: true,
@@ -170,6 +173,9 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     notation: NOTATIONS.includes(source.notation as Notation)
       ? (source.notation as Notation)
       : DEFAULT_SETTINGS.notation,
+    accidentals: ACCIDENTALS.includes(source.accidentals as Accidentals)
+      ? (source.accidentals as Accidentals)
+      : DEFAULT_SETTINGS.accidentals,
     leftHanded:
       typeof source.leftHanded === 'boolean' ? source.leftHanded : DEFAULT_SETTINGS.leftHanded,
     mode: QUIZ_MODES.includes(source.mode as QuizMode)

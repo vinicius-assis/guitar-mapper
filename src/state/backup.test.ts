@@ -56,3 +56,19 @@ describe('backup with items and stats', () => {
     expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
   });
 });
+
+describe('backup with accidentals', () => {
+  it('round-trips the setting', () => {
+    const d = createDefaultData();
+    d.settings.accidentals = 'auto';
+    expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
+  });
+
+  it.each(['{"version":2,"settings":{"notation":"cifra"},"instruments":{}}', '{"version":2,"settings":{"accidentals":"x"},"instruments":{}}'])(
+    'defaults to sharp when absent or invalid: %s',
+    (text) => {
+      const r = parseImport(text);
+      expect(r.ok && r.data.settings.accidentals).toBe('sharp');
+    },
+  );
+});

@@ -19,7 +19,7 @@ export interface QuizProps {
 }
 
 export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) {
-  const { filter, notation, leftHanded } = settings;
+  const { filter, notation, accidentals, leftHanded } = settings;
   const { instrument } = useAppState();
   const sound = useSound();
   const breakpoint = useBreakpoint();
@@ -58,7 +58,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
           {
             position,
             kind: !answered ? 'target' : correct ? 'correct' : 'wrong',
-            label: answered ? noteLabel(question.answer, notation) : undefined,
+            label: answered ? noteLabel(question.answer, notation, accidentals) : undefined,
           },
         ]}
       />
@@ -75,7 +75,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
             ].join(' ')}
             onClick={() => choose(note)}
           >
-            {noteLabel(note, notation)}
+            {noteLabel(note, notation, accidentals)}
           </button>
         ))}
       </div>
@@ -84,7 +84,7 @@ export function ChoiceQuiz({ position, settings, onAnswer, onNext }: QuizProps) 
           <p role="status" className={correct ? undefined : 'sr-only'}>
             {correct
               ? 'Correto!'
-              : `Errado. A resposta certa é ${noteLabel(question.answer, notation)}.`}
+              : `Errado. A resposta certa é ${noteLabel(question.answer, notation, accidentals)}.`}
           </p>
           {!correct && (
             <button type="button" className="primary" onClick={onNext}>
