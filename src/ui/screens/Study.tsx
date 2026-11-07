@@ -1,17 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { QuizMode } from '../../domain/quiz';
 import { useSound } from '../../audio/SoundProvider';
-import { uniquePitchPositions } from '../../domain/pitch';
-import { ALL_NOTES, NATURAL_NOTES } from '../../domain/notes';
-import {
-  buildIntervalQueue,
-  intervalById,
-  intervalPitches,
-  type IntervalItem,
-} from '../../domain/intervals';
 import { positionsInFilter, type Position } from '../../domain/fretboard';
 import {
-  buildQueue,
   makeHistoryEntry,
   summarize,
   type SessionResult,
@@ -20,15 +11,9 @@ import {
 import { useAppState } from '../../state/AppState';
 import { useConfirm } from '../ConfirmDialog';
 import { formatSeconds } from '../format';
-import { EAR_LEVELS, MODE_DESCRIPTIONS } from '../modeLabels';
-import { ChoiceQuiz } from './ChoiceQuiz';
-import { EarQuiz } from './EarQuiz';
-import { Flashcard } from './Flashcard';
-import { IntervalQuiz } from './IntervalQuiz';
-import { FindQuiz } from './FindQuiz';
+import { exerciseFor, type ExerciseContext, type QuizItem } from '../exercises';
 import { FocusSheet } from './FocusSheet';
 import { StudyHeader } from './StudyHeader';
-import { useIntervalFocus } from '../useIntervalFocus';
 import { useBreakpoint } from '../useBreakpoint';
 import { useQuizShortcuts } from '../useQuizShortcuts';
 
@@ -51,32 +36,19 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
     () => positionsInFilter(settings.filter, instrument),
     [settings.filter, instrument],
   );
-  // Ouvido pergunta cada som uma vez (o mesmo som em cordas diferentes não é outra pergunta).
-  const isInterval = settings.mode === 'interval';
-  const intervalFocus = useIntervalFocus();
-  const positionCount = useMemo(
-    () => (settings.mode === 'ear' ? uniquePitchPositions(candidates, instrument).length : candidates.length),
-    [candidates, settings.mode, instrument],
-  );
-  // Em Intervalos a contagem vem do Foco: a mesma fonte, para nunca divergirem.
-  const questionCount = isInterval ? intervalFocus.count : positionCount;
+  // Cada modo é um exercício do registro; a tela só delega.
+  const exercise = exerciseFor(settings.mode);
+  const ctx: ExerciseContext = { settings, instrument, candidates, rng: Math.random };
+  const questionCount = exercise.questionCount(ctx);
+  const blockers = exercise.startBlockers(ctx);
 
-  // Ouvido precisa de som: sem ele, uma posição vinda do Progresso não inicia a sessão.
-  const earWithoutSound = settings.mode === 'ear' && !settings.soundEnabled;
-  const startsRunning = Boolean(forced) && !earWithoutSound && settings.mode !== 'interval';
+  const startsRunning = Boolean(forced) && exercise.startsFromPosition(ctx);
   // Só um painel por vez: o menu de exercícios ou o cartão de Foco.
   const [openPanel, setOpenPanel] = useState<'menu' | 'focus' | null>(null);
   const [phase, setPhase] = useState<Phase>(startsRunning ? 'running' : 'idle');
-  const [queue, setQueue] = useState<Position[]>(() =>
-    startsRunning
-      ? buildQueue(positionsInFilter(settings.filter, instrument), Math.random, forced, {
-          avoidSameNote: settings.mode === 'ear',
-          uniquePitch: settings.mode === 'ear',
-          instrument,
-        })
-      : [],
+  const [queue, setQueue] = useState<QuizItem[]>(() =>
+    startsRunning ? exercise.buildQueue(ctx, forced) : [],
   );
-  const [intervalQueue, setIntervalQueue] = useState<IntervalItem[]>([]);
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<SessionResult[]>([]);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -91,43 +63,16 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
 
   // Posição vinda do Progresso: a sessão já começa, então carrega o som dela logo.
   useEffect(() => {
-    if (startsRunning) sound.prepare(queue);
+    if (startsRunning) exercise.prepareSound(sound, queue, instrument);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canStart = isInterval
-    ? intervalFocus.intervals.length > 0
-    : candidates.length > 0 && !earWithoutSound;
+  const canStart = blockers.length === 0;
 
   function begin() {
     if (!canStart) return;
-    if (isInterval) {
-      const nextItems = buildIntervalQueue(
-        settings.filter.naturalsOnly ? NATURAL_NOTES : ALL_NOTES,
-        settings.intervals,
-        Math.random,
-      );
-      sound.unlock();
-      sound.preparePitches(
-        nextItems.flatMap((item) => intervalPitches(item.root, intervalById(item.interval), instrument)),
-      );
-      setIntervalQueue(nextItems);
-      setQueue([]);
-      setIndex(0);
-      resultsRef.current = [];
-      setResults([]);
-      setSummary(null);
-      setOpenPanel(null);
-      questionStart.current = Date.now();
-      setPhase('running');
-      return;
-    }
-    const nextQueue = buildQueue(candidates, Math.random, null, {
-      avoidSameNote: settings.mode === 'ear',
-      uniquePitch: settings.mode === 'ear',
-      instrument,
-    });
+    const nextQueue = exercise.buildQueue(ctx, null);
     sound.unlock(); // dentro do toque em Iniciar: libera o áudio no iPhone
-    sound.prepare(nextQueue);
+    exercise.prepareSound(sound, nextQueue, instrument);
     setQueue(nextQueue);
     setIndex(0);
     resultsRef.current = [];
@@ -140,7 +85,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
 
   function finish() {
     const done = resultsRef.current;
-    const entry = makeHistoryEntry(settings.mode, Date.now(), done, settings.earLevel);
+    const entry = makeHistoryEntry(exercise.mode, Date.now(), done, settings.earLevel);
     if (entry) recordSession(entry);
     setSummary(summarize(done));
     setPhase('summary');
@@ -156,13 +101,9 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
   }
 
   function handleAnswer(correct: boolean) {
-    if (isInterval) {
-      if (!intervalQueue[index]) return;
-    } else if (!queue[index]) {
-      return;
-    }
-    const position = queue[index];
-    if (!isInterval && settings.mode !== 'ear') recordAnswer(position, correct); // ouvido não mexe no mapa
+    if (!queue[index]) return;
+    // Só os modos de posição mexem no mapa (ouvido e intervalos não).
+    if (exercise.recordsPositionProgress) recordAnswer(queue[index] as Position, correct);
     resultsRef.current = [...resultsRef.current, { correct, ms: Date.now() - questionStart.current }];
     setResults(resultsRef.current);
   }
@@ -192,9 +133,8 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [openPanel]);
 
-  const position = queue[index];
-  const intervalItem = intervalQueue[index];
-  const activeLength = isInterval ? intervalQueue.length : queue.length;
+  const item = queue[index];
+  const activeLength = queue.length;
   const quizProps = { settings, onAnswer: handleAnswer, onNext: handleNext };
   const hits = results.filter((r) => r.correct).length;
   let streak = 0;
@@ -205,7 +145,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
       {phase !== 'running' && (
         <StudyHeader
           layout={desktop ? 'tabs' : 'compact'}
-          mode={settings.mode}
+          mode={exercise.mode}
           menuOpen={openPanel === 'menu'}
           onMenuOpenChange={(open) => setOpenPanel(open ? 'menu' : null)}
           onSelectMode={changeMode}
@@ -221,38 +161,13 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
 
       {phase === 'idle' && (
         <div className="session-start">
-          <p className="mode-description">{MODE_DESCRIPTIONS[settings.mode]}</p>
-          {settings.mode === 'ear' && (
-            <>
-              <div className="level-bar" role="group" aria-label="Nível">
-                {EAR_LEVELS.map(({ level, label }) => (
-                  <button
-                    key={level}
-                    type="button"
-                    aria-pressed={settings.earLevel === level}
-                    onClick={() => updateSettings({ earLevel: level })}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mode-description">
-                {EAR_LEVELS.find((l) => l.level === settings.earLevel)!.description}
-              </p>
-              {earWithoutSound && (
-                <p className="empty">Ligue o Som em Ajustes para treinar de ouvido.</p>
-              )}
-            </>
-          )}
-          {isInterval && intervalFocus.intervals.length === 0 && (
-            <p className="empty">Nenhum intervalo no foco. Abra o Foco e marque ao menos um intervalo.</p>
-          )}
-          {!isInterval && candidates.length === 0 && (
-            <p className="empty">
-              Nenhuma posição no foco atual. Abra o Foco abaixo e selecione ao menos uma corda ou
-              inclua notas com acidentais.
+          <p className="mode-description">{exercise.description}</p>
+          {exercise.Options && <exercise.Options />}
+          {blockers.map((message) => (
+            <p key={message} className="empty">
+              {message}
             </p>
-          )}
+          ))}
           <FocusSheet
             questionCount={questionCount}
             fixed={desktop}
@@ -273,7 +188,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
         </div>
       )}
 
-      {phase === 'running' && (isInterval ? intervalItem : position) && (
+      {phase === 'running' && item && (
         <>
           <div className="session-bar">
             <p className="session-title">
@@ -310,17 +225,7 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
             </span>
             <span className="stat">Sequência {streak}</span>
           </p>
-          {isInterval ? (
-            <IntervalQuiz key={index} item={intervalItem} {...quizProps} />
-          ) : settings.mode === 'ear' ? (
-            <EarQuiz key={index} position={position!} {...quizProps} />
-          ) : settings.mode === 'position-to-note' ? (
-            <ChoiceQuiz key={index} position={position!} {...quizProps} />
-          ) : settings.mode === 'note-to-position' ? (
-            <FindQuiz key={index} position={position!} {...quizProps} />
-          ) : (
-            <Flashcard key={index} position={position!} {...quizProps} />
-          )}
+          <exercise.Quiz key={index} item={item} {...quizProps} />
         </>
       )}
 
