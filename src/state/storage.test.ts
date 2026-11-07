@@ -521,3 +521,56 @@ describe('accidentals (additive v2 field)', () => {
     expect(loadData(storage).data.settings.accidentals).toBe('sharp');
   });
 });
+
+describe('M3 ear settings (additive v2 fields)', () => {
+  const load = (settings: unknown) => loadActive(v2Raw(settings)).settings;
+
+  it('has the M3 defaults', () => {
+    expect(DEFAULT_SETTINGS.earIntervalLevel).toBe('easy');
+    expect(DEFAULT_SETTINGS.earIntervalDirection).toBe('up');
+    expect(DEFAULT_SETTINGS.degreeLevel).toBe('easy');
+  });
+
+  it('loads an old v2 save without the fields with defaults and does not rewrite it', () => {
+    const old = {
+      version: 2,
+      settings: { notation: 'cifra' },
+      instruments: {
+        guitar: { filter: createDefaultData().instruments.guitar.filter, progress: {}, history: [] },
+        bass: { filter: createDefaultData().instruments.bass.filter, progress: {}, history: [] },
+      },
+    };
+    const storage = createMemoryStorage({ [STORAGE_KEY]: JSON.stringify(old) });
+    const { data } = loadData(storage);
+    expect(data.settings.earIntervalLevel).toBe('easy');
+    expect(data.settings.earIntervalDirection).toBe('up');
+    expect(data.settings.degreeLevel).toBe('easy');
+    expect(storage.dump()[STORAGE_KEY]).toBe(JSON.stringify(old));
+  });
+
+  it('keeps valid values', () => {
+    const s = load({ earIntervalLevel: 'hard', earIntervalDirection: 'both', degreeLevel: 'medium' });
+    expect(s.earIntervalLevel).toBe('hard');
+    expect(s.earIntervalDirection).toBe('both');
+    expect(s.degreeLevel).toBe('medium');
+  });
+
+  it.each(['Hard', 1, null, 'sobe', {}])('falls back to the default for %j', (bad) => {
+    const s = load({ earIntervalLevel: bad, earIntervalDirection: bad, degreeLevel: bad });
+    expect(s.earIntervalLevel).toBe('easy');
+    expect(s.earIntervalDirection).toBe('up');
+    expect(s.degreeLevel).toBe('easy');
+  });
+});
+
+describe('M3 item keys', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps earint/func keys and old ones, drops malformed ones', () => {
+    const good = ['earint:0:0:up', 'earint:11:12:down', 'func:0:1', 'func:11:7', 'ear:52', 'interval:0:3M'];
+    const bad = ['earint:0:0:down', 'earint:12:4:up', 'func:0:8', 'func:00:1', 'earint:0:4'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+});

@@ -11,6 +11,12 @@ import {
   type Instrument,
   type InstrumentId,
 } from '../domain/instruments';
+import {
+  EAR_DIRECTIONS,
+  isDegreeKey,
+  isEarIntervalKey,
+  type EarDirectionSetting,
+} from '../domain/earTraining';
 import { QUIZ_MODES } from '../domain/exercises';
 import { DEFAULT_INTERVALS, isIntervalId, type IntervalId } from '../domain/intervals';
 import { ACCIDENTALS, type Accidentals, type Notation } from '../domain/notes';
@@ -25,7 +31,8 @@ export interface InstrumentData {
   filter: Filter;
   progress: ProgressMap;
   history: HistoryEntry[];
-  /** Progresso por item de Ouvido/Intervalos (`ear:<midi>`, `interval:<raiz>:<id>`). */
+  /** Progresso por item de Ouvido/Intervalos (`ear:<midi>`, `interval:<raiz>:<id>`,
+   * `earint:<raiz>:<semitons>:<up|down>`, `func:<tônica>:<grau>`). */
   items: ProgressMap;
 }
 
@@ -37,6 +44,9 @@ export interface GlobalSettings {
   mode: QuizMode;
   soundEnabled: boolean;
   earLevel: EarLevel;
+  earIntervalLevel: EarLevel;
+  earIntervalDirection: EarDirectionSetting;
+  degreeLevel: EarLevel;
   instrument: InstrumentId;
   intervals: IntervalId[];
   intervalAdvance: IntervalAdvance;
@@ -86,6 +96,9 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   mode: 'position-to-note',
   soundEnabled: true,
   earLevel: 'easy',
+  earIntervalLevel: 'easy',
+  earIntervalDirection: 'up',
+  degreeLevel: 'easy',
   instrument: 'guitar',
   intervals: [...DEFAULT_INTERVALS],
   intervalAdvance: 'manual',
@@ -188,6 +201,15 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     earLevel: EAR_LEVELS.includes(source.earLevel as EarLevel)
       ? (source.earLevel as EarLevel)
       : DEFAULT_SETTINGS.earLevel,
+    earIntervalLevel: EAR_LEVELS.includes(source.earIntervalLevel as EarLevel)
+      ? (source.earIntervalLevel as EarLevel)
+      : DEFAULT_SETTINGS.earIntervalLevel,
+    earIntervalDirection: EAR_DIRECTIONS.includes(source.earIntervalDirection as EarDirectionSetting)
+      ? (source.earIntervalDirection as EarDirectionSetting)
+      : DEFAULT_SETTINGS.earIntervalDirection,
+    degreeLevel: EAR_LEVELS.includes(source.degreeLevel as EarLevel)
+      ? (source.degreeLevel as EarLevel)
+      : DEFAULT_SETTINGS.degreeLevel,
     instrument: INSTRUMENTS.some((i) => i.id === source.instrument)
       ? (source.instrument as InstrumentId)
       : DEFAULT_SETTINGS.instrument,
@@ -246,7 +268,7 @@ const EAR_ITEM_KEY = /^ear:(0|[1-9]\d*)$/;
 const INTERVAL_ITEM_KEY = /^interval:(0|[1-9]\d*):(.+)$/;
 
 function isItemKey(key: string): boolean {
-  if (EAR_ITEM_KEY.test(key)) return true;
+  if (EAR_ITEM_KEY.test(key) || isEarIntervalKey(key) || isDegreeKey(key)) return true;
   const match = INTERVAL_ITEM_KEY.exec(key);
   return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
 }
