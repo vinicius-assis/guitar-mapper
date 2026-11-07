@@ -34,8 +34,11 @@ export function Settings() {
     const link = document.createElement('a');
     link.href = url;
     link.download = exportFilename(new Date());
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    // Safari/iOS downloads blobs asynchronously; revoking at once can fail silently.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
   async function handleFile(e: ChangeEvent<HTMLInputElement>) {

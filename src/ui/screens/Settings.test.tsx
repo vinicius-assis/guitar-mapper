@@ -7,7 +7,12 @@ import { readRawSettings, readSaved, seededStorage } from '../../test-utils';
 import { ConfirmProvider } from '../ConfirmDialog';
 import { Settings } from './Settings';
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+  Reflect.deleteProperty(URL, 'createObjectURL');
+  Reflect.deleteProperty(URL, 'revokeObjectURL');
+});
 
 function setup() {
   const storage = seededStorage({
@@ -103,14 +108,29 @@ describe('Settings', () => {
     it('exports the whole data as a dated JSON download', async () => {
       const create = vi.fn(() => 'blob:x');
       const revoke = vi.fn();
-      vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke }));
+      Object.defineProperty(URL, 'createObjectURL', { value: create, configurable: true, writable: true });
+      Object.defineProperty(URL, 'revokeObjectURL', { value: revoke, configurable: true, writable: true });
       let download = '';
+      let attached = false;
       vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
         download = this.download;
+        attached = document.body.contains(this);
       });
       setup();
-      fireEvent.click(screen.getByRole('button', { name: 'Exportar dados' }));
-      expect(create).toHaveBeenCalledTimes(1);
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(screen.getByRole('button', { name: 'Exportar dados' }));
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(download).toMatch(/^guitar-mapper-\d{4}-\d{2}-\d{2}\.json$/);
+        expect(attached).toBe(true);
+        expect(document.querySelector('a[download]')).toBeNull();
+        expect(revoke).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(60_000);
+        expect(revoke).toHaveBeenCalledTimes(1);
+        expect(revoke).toHaveBeenCalledWith('blob:x');
+      } finally {
+        vi.useRealTimers();
+      }
       const blob = (create.mock.calls[0] as unknown as [Blob])[0];
       expect(blob.type).toBe('application/json');
       const text = await new Promise<string>((res) => {
@@ -121,8 +141,6 @@ describe('Settings', () => {
       const parsed = parseImport(text);
       expect(parsed.ok).toBe(true);
       if (parsed.ok) expect(parsed.data.instruments.guitar.progress['6-0']).toBeDefined();
-      expect(download).toMatch(/^guitar-mapper-\d{4}-\d{2}-\d{2}\.json$/);
-      expect(revoke).toHaveBeenCalledWith('blob:x');
     });
 
     it('imports a valid file after confirmation, keeping a backup', async () => {
