@@ -62,6 +62,34 @@ describe('Settings', () => {
     expect(credits).toHaveTextContent('Creative Commons Attribution 3.0');
   });
 
+  const AUTO_HINT =
+    'Automático escreve como os músicos costumam (Db, Eb, F#, Ab, Bb) e, nos Intervalos, dá à nota de chegada o nome do grau (Dó + 3ª m = Mib).';
+
+  it('picks the accidentals, sharp by default', () => {
+    const storage = setup();
+    expect(screen.getByLabelText('Sustenidos')).toBeChecked();
+    fireEvent.click(screen.getByLabelText('Bemóis'));
+    expect(readRawSettings(storage).accidentals).toBe('flat');
+    fireEvent.click(screen.getByLabelText('Automático'));
+    expect(readRawSettings(storage).accidentals).toBe('auto');
+  });
+
+  it('places Acidentais right after Notação, with the Automático hint', () => {
+    setup();
+    const legends = Array.from(document.querySelectorAll('fieldset > legend')).map((l) => l.textContent);
+    const i = legends.findIndex((t) => t?.includes('Notação'));
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(legends[i + 1]).toContain('Acidentais');
+    expect(screen.getByText(AUTO_HINT)).toBeInTheDocument();
+  });
+
+  it('keeps accidentals when switching instrument', () => {
+    const storage = setup();
+    fireEvent.click(screen.getByLabelText('Bemóis'));
+    fireEvent.click(screen.getByLabelText('Baixo'));
+    expect(readRawSettings(storage).accidentals).toBe('flat');
+  });
+
   it('picks the instrument globally and leaves the other settings alone', () => {
     const storage = setup();
     expect(screen.getByLabelText('Violão')).toBeChecked();

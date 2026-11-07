@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import type { Notation } from '../../domain/notes';
+import type { Accidentals, Notation } from '../../domain/notes';
 import { INSTRUMENTS } from '../../domain/instruments';
 import { useAppState } from '../../state/AppState';
 import { IMPORT_ERROR, exportFilename, parseImport, serializeData } from '../../state/backup';
@@ -18,6 +18,12 @@ const NOTATIONS: { value: Notation; label: string }[] = [
   { value: 'cifra', label: 'C D E' },
   { value: 'solfejo', label: 'Dó Ré Mi' },
   { value: 'ambos', label: 'Os dois' },
+];
+
+const ACCIDENTAL_OPTIONS: { value: Accidentals; label: string }[] = [
+  { value: 'sharp', label: 'Sustenidos' },
+  { value: 'flat', label: 'Bemóis' },
+  { value: 'auto', label: 'Automático' },
 ];
 
 export function Settings() {
@@ -104,6 +110,24 @@ export function Settings() {
           </label>
         ))}
       </fieldset>
+
+      <fieldset>
+        <legend>Acidentais</legend>
+        {ACCIDENTAL_OPTIONS.map(({ value, label }) => (
+          <label key={value} className="check">
+            <input
+              type="radio"
+              name="accidentals"
+              checked={settings.accidentals === value}
+              onChange={() => updateSettings({ accidentals: value })}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
+      <p className="hint">
+        Automático escreve como os músicos costumam (Db, Eb, F#, Ab, Bb) e, nos Intervalos, dá à nota de chegada o nome do grau (Dó + 3ª m = Mib).
+      </p>
 
       <label className="check">
         <input
