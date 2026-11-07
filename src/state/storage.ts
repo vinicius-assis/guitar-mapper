@@ -11,6 +11,7 @@ import {
   type Instrument,
   type InstrumentId,
 } from '../domain/instruments';
+import { QUIZ_MODES } from '../domain/exercises';
 import { DEFAULT_INTERVALS, isIntervalId, type IntervalId } from '../domain/intervals';
 import type { Notation } from '../domain/notes';
 import type { EarLevel, QuizMode } from '../domain/quiz';
@@ -121,7 +122,7 @@ export function withActive(data: AppData, patch: Partial<InstrumentData>): AppDa
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -147,7 +148,6 @@ function sanitizeFilter(raw: unknown, instrument: Instrument): Filter {
 }
 
 const NOTATIONS: Notation[] = ['cifra', 'solfejo', 'ambos'];
-const MODES: QuizMode[] = ['position-to-note', 'note-to-position', 'flashcard', 'ear', 'interval'];
 const ADVANCES: IntervalAdvance[] = ['manual', '3s', '5s'];
 const EAR_LEVELS: EarLevel[] = ['easy', 'medium', 'hard'];
 
@@ -159,7 +159,7 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
       : DEFAULT_SETTINGS.notation,
     leftHanded:
       typeof source.leftHanded === 'boolean' ? source.leftHanded : DEFAULT_SETTINGS.leftHanded,
-    mode: MODES.includes(source.mode as QuizMode)
+    mode: QUIZ_MODES.includes(source.mode as QuizMode)
       ? (source.mode as QuizMode)
       : DEFAULT_SETTINGS.mode,
     soundEnabled:
@@ -215,7 +215,7 @@ function sanitizeHistory(raw: unknown): HistoryEntry[] {
     if (!isRecord(entry)) continue;
     const { mode, at, total, correct, averageMs } = entry;
     if (
-      MODES.includes(mode as QuizMode) &&
+      QUIZ_MODES.includes(mode as QuizMode) &&
       isCount(at) &&
       isCount(total) &&
       Number.isInteger(total) &&
@@ -255,7 +255,7 @@ function sanitizeBucket(raw: unknown, instrument: Instrument): InstrumentData {
   };
 }
 
-function sanitizeV2(parsed: Record<string, unknown>): AppData {
+export function sanitizeV2(parsed: Record<string, unknown>): AppData {
   const buckets = isRecord(parsed.instruments) ? parsed.instruments : {};
   return {
     version: 2,
