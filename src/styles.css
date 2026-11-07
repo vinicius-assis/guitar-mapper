@@ -379,3 +379,10 @@ main { display: flex; flex-direction: column; }
 .cell--disabled { cursor: default; }
 .fret-disabled { fill: var(--bg); opacity: 0.55; }
 .fret-number--disabled { opacity: 0.35; }
+
+.answer-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
+.answer-grid .option { min-height: 48px; font-size: 1rem; padding: 0 4px; }
+.ear-detail { margin: 12px 0 0; text-align: center; font-size: 1.125rem; font-weight: 600; }
+@media (min-width: 768px) {
+  .answer-grid { grid-template-columns: repeat(7, 1fr); }
+}

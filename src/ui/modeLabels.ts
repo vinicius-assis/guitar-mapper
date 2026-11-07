@@ -1,4 +1,5 @@
 import { EXERCISE_META, QUIZ_MODES } from '../domain/exercises';
+import type { EarDirectionSetting } from '../domain/earTraining';
 import { EAR_LISTEN_LIMIT, type EarLevel, type QuizMode } from '../domain/quiz';
 
 export const MODES: { mode: QuizMode; label: string }[] = QUIZ_MODES.map((mode) => ({
@@ -35,3 +36,24 @@ export function earLevelLabel(level: EarLevel): string {
 export function modeLabel(mode: QuizMode): string {
   return MODES.find((m) => m.mode === mode)!.label;
 }
+
+export const EAR_INTERVAL_LEVEL_TEXT: Record<EarLevel, string> = {
+  easy: 'Três intervalos bem diferentes: 3ª maior, 5ª justa e oitava.',
+  medium: 'Sete intervalos, os mais comuns em melodias.',
+  hard: 'Todos os 13, do uníssono à oitava.',
+};
+
+export const DEGREE_LEVEL_TEXT: Record<EarLevel, string> = {
+  easy: 'Graus 1, 3 e 5, depois do arpejo da tônica.',
+  medium: 'Graus 1 a 5, depois do arpejo da tônica.',
+  hard: 'Os 7 graus, só com a tônica como referência.',
+};
+
+export const EAR_DIRECTION_LABELS: { value: EarDirectionSetting; label: string }[] = [
+  { value: 'up', label: 'Sobe' },
+  { value: 'down', label: 'Desce' },
+  { value: 'both', label: 'Os dois' },
+];
+
+/** Atalhos dos botões de resposta de intervalos (até 13), na ordem dos botões. */
+export const INTERVAL_SHORTCUTS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'q', 'w', 'e'];

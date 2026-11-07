@@ -24,7 +24,8 @@ function answerWithLetter(letter: string, sharp: boolean) {
 
 /**
  * Atalhos de teclado das perguntas: 1–9 escolhem a opção, Enter é a ação principal
- * (Iniciar, Mostrar nota, Próxima), R toca o som de novo (Ouvido). Aciona os botões que
+ * (Iniciar, Mostrar nota, Próxima), R toca o som de novo (Ouvido). Botões com `data-shortcut`
+ * (Ouvido: intervalos e graus) declaram a própria tecla e substituem as regras de resposta. Aciona os botões que
  * já estão na tela (em Intervalos, A–G respondem a nota; Shift = ♯), então respeita tudo o que eles respeitam (limite de audições, etc.).
  */
 export function useQuizShortcuts(active: boolean) {
@@ -33,6 +34,20 @@ export function useQuizShortcuts(active: boolean) {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
       if (document.querySelector('[role="alertdialog"], [role="menu"]') || isTyping(event.target)) {
+        return;
+      }
+      // Telas que declaram `data-shortcut` nos botões mandam: a tecla aciona o botão
+      // correspondente (se habilitado) e nenhum outro atalho de resposta roda.
+      if (
+        document.querySelector('[data-shortcut]') &&
+        event.key !== 'Enter' &&
+        event.key !== 'r' &&
+        event.key !== 'R'
+      ) {
+        const button = document.querySelector(`[data-shortcut="${event.key.toLowerCase()}"]`);
+        if (button instanceof HTMLButtonElement && !button.disabled && click(button)) {
+          event.preventDefault();
+        }
         return;
       }
       let handled = false;
