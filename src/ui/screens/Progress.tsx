@@ -59,7 +59,7 @@ export function Progress({ onSelect }: { onSelect(position: Position): void }) {
               <ul className="legend">
                 <li>Dias seguidos: {currentStreak(stats, today)}</li>
                 <li>
-                  Esta semana: {daysStudiedThisWeek(stats, today)} de {settings.weeklyGoal} dias
+                  {`Esta semana: ${daysStudiedThisWeek(stats, today)} de ${settings.weeklyGoal} ${settings.weeklyGoal === 1 ? 'dia' : 'dias'}`}
                 </li>
                 {avgMs !== null && <li>Tempo médio (7 dias): {formatSeconds(avgMs)}</li>}
               </ul>

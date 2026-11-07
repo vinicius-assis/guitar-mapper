@@ -193,7 +193,11 @@ export function Study({ forced = null, onSessionChange }: StudyProps) {
             open={openPanel === 'focus'}
             onOpenChange={(open) => setOpenPanel(open ? 'focus' : null)}
           />
-          <p className="hint">Sessão de {Math.min(SESSION_SIZE, questionCount)} perguntas</p>
+          {questionCount > 0 && (
+            <p className="hint">
+              {`Sessão de ${Math.min(SESSION_SIZE, questionCount)} ${questionCount === 1 ? 'pergunta' : 'perguntas'}`}
+            </p>
+          )}
           <button
             type="button"
             className="primary start"

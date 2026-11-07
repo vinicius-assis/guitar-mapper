@@ -299,6 +299,12 @@ describe('Progress consistency block', () => {
     expect(screen.getByText('Esta semana: 1 de 3 dias')).toBeInTheDocument();
   });
 
+  it('uses the singular for a weekly goal of 1', () => {
+    renderWith({ stats: { '2026-11-07': day }, settings: { weeklyGoal: 1 } });
+    expect(screen.getByText('Esta semana: 1 de 1 dia')).toBeInTheDocument();
+    expect(screen.queryByText(/1 dias/)).not.toBeInTheDocument();
+  });
+
   it('keeps the streak when only yesterday was studied', () => {
     renderWith({ stats: { '2026-11-06': day } });
     expect(screen.getByText('Dias seguidos: 1')).toBeInTheDocument();

@@ -1202,6 +1202,17 @@ describe('Study: review sessions of up to 20 questions', () => {
     expect(screen.getByText('Sessão de 5 perguntas')).toBeInTheDocument();
   });
 
+  it('with a 1-position focus the hint is singular', () => {
+    setup({ mode: 'flashcard', filter: { strings: [6], fretMin: 1, fretMax: 1, naturalsOnly: true } });
+    expect(screen.getByText('Sessão de 1 pergunta')).toBeInTheDocument();
+    expect(screen.queryByText(/Sessão de 1 perguntas/)).not.toBeInTheDocument();
+  });
+
+  it('with an empty focus no session hint is shown', () => {
+    setup({ mode: 'flashcard', filter: { strings: [], fretMin: 1, fretMax: 12, naturalsOnly: false } });
+    expect(screen.queryByText(/Sessão de/)).not.toBeInTheDocument();
+  });
+
   it('a started session has 20 questions', () => {
     setup({ mode: 'flashcard', filter: FULL12 });
     start();
