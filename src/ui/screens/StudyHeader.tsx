@@ -57,6 +57,19 @@ export function StudyHeader({
       </button>
       {menuOpen && (
         <div className="menu" role="menu" aria-label="Exercícios">
+          <div className="menu__bar">
+            <span className="menu__title">Exercícios</span>
+            <button
+              type="button"
+              className="menu__close"
+              aria-label="Fechar menu"
+              onClick={() => onMenuOpenChange(false)}
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
           {TRACKS.map((track) => (
             <div key={track.id} role="group" aria-label={track.label}>
               <p className="menu__group">{track.label}</p>
