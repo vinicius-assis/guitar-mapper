@@ -133,6 +133,12 @@ describe('Progress', () => {
       expect(items[0]).toHaveTextContent('Acorde do grau');
     });
 
+    it('shows the label of the guide-tones mode', () => {
+      renderWith([{ mode: 'guide-tones', at: 9, total: 4, correct: 2, averageMs: 3000 }]);
+      const items = screen.getAllByRole('listitem').filter((li) => li.closest('.history'));
+      expect(items[0]).toHaveTextContent('Notas-guia');
+    });
+
     it('shows the label of the chord modes', () => {
       renderWith([{ mode: 'chord-play', at: 9, total: 4, correct: 2, averageMs: 3000 }]);
       const items = screen.getAllByRole('listitem').filter((li) => li.closest('.history'));

@@ -22,6 +22,9 @@ import {
   type QualityQuestion,
 } from '../domain/harmonyItems';
 import { chordPool, isChordNameKey, isChordPlayKey, type ChordNameQuestion } from '../domain/chordItems';
+import { arpeggioKey, isArpeggioKey } from '../domain/arpeggio';
+import { guideKey, isGuideKey } from '../domain/guideTones';
+import { iiViKey, isIiViKey } from '../domain/progressions';
 import { intervalItems } from '../domain/intervals';
 import {
   scaleDegreeKey,
@@ -625,5 +628,88 @@ describe('acordes', () => {
       ex.prepareSound(sound, [{ shape: 'c', root: 0 }], GUITAR);
       expect(preparePitches).toHaveBeenLastCalledWith([48, 52, 55, 60, 64]);
     }
+  });
+});
+
+describe('M7', () => {
+  const gt = () => exerciseFor('guide-tones');
+  const ar = () => exerciseFor('arpeggio');
+  const iv = () => exerciseFor('ii-v-i');
+  const BASS_MSG = 'Acordes são só para violão. Troque para Violão em Ajustes.';
+  const bassCtx = (settings: Partial<Settings> = {}): ExerciseContext => ({ ...makeCtx(settings), instrument: BASS });
+
+  it('questionCount no violão', () => {
+    expect(gt().questionCount(makeCtx())).toBe(11);
+    expect(gt().questionCount(makeCtx({ chordShapes: 'barre' }))).toBe(72);
+    expect(gt().questionCount(makeCtx({ chordShapes: 'all' }))).toBe(83);
+    expect(ar().questionCount(makeCtx())).toBe(12);
+    expect(ar().questionCount(makeCtx({ scale: 'major', scaleBox: 'all' }))).toBe(84);
+    expect(iv().questionCount(makeCtx())).toBe(16);
+  });
+
+  it('no baixo: guide-tones e ii-v-i bloqueiam, arpeggio funciona', () => {
+    for (const ex of [gt(), iv()]) {
+      expect(ex.questionCount(bassCtx())).toBe(0);
+      expect(ex.startBlockers(bassCtx())).toEqual([BASS_MSG]);
+      expect(ex.startBlockers(makeCtx())).toEqual([]);
+    }
+    expect(ar().questionCount(bassCtx())).toBe(12);
+    expect(ar().startBlockers(bassCtx())).toEqual([]);
+    for (const ex of [gt(), ar(), iv()]) {
+      expect(ex.startsFromPosition(makeCtx())).toBe(false);
+      expect(ex.historyLevel).toBeUndefined();
+    }
+  });
+
+  const ctxAll = (settings: Partial<Settings> = {}): ExerciseContext => ({
+    ...makeCtx({ chordShapes: 'all', ...settings }),
+    progress: {},
+    limit: 20,
+    now: 0,
+  });
+
+  it('buildQueue: filas distintas e dentro do pool', () => {
+    const qg = gt().buildQueue(ctxAll());
+    const kg = qg.map((q) => gt().itemKey(q, GUITAR));
+    expect(qg).toHaveLength(20);
+    expect(new Set(kg).size).toBe(20);
+    expect(kg.every(isGuideKey)).toBe(true);
+    const qi = iv().buildQueue(ctxAll());
+    const ki = qi.map((q) => iv().itemKey(q, GUITAR));
+    expect(qi).toHaveLength(16);
+    expect(new Set(ki).size).toBe(16);
+    expect(ki.every(isIiViKey)).toBe(true);
+  });
+
+  it('a revisão do arpejo prioriza os vencidos', () => {
+    const pool = scalePlayPool('major', 'all');
+    expect(pool).toHaveLength(84);
+    const due = pool.slice(0, 5).map((i) => arpeggioKey(i));
+    const progress: ProgressMap = {};
+    for (const item of pool) {
+      const k = arpeggioKey(item);
+      progress[k] = due.includes(k)
+        ? { box: 1, correct: 0, wrong: 1, lastReview: 0, nextReview: -1000 }
+        : { box: 1, correct: 1, wrong: 0, lastReview: 0, nextReview: 10 ** 12 };
+    }
+    const queue = ar().buildQueue({ ...ctxAll({ scale: 'major', scaleBox: 'all' }), progress });
+    const got = queue.map((q) => ar().itemKey(q, GUITAR));
+    expect(got.every(isArpeggioKey)).toBe(true);
+    for (const k of due) expect(got).toContain(k);
+  });
+
+  it('chaves dos itens', () => {
+    expect(gt().itemKey({ shape: 'g7', root: 7 }, GUITAR)).toBe('guide:g7:7');
+    expect(guideKey({ shape: 'g7', root: 7 })).toBe('guide:g7:7');
+    expect(ar().itemKey({ scale: 'pent-minor', box: 1, root: 9 }, GUITAR)).toBe('arp:pent-minor:9:1');
+    expect(iv().itemKey({ key: 0, grip: 1, step: 'ii-v' }, GUITAR)).toBe('iivi:0:1:ii-v');
+    expect(iiViKey({ key: 0, grip: 1, step: 'ii-v' })).toBe('iivi:0:1:ii-v');
+  });
+
+  it('prepareSound do ii-v-i carrega as alturas dos dois acordes', () => {
+    const preparePitches = vi.fn();
+    const sound = { preparePitches } as unknown as Parameters<Exercise['prepareSound']>[0];
+    iv().prepareSound(sound, [{ key: 0, grip: 1, step: 'ii-v' }], GUITAR);
+    expect(preparePitches).toHaveBeenLastCalledWith([50, 53, 60, 43, 53, 59]);
   });
 });
