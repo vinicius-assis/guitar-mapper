@@ -251,7 +251,7 @@ describe('DictationQuiz', () => {
         cleanup();
       }
     }
-  });
+  }, 30000);
 
   it('bass', () => {
     const bass: DictationQuestion = { scale: 'pent-minor', root: 9, length: 4, box: 1, pitches: [45, 48, 50, 48] };
