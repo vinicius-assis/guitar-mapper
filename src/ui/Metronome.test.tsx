@@ -3,7 +3,44 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import type { Metronome as Engine } from '../audio/metronome';
 import { AppProvider } from '../state/AppState';
 import { readRawSettings, seededStorage } from '../test-utils';
-import { Metronome } from './Metronome';
+import { Metronome, __resetSharedMetronome } from './Metronome';
+
+// Envolve o motor real para espiar o singleton compartilhado.
+const engines: Engine[] = [];
+vi.mock('../audio/metronome', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../audio/metronome')>();
+  return {
+    ...actual,
+    createMetronome: (...args: Parameters<typeof actual.createMetronome>) => {
+      const e = actual.createMetronome(...args);
+      vi.spyOn(e, 'setBpm');
+      vi.spyOn(e, 'setBeatsPerBar');
+      engines.push(e);
+      return e;
+    },
+  };
+});
+
+function countingAudioContext() {
+  const ctor = vi.fn(function (this: Record<string, unknown>) {
+    this.currentTime = 0;
+    this.state = 'running';
+    this.destination = {};
+    this.resume = () => Promise.resolve();
+    this.createOscillator = () => ({
+      frequency: { value: 0 },
+      connect: () => {},
+      start: () => {},
+      stop: () => {},
+    });
+    this.createGain = () => ({
+      gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} },
+      connect: () => {},
+    });
+  });
+  vi.stubGlobal('AudioContext', ctor);
+  return ctor;
+}
 
 function fakeEngine() {
   return {
@@ -37,7 +74,12 @@ function setVisibility(state: 'hidden' | 'visible') {
   });
 }
 
-afterEach(() => setVisibility('visible'));
+afterEach(() => {
+  setVisibility('visible');
+  vi.unstubAllGlobals();
+  __resetSharedMetronome();
+  engines.length = 0;
+});
 
 describe('Metronome', () => {
   it('shows the saved tempo and bar', () => {
@@ -156,6 +198,43 @@ describe('Metronome', () => {
     fireEvent.click(toggle());
     expect(screen.queryByText('Este navegador não toca o metrônomo.')).not.toBeInTheDocument();
     expect(toggle()).toHaveTextContent('Parar');
+  });
+
+  it('announces the failure message as a status', () => {
+    const { engine } = setup();
+    engine.start.mockReturnValue(false);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    fireEvent.click(toggle());
+    expect(screen.getByRole('status')).toHaveTextContent('Este navegador não toca o metrônomo.');
+  });
+
+  it('unmounting while stopped is harmless', () => {
+    const { engine, createEngine, unmount } = setup();
+    expect(() => unmount()).not.toThrow();
+    expect(createEngine).not.toHaveBeenCalled();
+    expect(engine.stop).not.toHaveBeenCalled();
+  });
+
+  it('shares one engine and one AudioContext across mounts with the default factory', () => {
+    const Ctx = countingAudioContext();
+    const mount = (settings: { metronomeBpm: number; metronomeBeats: number }) =>
+      render(
+        <AppProvider storage={seededStorage({ settings })}>
+          <Metronome />
+        </AppProvider>,
+      );
+    const first = mount({ metronomeBpm: 80, metronomeBeats: 4 });
+    fireEvent.click(toggle());
+    expect(Ctx).toHaveBeenCalledTimes(1);
+    first.unmount();
+    mount({ metronomeBpm: 120, metronomeBeats: 3 });
+    fireEvent.click(toggle());
+    expect(Ctx).toHaveBeenCalledTimes(1);
+    expect(engines).toHaveLength(1);
+    expect(engines[0].setBpm).toHaveBeenLastCalledWith(120);
+    expect(engines[0].setBeatsPerBar).toHaveBeenLastCalledWith(3);
+    expect(engines[0].isRunning()).toBe(true);
+    fireEvent.click(toggle());
   });
 
   it('has no shortcut hooks', () => {

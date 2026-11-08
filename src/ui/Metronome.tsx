@@ -5,7 +5,24 @@ import { useAppState } from '../state/AppState';
 
 type EngineFactory = (initial: { bpm: number; beatsPerBar: number }) => Engine;
 
-const defaultCreateEngine: EngineFactory = (initial) => createMetronome(browserMetronomeDeps(), initial);
+// Navegadores limitam AudioContexts vivos (o motor não tem close), então o motor padrão é um
+// singleton compartilhado entre montagens de Ajustes; cada montagem só reaplica andamento e compasso.
+let shared: Engine | null = null;
+
+/** Só para testes: descarta o motor compartilhado. */
+export function __resetSharedMetronome() {
+  shared = null;
+}
+
+const defaultCreateEngine: EngineFactory = (initial) => {
+  if (!shared) {
+    shared = createMetronome(browserMetronomeDeps(), initial);
+  } else {
+    shared.setBpm(initial.bpm);
+    shared.setBeatsPerBar(initial.beatsPerBar);
+  }
+  return shared;
+};
 
 const STEPS: { delta: number; label: string; aria: string }[] = [
   { delta: -5, label: '−5', aria: 'Diminuir 5 BPM' },
@@ -97,7 +114,7 @@ export function Metronome({ createEngine = defaultCreateEngine }: { createEngine
       <button type="button" className="primary metronome-toggle" aria-pressed={running} onClick={toggle}>
         {running ? 'Parar' : 'Iniciar'}
       </button>
-      {failed && <p className="empty">Este navegador não toca o metrônomo.</p>}
+      {failed && <p className="empty" role="status">Este navegador não toca o metrônomo.</p>}
       <p className="hint">Para sozinho quando você sai desta tela ou do app.</p>
     </section>
   );
