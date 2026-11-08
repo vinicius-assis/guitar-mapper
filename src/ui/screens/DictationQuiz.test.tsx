@@ -2,12 +2,17 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
-import { dictationAdvanceMs, type DictationQuestion } from '../../domain/dictation';
+import {
+  dictationAdvanceMs,
+  dictationPool,
+  dictationQuestion,
+  type DictationQuestion,
+} from '../../domain/dictation';
 import { GUITAR } from '../../domain/instruments';
 import { scaleBox } from '../../domain/scales';
 import { AppProvider } from '../../state/AppState';
 import { activeView, createDefaultData } from '../../state/storage';
-import { seededStorage } from '../../test-utils';
+import { mulberry32, seededStorage } from '../../test-utils';
 import { useQuizShortcuts } from '../useQuizShortcuts';
 import { DictationQuiz } from './DictationQuiz';
 
@@ -213,6 +218,39 @@ describe('DictationQuiz', () => {
     const a = setup(C6);
     a.tap('6-8');
     expect(a.onAnswer).toHaveBeenCalledWith(false);
+  });
+
+  it('says the octave when the right note is tapped in the wrong octave', () => {
+    const up = setup();
+    up.tap('1-5');
+    expect(screen.getByRole('status')).toHaveTextContent('Errado. A 1ª nota era A, mas uma oitava acima.');
+    cleanup();
+    const down = setup();
+    down.tap('6-5');
+    expect(screen.getByRole('status')).toHaveTextContent('Errado. A 1ª nota era A, mas uma oitava abaixo.');
+  });
+
+  it('completes a correct answer in a scale without C', () => {
+    const q: DictationQuestion = { scale: 'pent-minor', root: 4, length: 4, box: 1, pitches: [64, 67, 69, 67] };
+    const a = setup(q);
+    q.pitches.forEach((p) => a.tap(posOf(q, p)));
+    expect(screen.getByRole('status')).toHaveTextContent('Correto! Melodia completa.');
+    expect(a.onAnswer).toHaveBeenCalledWith(true);
+  });
+
+  it.each(['easy', 'medium'] as const)('a correct answer never throws, every tonic (%s)', (level) => {
+    const rng = mulberry32(7);
+    for (const item of dictationPool(level)) {
+      for (let k = 0; k < 2; k++) {
+        const q = dictationQuestion(item, GUITAR, rng);
+        const a = setup(q);
+        q.pitches.forEach((p) => a.tap(posOf(q, p)));
+        expect(screen.getByRole('status')).toHaveTextContent('Correto! Melodia completa.');
+        expect(a.onAnswer).toHaveBeenCalledTimes(1);
+        expect(a.onAnswer).toHaveBeenCalledWith(true);
+        cleanup();
+      }
+    }
   });
 
   it('bass', () => {

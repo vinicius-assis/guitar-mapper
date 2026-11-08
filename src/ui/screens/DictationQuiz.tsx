@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSound } from '../../audio/SoundProvider';
 import { dictationAdvanceMs, dictationSequence, isDictationTap, type DictationQuestion } from '../../domain/dictation';
 import { noteAt, positionKey, type Position } from '../../domain/fretboard';
+import { pitchOf } from '../../domain/pitch';
 import { noteLabel, type NoteIndex } from '../../domain/notes';
 import { SCALES, scaleBox, scaleDegreeOf } from '../../domain/scales';
 import { useAppState } from '../../state/AppState';
@@ -62,6 +63,19 @@ export function DictationQuiz({ question, settings, onAnswer, onNext }: Props) {
     playSequence(seq);
   }
 
+  function missText(w: Position): string {
+    const expected = pitches[taps.length];
+    const degree = scaleDegreeOf((expected % 12) as NoteIndex, root, scale);
+    const name =
+      degree < 0
+        ? noteLabel((expected % 12) as NoteIndex, notation, accidentals)
+        : scaleNoteName(scale, root, degree, notation, accidentals);
+    const head = `A ${ordinalNote(taps.length)} nota era ${name}`;
+    const tapped = pitchOf(w, instrument);
+    if (tapped % 12 === expected % 12) return `${head}, mas uma oitava ${tapped > expected ? 'acima' : 'abaixo'}.`;
+    return `${head}, não ${noteLabel(noteAt(w, instrument), notation, accidentals)}.`;
+  }
+
   const remaining = length - taps.length;
   const marks: Mark[] = [];
   const put = (m: Mark) => {
@@ -85,14 +99,8 @@ export function DictationQuiz({ question, settings, onAnswer, onNext }: Props) {
     if (wrong) put({ position: wrong, kind: 'wrong' });
   }
 
-  const expected = taps.length < length ? pitches[taps.length] : 0;
-  const expectedName = scaleNoteName(
-    scale,
-    root,
-    scaleDegreeOf((expected % 12) as NoteIndex, root, scale),
-    notation,
-    accidentals,
-  );
+  // Só calculado com um toque errado: depois do último acerto não há nota esperada.
+  const misses = wrong !== null ? missText(wrong) : null;
 
   return (
     <div className="quiz">
@@ -121,7 +129,7 @@ export function DictationQuiz({ question, settings, onAnswer, onNext }: Props) {
             <p role="status">
               {correct
                 ? 'Correto! Melodia completa.'
-                : `Errado. A ${ordinalNote(taps.length)} nota era ${expectedName}, não ${noteLabel(noteAt(wrong as Position, instrument), notation, accidentals)}.`}
+                : `Errado. ${misses}`}
             </p>
             <p className="ear-detail">{`Melodia: ${dictationNames(question, notation, accidentals)} · ${dictationDegrees(question)}`}</p>
           </>
