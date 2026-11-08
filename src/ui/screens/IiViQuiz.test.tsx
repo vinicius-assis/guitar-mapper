@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
 import type { IiViItem } from '../../domain/progressions';
+import { iiViQuestion } from '../../domain/progressions';
 import { AppProvider } from '../../state/AppState';
 import { activeView, createDefaultData } from '../../state/storage';
 import { createMemoryStorage, seededStorage } from '../../test-utils';
@@ -192,6 +193,21 @@ describe('IiViQuiz', () => {
     a.rerender(a.withoutScreen());
     advance(2000);
     expect(a.player.play).not.toHaveBeenCalled();
+  });
+
+  it('lets the whole closing sound play before auto-advancing', () => {
+    const a = setup();
+    a.tap('3-4');
+    a.player.play.mockClear();
+    a.tap('4-3');
+    const q = iiViQuestion(C_IIV);
+    const expected = [...q.from.notes, ...q.to.notes].map((n) => n.pitch);
+    for (let t = 0; t < 5000 && a.onNext.mock.calls.length === 0; t += 50) advance(50);
+    expect(a.onNext).toHaveBeenCalledTimes(1);
+    a.rerender(a.withoutScreen());
+    advance(3000);
+    const played = a.player.play.mock.calls.map((c) => c[0]);
+    for (const m of expected) expect(played).toContain(m);
   });
 
   it('resets state when remounted under a new key', () => {

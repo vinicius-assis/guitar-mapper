@@ -2,6 +2,8 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SoundProvider } from '../../audio/SoundProvider';
 import type { NotePlayer } from '../../audio/player';
+import { arpeggioOf } from '../../domain/arpeggio';
+import { GUITAR } from '../../domain/instruments';
 import type { ScalePlayItem } from '../../domain/scaleItems';
 import { AppProvider } from '../../state/AppState';
 import { activeView, createDefaultData } from '../../state/storage';
@@ -146,6 +148,22 @@ describe('ArpeggioQuiz', () => {
     a.rerender(a.withoutScreen());
     advance(2000);
     expect(a.player.play).not.toHaveBeenCalled();
+  });
+
+  it('lets the whole arpeggio play before auto-advancing', () => {
+    const a = setup();
+    FULL.slice(0, -1).forEach((p) => a.tap(p));
+    a.player.play.mockClear();
+    a.tap(FULL[FULL.length - 1]);
+    expect(a.onAnswer).toHaveBeenCalledWith(true);
+    for (let t = 0; t < 8000 && a.onNext.mock.calls.length === 0; t += 50) advance(50);
+    expect(a.onNext).toHaveBeenCalledTimes(1);
+    a.rerender(a.withoutScreen());
+    advance(3000);
+    const played = a.player.play.mock.calls.map((c) => c[0]);
+    const expected = [...arpeggioOf('pent-minor', 1, 9, GUITAR).pitches];
+    expect(expected.length).toBeGreaterThan(4);
+    for (const m of expected) expect(played).toContain(m);
   });
 
   it('resets state when remounted under a new key', () => {

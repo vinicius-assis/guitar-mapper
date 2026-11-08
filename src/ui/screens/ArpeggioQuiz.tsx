@@ -21,6 +21,8 @@ interface Props {
   onNext(): void;
 }
 
+const FINISH_GAP_MS = 150;
+
 export function ArpeggioQuiz({ question, settings, onAnswer, onNext }: Props) {
   const { notation, accidentals, leftHanded } = settings;
   const { scale, box, root } = question;
@@ -35,10 +37,11 @@ export function ArpeggioQuiz({ question, settings, onAnswer, onNext }: Props) {
   const [wrong, setWrong] = useState<Position | null>(null);
   const [done, setDone] = useState(false);
   const correct = done && wrong === null;
-  useAutoAdvance(correct, onNext);
+  // O arpejo soa nota a nota; o desmonte cancela o que faltar.
+  useAutoAdvance(correct, onNext, a.pitches.size * FINISH_GAP_MS + 300);
   useEffect(() => () => playPitches([]), [playPitches]);
 
-  const finish = () => playPitches([...a.pitches].sort((x, y) => x - y), 150);
+  const finish = () => playPitches([...a.pitches].sort((x, y) => x - y), FINISH_GAP_MS);
 
   function tap(p: Position) {
     if (done) return;

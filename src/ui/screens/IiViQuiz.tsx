@@ -26,7 +26,8 @@ export function IiViQuiz({ question, settings, onAnswer, onNext }: Props) {
   const [wrong, setWrong] = useState<Position | null>(null);
   const [done, setDone] = useState(false);
   const correct = done && wrong === null;
-  useAutoAdvance(correct, onNext);
+  // A troca soa até ~980 ms; o desmonte cancela o que faltar.
+  useAutoAdvance(correct, onNext, 1500);
   useEffect(() => () => playPitches([]), [playPitches]);
 
   const swap = () =>
