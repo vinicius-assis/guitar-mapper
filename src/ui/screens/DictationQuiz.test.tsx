@@ -139,7 +139,7 @@ describe('DictationQuiz', () => {
     expect(a.mark('root', '6-5')!.textContent).toBe('');
   });
 
-  it.each([AM, D8])('waits for the closing melody before advancing ($length notes)', (q) => {
+  it.each([AM, C6, D8])('waits for the closing melody before advancing ($length notes)', (q) => {
     const a = setup(q);
     q.pitches.slice(0, -1).forEach((p) => a.tap(posOf(q, p)));
     a.player.play.mockClear();
@@ -164,6 +164,18 @@ describe('DictationQuiz', () => {
     expect(a.player.play).toHaveBeenCalledTimes(7);
     advance(1);
     expect(a.player.play).toHaveBeenCalledTimes(8);
+    expect(a.onNext).not.toHaveBeenCalled();
+  });
+
+  it('replays the melody after a wrong answer without advancing', () => {
+    const a = setup();
+    a.tap('4-7');
+    a.player.play.mockClear();
+    a.tap('3-7');
+    expect(a.onAnswer).toHaveBeenCalledWith(false);
+    for (let t = 0; t < (AM.length - 1) * 600; t += 100) advance(100);
+    expect(played(a).slice(-AM.length)).toEqual(AM.pitches);
+    advance(10000);
     expect(a.onNext).not.toHaveBeenCalled();
   });
 
