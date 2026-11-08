@@ -32,6 +32,7 @@ export function scheduleWindow(
 ): { clicks: Click[]; state: ClockState } {
   const { now, lookAhead, bpm, beatsPerBar } = input;
   const spb = 60 / bpm;
+  if (!Number.isFinite(spb) || spb <= 0) return { clicks: [], state };
   let last = state.last;
   let beat = state.beat;
   let t = last === null ? state.startAt : last + spb;

@@ -12,6 +12,8 @@ export interface OscillatorLike {
   connect(node: unknown): void;
   start(when: number): void;
   stop(when?: number): void;
+  disconnect?(): void;
+  onended?: (() => void) | null;
 }
 
 export interface GainLike {
@@ -20,6 +22,7 @@ export interface GainLike {
     exponentialRampToValueAtTime(v: number, t: number): void;
   };
   connect(node: unknown): void;
+  disconnect?(): void;
 }
 
 export interface ClickContextLike {
@@ -68,6 +71,10 @@ export function createMetronome(
     gain.gain.exponentialRampToValueAtTime(SILENT, time + 0.05);
     osc.connect(gain);
     gain.connect(c.destination);
+    osc.onended = () => {
+      osc.disconnect?.();
+      gain.disconnect?.();
+    };
     osc.start(time);
     osc.stop(time + 0.06);
     pending.push({ osc, endsAt: time + 0.06 });
@@ -104,7 +111,20 @@ export function createMetronome(
       }
       clock = { last: null, startAt: ctx.currentTime + START_DELAY_S, beat: 0 };
       running = true;
-      tick();
+      try {
+        tick();
+      } catch {
+        running = false;
+        pending.forEach(({ osc }) => {
+          try {
+            osc.stop();
+          } catch {
+            // já parou
+          }
+        });
+        pending = [];
+        return false;
+      }
       timerId = deps.setInterval(tick, TICK_MS);
       return true;
     },

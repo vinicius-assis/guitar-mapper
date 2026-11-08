@@ -121,6 +121,18 @@ describe('scheduleWindow', () => {
   });
 });
 
+describe('scheduleWindow with a non-positive or invalid bpm', () => {
+  it.each([0, -10, NaN, Infinity, -Infinity])('bpm %s returns no clicks and the same state', (bpm) => {
+    const state: ClockState = { last: 1, startAt: 1, beat: 3 };
+    const r = scheduleWindow(state, { now: 5, lookAhead: 0.1, bpm, beatsPerBar: 4 });
+    expect(r.clicks).toEqual([]);
+    expect(r.state).toBe(state);
+    const f = scheduleWindow(fresh(1), { now: 5, lookAhead: 0.1, bpm, beatsPerBar: 4 });
+    expect(f.clicks).toEqual([]);
+    expect(f.state).toEqual({ last: null, startAt: 1, beat: 0 });
+  });
+});
+
 describe('clampBpm', () => {
   it.each([
     [39, 40],

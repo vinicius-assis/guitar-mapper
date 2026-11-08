@@ -6,6 +6,9 @@ interface FakeOsc {
   startAt?: number;
   stopCalls: (number | undefined)[];
   gainCalls: [string, number, number][];
+  disconnects: number;
+  gainDisconnects: number;
+  node?: { onended?: (() => void) | null };
 }
 
 function fakeCtx() {
@@ -16,11 +19,21 @@ function fakeCtx() {
     destination: {},
     resume: vi.fn(() => Promise.resolve()),
     createOscillator() {
-      const o: FakeOsc = { frequency: { value: 0 }, stopCalls: [], gainCalls: [] };
+      const o: FakeOsc = {
+        frequency: { value: 0 },
+        stopCalls: [],
+        gainCalls: [],
+        disconnects: 0,
+        gainDisconnects: 0,
+      };
       oscs.push(o);
-      return {
+      const node = {
+        onended: null as (() => void) | null,
         frequency: o.frequency,
         connect() {},
+        disconnect() {
+          o.disconnects++;
+        },
         start(when: number) {
           o.startAt = when;
         },
@@ -28,6 +41,8 @@ function fakeCtx() {
           o.stopCalls.push(when);
         },
       };
+      o.node = node;
+      return node;
     },
     createGain() {
       const calls = oscs[oscs.length - 1].gainCalls;
@@ -37,6 +52,9 @@ function fakeCtx() {
           exponentialRampToValueAtTime: (v: number, t: number) => calls.push(['ramp', v, t]),
         },
         connect() {},
+        disconnect() {
+          oscs[oscs.length - 1].gainDisconnects++;
+        },
       };
     },
   };
@@ -262,6 +280,47 @@ describe('metronome engine', () => {
     expect(ctx.resume).toHaveBeenCalledTimes(2);
     expect(oscs.at(-1)!.frequency.value).toBe(1600);
     expect(oscs.at(-1)!.startAt).toBeCloseTo(20.05);
+  });
+
+  it('start survives a throwing first click and can be retried', () => {
+    const { ctx, oscs, timer, metro } = setup();
+    const orig = ctx.createOscillator.bind(ctx);
+    let fail = true;
+    ctx.createOscillator = () => {
+      if (fail) {
+        fail = false;
+        throw new Error('boom');
+      }
+      return orig();
+    };
+    expect(metro.start()).toBe(false);
+    expect(metro.isRunning()).toBe(false);
+    expect(timer.ids).toHaveLength(0);
+    expect(metro.start()).toBe(true);
+    expect(metro.isRunning()).toBe(true);
+    expect(timer.ids).toHaveLength(1);
+    expect(oscs).toHaveLength(1);
+  });
+
+  it('disconnects nodes when an oscillator ends', () => {
+    const { oscs, metro } = setup();
+    metro.start();
+    expect(oscs[0].disconnects).toBe(0);
+    oscs[0].node!.onended!();
+    expect(oscs[0].disconnects).toBe(1);
+    expect(oscs[0].gainDisconnects).toBe(1);
+  });
+
+  it('a click already slightly late starts at now, not in the past', () => {
+    const { ctx, oscs, timer, metro } = setup();
+    ctx.currentTime = 10;
+    metro.start();
+    ctx.currentTime = 10.5;
+    timer.fn!();
+    ctx.currentTime = 11.08;
+    timer.fn!();
+    expect(oscs).toHaveLength(3);
+    expect(oscs[2].startAt).toBeCloseTo(11.08);
   });
 
   it('reports no Web Audio without throwing', () => {
