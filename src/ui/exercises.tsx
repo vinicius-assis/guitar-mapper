@@ -36,6 +36,7 @@ import { chordVoicing, voicingPitches } from '../domain/chords';
 import { arpeggioKey, buildArpeggioQueue } from '../domain/arpeggio';
 import { buildGuideQueue, guideKey, guidePool } from '../domain/guideTones';
 import { buildIiViQueue, iiViKey, iiViPool, iiViQuestion, type IiViItem } from '../domain/progressions';
+import { buildDictationQueue, dictationKey, dictationPool, type DictationQuestion } from '../domain/dictation';
 import { chordPitches, type HarmonyFieldSetting } from '../domain/harmony';
 import {
   buildHarmonyQueue,
@@ -71,6 +72,7 @@ import { useAppState } from '../state/AppState';
 import type { Settings } from '../state/storage';
 import {
   DEGREE_LEVEL_TEXT,
+  DICTATION_LEVEL_TEXT,
   EAR_DIRECTION_LABELS,
   EAR_INTERVAL_LEVEL_TEXT,
   EAR_LEVELS,
@@ -93,8 +95,9 @@ import { ScalePlayQuiz } from './screens/ScalePlayQuiz';
 import { ArpeggioQuiz } from './screens/ArpeggioQuiz';
 import { GuideToneQuiz } from './screens/GuideToneQuiz';
 import { IiViQuiz } from './screens/IiViQuiz';
+import { DictationQuiz } from './screens/DictationQuiz';
 
-export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem | HarmonyItem | QualityQuestion | ChordItem | ChordNameQuestion | IiViItem;
+export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem | HarmonyItem | QualityQuestion | ChordItem | ChordNameQuestion | IiViItem | DictationQuestion;
 
 export interface ExerciseContext {
   settings: Settings;
@@ -751,6 +754,37 @@ const iiVI: Exercise = {
   },
 };
 
+function DictationOptions() {
+  const { data, updateSettings } = useAppState();
+  const { dictationLevel } = data.settings;
+  return (
+    <>
+      <LevelBar value={dictationLevel} onChange={(level) => updateSettings({ dictationLevel: level })} />
+      <p className="mode-description">{DICTATION_LEVEL_TEXT[dictationLevel]}</p>
+    </>
+  );
+}
+
+const dictation: Exercise = {
+  ...EXERCISE_META.dictation,
+  itemKey: (item) => dictationKey(item as DictationQuestion),
+  questionCount: (ctx) => dictationPool(ctx.settings.dictationLevel).length,
+  startBlockers: (ctx) => (ctx.settings.soundEnabled ? [] : [EAR_WITHOUT_SOUND]),
+  startsFromPosition: () => false,
+  historyLevel: (settings) => settings.dictationLevel,
+  Options: DictationOptions,
+  buildQueue: (ctx) =>
+    buildDictationQueue(
+      reviewSubset(ctx, dictationPool(ctx.settings.dictationLevel), dictationKey),
+      ctx.instrument,
+      ctx.rng,
+    ),
+  prepareSound: (sound, items) => sound.preparePitches((items as DictationQuestion[]).flatMap((q) => q.pitches)),
+  Quiz: function DictationExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <DictationQuiz question={item as DictationQuestion} {...rest} />;
+  },
+};
+
 export const EXERCISES: Record<QuizMode, Exercise> = {
   'position-to-note': positionExercise('position-to-note', positionQuiz(ChoiceQuiz)),
   'note-to-position': positionExercise('note-to-position', positionQuiz(FindQuiz)),
@@ -769,6 +803,7 @@ export const EXERCISES: Record<QuizMode, Exercise> = {
   'guide-tones': guideTones,
   arpeggio,
   'ii-v-i': iiVI,
+  dictation,
 };
 
 export function exerciseFor(mode: QuizMode): Exercise {

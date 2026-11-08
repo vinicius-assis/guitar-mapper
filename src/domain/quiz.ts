@@ -8,7 +8,7 @@ import {
 import { ALL_NOTES, NATURAL_NOTES, type NoteIndex } from './notes';
 import { GUITAR, type Instrument } from './instruments';
 
-export type QuizMode = 'position-to-note' | 'note-to-position' | 'flashcard' | 'ear' | 'ear-interval' | 'ear-degree' | 'interval' | 'scale-degree' | 'scale-play' | 'harmony-chord' | 'harmony-degree' | 'harmony-quality' | 'chord-name' | 'chord-play' | 'guide-tones' | 'arpeggio' | 'ii-v-i';
+export type QuizMode = 'position-to-note' | 'note-to-position' | 'flashcard' | 'ear' | 'ear-interval' | 'ear-degree' | 'interval' | 'scale-degree' | 'scale-play' | 'harmony-chord' | 'harmony-degree' | 'harmony-quality' | 'chord-name' | 'chord-play' | 'guide-tones' | 'arpeggio' | 'ii-v-i' | 'dictation';
 export type EarLevel = 'easy' | 'medium' | 'hard';
 
 export const OPTION_COUNT = 4;

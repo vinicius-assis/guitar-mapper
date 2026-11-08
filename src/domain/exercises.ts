@@ -165,6 +165,15 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     recordsPositionProgress: false,
     usesFocus: false,
   },
+  dictation: {
+    mode: 'dictation',
+    track: 'ouvido',
+    label: 'Ditado melódico',
+    description:
+      'Ouça uma melodia curta dentro de uma escala e toque as notas no braço, na ordem. A melodia começa numa das tônicas marcadas. Vale a nota certa em qualquer corda; uma nota errada encerra a pergunta.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
 };
 
 export const QUIZ_MODES: QuizMode[] = [
@@ -185,11 +194,12 @@ export const QUIZ_MODES: QuizMode[] = [
   'guide-tones',
   'arpeggio',
   'ii-v-i',
+  'dictation',
 ];
 
 export const TRACKS: { id: TrackId; label: string; modes: QuizMode[] }[] = [
   { id: 'braco', label: 'Braço', modes: ['position-to-note', 'note-to-position', 'flashcard'] },
-  { id: 'ouvido', label: 'Ouvido', modes: ['ear', 'ear-interval', 'ear-degree'] },
+  { id: 'ouvido', label: 'Ouvido', modes: ['ear', 'ear-interval', 'ear-degree', 'dictation'] },
   { id: 'teoria', label: 'Teoria', modes: ['interval'] },
   { id: 'escalas', label: 'Escalas', modes: ['scale-degree', 'scale-play', 'arpeggio'] },
   { id: 'harmonia', label: 'Harmonia', modes: ['harmony-chord', 'harmony-degree', 'harmony-quality'] },

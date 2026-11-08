@@ -652,7 +652,7 @@ describe('Study: header menu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('lists the 17 exercises with the current one checked', () => {
+  it('lists the 18 exercises with the current one checked', () => {
     setup({ mode: 'flashcard', filter: THREE });
     fireEvent.click(menuButton());
     expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
@@ -664,6 +664,7 @@ describe('Study: header menu', () => {
       'Ouvido',
       'Ouvir intervalos',
       'Ouvir graus',
+      'Ditado melódico',
       'Intervalos',
       'Grau no desenho',
       'Toque a escala',
@@ -680,6 +681,7 @@ describe('Study: header menu', () => {
       'false',
       'false',
       'true',
+      'false',
       'false',
       'false',
       'false',
@@ -714,12 +716,12 @@ describe('Study: header menu', () => {
       'Acordes',
     ]);
     expect(labels('Braço')).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard']);
-    expect(labels('Ouvido')).toEqual(['Ouvido', 'Ouvir intervalos', 'Ouvir graus']);
+    expect(labels('Ouvido')).toEqual(['Ouvido', 'Ouvir intervalos', 'Ouvir graus', 'Ditado melódico']);
     expect(labels('Teoria')).toEqual(['Intervalos']);
     expect(labels('Escalas')).toEqual(['Grau no desenho', 'Toque a escala', 'Arpejo no desenho']);
     expect(labels('Harmonia')).toEqual(['Acorde do grau', 'Grau do acorde', 'Qualidade do acorde']);
     expect(labels('Acordes')).toEqual(['Nome do acorde', 'Monte o acorde', 'Notas-guia', 'ii–V–I']);
-    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(17);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(18);
     const braco = within(menu).getByRole('group', { name: 'Braço' });
     expect(braco.querySelector('p.menu__group')).toHaveTextContent('Braço');
   });
@@ -809,7 +811,7 @@ describe('Study: desktop layout', () => {
   afterEach(() => viewport.restore());
   const exercises = () => screen.queryByRole('group', { name: 'Exercício' });
 
-  it('shows the 17 exercises as buttons instead of the menu, and no logo in the header', () => {
+  it('shows the 18 exercises as buttons instead of the menu, and no logo in the header', () => {
     setup({ filter: THREE });
     const group = exercises()!;
     expect(
@@ -823,6 +825,7 @@ describe('Study: desktop layout', () => {
       'Ouvido',
       'Ouvir intervalos',
       'Ouvir graus',
+      'Ditado melódico',
       'Intervalos',
       'Grau no desenho',
       'Toque a escala',
@@ -1922,5 +1925,85 @@ describe('Study: M7', () => {
     else await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
     expect(screen.getByText(/^Pergunta 2 de/)).toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
+
+describe('Study: M8', () => {
+  const group = (name: string) => screen.getByRole('group', { name });
+  const tapCell = (pos: string) => {
+    const [s, f] = pos.split('-');
+    fireEvent.click(screen.getByRole('button', { name: `Corda ${s}, casa ${f}` }));
+  };
+
+  /** Toca uma casa vizinha da primeira tônica: nunca é a 1ª nota (uma tônica), então erra. */
+  function tapWrongFirstNote() {
+    const [s, f] = document.querySelector('g.mark--root')!.getAttribute('data-pos')!.split('-').map(Number);
+    const next = screen.queryByTestId(`cell-${s}-${f + 1}`) ? f + 1 : f - 1;
+    tapCell(`${s}-${next}`);
+  }
+
+  it('shows the level group, its text, no Foco and a 20-question session', () => {
+    const storage = setup({ mode: 'dictation' });
+    expect(within(group('Nível')).getByRole('button', { name: 'Fácil' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('4 notas das pentatônicas maior e menor, em passos curtos.')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Foco')).not.toBeInTheDocument();
+    expect(screen.getByText('Sessão de 20 perguntas')).toBeInTheDocument();
+    fireEvent.click(within(group('Nível')).getByRole('button', { name: 'Difícil' }));
+    expect(readRawSettings(storage).dictationLevel).toBe('hard');
+    expect(screen.getByText('8 notas da escala maior, da menor ou de um modo, com saltos maiores.')).toBeInTheDocument();
+  });
+
+  it('with the sound off: warning, disabled Iniciar, and a forced position does not start', () => {
+    setup({ mode: 'dictation', soundEnabled: false }, { string: 3, fret: 7 });
+    expect(screen.getByText('Ligue o Som em Ajustes para treinar de ouvido.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+  });
+
+  it('on the bass with sound: starts on a 4-string board', () => {
+    const storage = seededStorage({
+      instrument: 'bass',
+      settings: { notation: 'cifra', instrument: 'bass', mode: 'dictation' },
+    });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Study />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+    start();
+    expect(screen.getByText('Toque a melodia')).toBeInTheDocument();
+    expect(screen.queryByTestId('cell-5-5')).not.toBeInTheDocument();
+  });
+
+  it('a wrong first note records a dict: item, remounts on Próxima and saves the level in the history', async () => {
+    const storage = setup({ mode: 'dictation' });
+    start();
+    expect(screen.getByText('Toque a melodia')).toBeInTheDocument();
+    tapWrongFirstNote();
+    const keys = Object.keys(readSaved(storage).itemProgress);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].startsWith('dict:')).toBe(true);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
+    expect(screen.getByText(/^Pergunta 2 de/)).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByText('Faltam 4 notas')).toBeInTheDocument();
+    await finalize();
+    expect(readSaved(storage).history[0]).toMatchObject({ mode: 'dictation', level: 'easy' });
+  });
+
+  it('saves the chosen level in the history entry', async () => {
+    const storage = setup({ mode: 'dictation', dictationLevel: 'medium' });
+    start();
+    expect(screen.getByText('Faltam 6 notas')).toBeInTheDocument();
+    tapWrongFirstNote();
+    await finalize();
+    expect(readSaved(storage).history[0]).toMatchObject({ mode: 'dictation', level: 'medium' });
   });
 });

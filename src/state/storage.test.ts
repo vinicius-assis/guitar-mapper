@@ -227,6 +227,13 @@ describe('history level', () => {
     expect(loadActive(v2Raw({ mode: 'ii-v-i' })).settings.mode).toBe('ii-v-i');
   });
 
+  it('accepts dictation with its level, defaulting to easy', () => {
+    expect(load([{ ...base, mode: 'dictation', level: 'hard' }])[0].level).toBe('hard');
+    expect(load([{ ...base, mode: 'dictation', level: 'x' }])[0].level).toBe('easy');
+    expect(load([{ ...base, mode: 'dictation' }])[0].level).toBe('easy');
+    expect(loadActive(v2Raw({ mode: 'dictation' })).settings.mode).toBe('dictation');
+  });
+
   it('accepts the chord modes, without a level on their history entries', () => {
     expect(load([{ ...base, mode: 'chord-name' }])[0]).toMatchObject({ mode: 'chord-name' });
     expect(load([{ ...base, mode: 'chord-name' }])[0]).not.toHaveProperty('level');

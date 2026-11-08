@@ -49,6 +49,12 @@ export const DEGREE_LEVEL_TEXT: Record<EarLevel, string> = {
   hard: 'Os 7 graus, só com a tônica como referência.',
 };
 
+export const DICTATION_LEVEL_TEXT: Record<EarLevel, string> = {
+  easy: '4 notas das pentatônicas maior e menor, em passos curtos.',
+  medium: '6 notas das escalas maior e menor natural.',
+  hard: '8 notas da escala maior, da menor ou de um modo, com saltos maiores.',
+};
+
 export const EAR_DIRECTION_LABELS: { value: EarDirectionSetting; label: string }[] = [
   { value: 'up', label: 'Sobe' },
   { value: 'down', label: 'Desce' },
