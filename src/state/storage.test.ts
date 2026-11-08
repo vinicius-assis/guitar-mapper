@@ -797,3 +797,31 @@ describe('M8', () => {
     expect(storage.dump()[STORAGE_KEY]).toBe(raw);
   });
 });
+
+describe('M8 metronome settings', () => {
+  const loadSettings = (settings: Record<string, unknown>) => loadActive(v2Raw(settings)).settings;
+
+  it('keeps a valid metronomeBpm', () => {
+    expect(loadSettings({ metronomeBpm: 150 }).metronomeBpm).toBe(150);
+  });
+
+  it.each([39, 221, 80.5, '90'])('falls back to 80 for metronomeBpm %j', (value) => {
+    expect(loadSettings({ metronomeBpm: value }).metronomeBpm).toBe(80);
+  });
+
+  it.each([3, 6])('keeps metronomeBeats %d', (value) => {
+    expect(loadSettings({ metronomeBeats: value }).metronomeBeats).toBe(value);
+  });
+
+  it.each([5, 0])('falls back to 4 for metronomeBeats %d', (value) => {
+    expect(loadSettings({ metronomeBeats: value }).metronomeBeats).toBe(4);
+  });
+
+  it('defaults to 80 and 4 when absent', () => {
+    const s = loadSettings({});
+    expect(s.metronomeBpm).toBe(80);
+    expect(s.metronomeBeats).toBe(4);
+    expect(DEFAULT_SETTINGS.metronomeBpm).toBe(80);
+    expect(DEFAULT_SETTINGS.metronomeBeats).toBe(4);
+  });
+});

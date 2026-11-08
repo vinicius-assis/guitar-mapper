@@ -4,6 +4,7 @@ import {
   parsePositionKey,
   type Filter,
 } from '../domain/fretboard';
+import { BEATS_DEFAULT, BEATS_OPTIONS, BPM_DEFAULT, BPM_MAX, BPM_MIN } from '../audio/metronomeClock';
 import {
   GUITAR,
   INSTRUMENTS,
@@ -79,6 +80,9 @@ export interface GlobalSettings {
   /** Formas e tipos de acorde do módulo Acordes. */
   chordShapes: ChordShapeSetting;
   chordKinds: ChordKindSetting;
+  /** Metrônomo de Ajustes: andamento (40–220) e tempos por compasso (1, 2, 3, 4 ou 6). */
+  metronomeBpm: number;
+  metronomeBeats: number;
 }
 
 /** Visão das configurações para o instrumento ativo (globais + filtro dele). */
@@ -138,6 +142,8 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   harmonyKeys: 'easy',
   chordShapes: 'open',
   chordKinds: 'triads',
+  metronomeBpm: BPM_DEFAULT,
+  metronomeBeats: BEATS_DEFAULT,
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -278,6 +284,15 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     chordKinds: CHORD_KIND_SETTINGS.includes(source.chordKinds as ChordKindSetting)
       ? (source.chordKinds as ChordKindSetting)
       : DEFAULT_SETTINGS.chordKinds,
+    metronomeBpm:
+      Number.isInteger(source.metronomeBpm) &&
+      (source.metronomeBpm as number) >= BPM_MIN &&
+      (source.metronomeBpm as number) <= BPM_MAX
+        ? (source.metronomeBpm as number)
+        : DEFAULT_SETTINGS.metronomeBpm,
+    metronomeBeats: BEATS_OPTIONS.includes(source.metronomeBeats as number)
+      ? (source.metronomeBeats as number)
+      : DEFAULT_SETTINGS.metronomeBeats,
   };
 }
 

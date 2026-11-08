@@ -243,3 +243,14 @@ describe('Settings weekly goal', () => {
     expect(screen.getByText('Dias por semana em que você quer terminar ao menos uma sessão.')).toBeInTheDocument();
   });
 });
+
+describe('Settings metronome section', () => {
+  it('sits after the weekly goal hint and before Dados', () => {
+    setup();
+    const hint = screen.getByText('Dias por semana em que você quer terminar ao menos uma sessão.');
+    const metronome = screen.getByRole('heading', { name: 'Metrônomo' });
+    const dados = screen.getByRole('heading', { name: 'Dados' });
+    expect(hint.compareDocumentPosition(metronome) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(metronome.compareDocumentPosition(dados) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

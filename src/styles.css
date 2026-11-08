@@ -417,3 +417,10 @@ main { display: flex; flex-direction: column; }
 .mark--guide circle { fill: var(--guide); }
 .mark--guide text { fill: var(--guide-text); }
 .swatch--guide { background: var(--guide); }
+
+.metronome button, .metronome-toggle { min-height: 48px; }
+.metronome-toggle { width: 100%; margin-top: 12px; }
+.metronome-bpm { font-size: 40px; font-weight: 700; text-align: center; margin: 8px 0; }
+.metronome-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.metronome-range { width: 100%; margin: 16px 0 4px; min-height: 48px; }
+.metronome-beats { grid-template-columns: repeat(5, 1fr); }
