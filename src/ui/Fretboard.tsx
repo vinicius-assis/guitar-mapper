@@ -17,7 +17,8 @@ export type MarkKind =
   | 'mastered'
   | 'root'
   | 'scale'
-  | 'chord';
+  | 'chord'
+  | 'guide';
 
 export interface Mark {
   position: Position;

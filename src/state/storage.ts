@@ -21,6 +21,9 @@ import { isScaleBoxSetting, isScaleDegreeKey, isScalePlayKey, type ScaleBoxSetti
 import { HARMONY_FIELD_SETTINGS, HARMONY_KEY_LEVELS, type HarmonyFieldSetting, type HarmonyKeyLevel } from '../domain/harmony';
 import { isHarmonyChordKey, isHarmonyDegreeKey, isQualityKey } from '../domain/harmonyItems';
 import { CHORD_KIND_SETTINGS, CHORD_SHAPE_SETTINGS, isChordNameKey, isChordPlayKey, type ChordKindSetting, type ChordShapeSetting } from '../domain/chordItems';
+import { isGuideKey } from '../domain/guideTones';
+import { isArpeggioKey } from '../domain/arpeggio';
+import { isIiViKey } from '../domain/progressions';
 import { isScaleId, type ScaleId } from '../domain/scales';
 import { QUIZ_MODES } from '../domain/exercises';
 import { LEVELED_MODES } from '../domain/session';
@@ -42,7 +45,8 @@ export interface InstrumentData {
    * (`scaledeg:<escala>:<desenho>:<corda>:<grau>`, `scaleplay:<escala>:<tônica>:<desenho>`) e de
    * Harmonia (`hchord:<campo>:<tônica>:<grau>`, `hdeg:<campo>:<tônica>:<grau>`,
    * `hqual:<campo>:<triad|seventh>:<grau>`) e de Acordes (`chordname:<forma>:<tônica>`,
-   * `chordplay:<forma>:<tônica>`). */
+   * `chordplay:<forma>:<tônica>`) e de notas-guia/arpejos (`guide:<forma>:<tônica>`,
+   * `arp:<escala>:<tônica>:<desenho>`, `iivi:<tom>:<forma>:<passo>`). */
   items: ProgressMap;
 }
 
@@ -316,6 +320,7 @@ function isItemKey(key: string): boolean {
   if (isScaleDegreeKey(key) || isScalePlayKey(key)) return true;
   if (isHarmonyChordKey(key) || isHarmonyDegreeKey(key) || isQualityKey(key)) return true;
   if (isChordNameKey(key) || isChordPlayKey(key)) return true;
+  if (isGuideKey(key) || isArpeggioKey(key) || isIiViKey(key)) return true;
   const match = INTERVAL_ITEM_KEY.exec(key);
   return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
 }

@@ -33,6 +33,9 @@ import {
   type ChordShapeSetting,
 } from '../domain/chordItems';
 import { chordVoicing, voicingPitches } from '../domain/chords';
+import { arpeggioKey, buildArpeggioQueue } from '../domain/arpeggio';
+import { buildGuideQueue, guideKey, guidePool } from '../domain/guideTones';
+import { buildIiViQueue, iiViKey, iiViPool, iiViQuestion, type IiViItem } from '../domain/progressions';
 import { chordPitches, type HarmonyFieldSetting } from '../domain/harmony';
 import {
   buildHarmonyQueue,
@@ -87,8 +90,11 @@ import { HarmonyQualityQuiz } from './screens/HarmonyQualityQuiz';
 import { HARMONY_KEY_TEXT } from './harmonyText';
 import { ScaleDegreeQuiz } from './screens/ScaleDegreeQuiz';
 import { ScalePlayQuiz } from './screens/ScalePlayQuiz';
+import { ArpeggioQuiz } from './screens/ArpeggioQuiz';
+import { GuideToneQuiz } from './screens/GuideToneQuiz';
+import { IiViQuiz } from './screens/IiViQuiz';
 
-export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem | HarmonyItem | QualityQuestion | ChordItem | ChordNameQuestion;
+export type QuizItem = Position | IntervalItem | EarIntervalQuestion | DegreeQuestion | ScaleDegreeQuestion | ScalePlayItem | HarmonyItem | QualityQuestion | ChordItem | ChordNameQuestion | IiViItem;
 
 export interface ExerciseContext {
   settings: Settings;
@@ -678,6 +684,73 @@ const chordPlay: Exercise = {
   },
 };
 
+function GuideOptions() {
+  const { data, updateSettings } = useAppState();
+  const { chordShapes } = data.settings;
+  return (
+    <div className="level-bar" role="group" aria-label="Formas">
+      {SHAPE_OPTIONS.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={chordShapes === value}
+          onClick={() => updateSettings({ chordShapes: value })}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const guideTones: Exercise = {
+  ...EXERCISE_META['guide-tones'],
+  itemKey: (item) => guideKey(item as ChordItem),
+  questionCount: (ctx) => (ctx.instrument.id === 'bass' ? 0 : guidePool(ctx.settings.chordShapes).length),
+  startBlockers: (ctx) => (ctx.instrument.id === 'bass' ? [BASS_NO_CHORDS] : []),
+  startsFromPosition: () => false,
+  Options: GuideOptions,
+  buildQueue: (ctx) =>
+    buildGuideQueue(reviewSubset(ctx, guidePool(ctx.settings.chordShapes), guideKey), ctx.rng),
+  prepareSound: (sound, items) => sound.preparePitches(chordItemsPitches(items as ChordItem[])),
+  Quiz: function GuideToneExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <GuideToneQuiz question={item as ChordItem} {...rest} />;
+  },
+};
+
+const arpeggio: Exercise = {
+  ...scalePlay,
+  ...EXERCISE_META.arpeggio,
+  itemKey: (item) => arpeggioKey(item as ScalePlayItem),
+  buildQueue: (ctx) =>
+    buildArpeggioQueue(
+      reviewSubset(ctx, scalePlayPool(ctx.settings.scale, ctx.settings.scaleBox), arpeggioKey),
+      ctx.rng,
+    ),
+  Quiz: function ArpeggioExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <ArpeggioQuiz question={item as ScalePlayItem} {...rest} />;
+  },
+};
+
+const iiVI: Exercise = {
+  ...guideTones,
+  ...EXERCISE_META['ii-v-i'],
+  itemKey: (item) => iiViKey(item as IiViItem),
+  questionCount: (ctx) => (ctx.instrument.id === 'bass' ? 0 : iiViPool().length),
+  Options: undefined,
+  buildQueue: (ctx) => buildIiViQueue(reviewSubset(ctx, iiViPool(), iiViKey), ctx.rng),
+  prepareSound: (sound, items) =>
+    sound.preparePitches(
+      (items as IiViItem[]).flatMap((i) => {
+        const q = iiViQuestion(i);
+        return [...q.from.notes, ...q.to.notes].map((n) => n.pitch);
+      }),
+    ),
+  Quiz: function IiViExerciseQuiz({ item, ...rest }: ExerciseQuizProps) {
+    return <IiViQuiz question={item as IiViItem} {...rest} />;
+  },
+};
+
 export const EXERCISES: Record<QuizMode, Exercise> = {
   'position-to-note': positionExercise('position-to-note', positionQuiz(ChoiceQuiz)),
   'note-to-position': positionExercise('note-to-position', positionQuiz(FindQuiz)),
@@ -693,6 +766,9 @@ export const EXERCISES: Record<QuizMode, Exercise> = {
   'harmony-quality': harmonyQuality,
   'chord-name': chordName,
   'chord-play': chordPlay,
+  'guide-tones': guideTones,
+  arpeggio,
+  'ii-v-i': iiVI,
 };
 
 export function exerciseFor(mode: QuizMode): Exercise {

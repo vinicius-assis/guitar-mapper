@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { PositionProgress } from '../domain/scheduler';
 import { seededStorage } from '../test-utils';
 import { createDefaultData, STORAGE_KEY } from './storage';
 import { exportFilename, parseImport, serializeData } from './backup';
@@ -45,6 +46,14 @@ describe('backup', () => {
     d.instruments.guitar.items = {
       'chordplay:a-m7:2': { box: 2, correct: 1, wrong: 0, lastReview: 1, nextReview: 2 },
     };
+    expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
+  });
+
+  it('round-trips guide and arpeggio item keys', () => {
+    const d = createDefaultData();
+    const entry: PositionProgress = { box: 2, correct: 1, wrong: 0, lastReview: 1, nextReview: 2 };
+    d.instruments.guitar.items = { 'guide:a-7:2': entry };
+    d.instruments.bass.items = { 'arp:pent-minor:9:1': entry };
     expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
   });
 

@@ -18,6 +18,9 @@ describe('exercises', () => {
       'harmony-quality',
       'chord-name',
       'chord-play',
+      'guide-tones',
+      'arpeggio',
+      'ii-v-i',
     ]);
   });
 
@@ -27,7 +30,7 @@ describe('exercises', () => {
 
   it('as trilhas cobrem cada modo exatamente uma vez', () => {
     expect(TRACKS.map((t) => t.label)).toEqual(['Braço', 'Ouvido', 'Teoria', 'Escalas', 'Harmonia', 'Acordes']);
-    expect(TRACKS.flatMap((t) => t.modes)).toEqual(QUIZ_MODES);
+    expect([...TRACKS.flatMap((t) => t.modes)].sort()).toEqual([...QUIZ_MODES].sort());
   });
 
   it('só os modos de braço registram progresso de posição', () => {
@@ -58,7 +61,7 @@ describe('exercises', () => {
   });
 
   it('a trilha Escalas tem os dois modos, sem progresso de posição nem Foco', () => {
-    expect(TRACKS.find((t) => t.id === 'escalas')!.modes).toEqual(['scale-degree', 'scale-play']);
+    expect(TRACKS.find((t) => t.id === 'escalas')!.modes).toEqual(['scale-degree', 'scale-play', 'arpeggio']);
     for (const mode of ['scale-degree', 'scale-play'] as const) {
       expect(EXERCISE_META[mode].track).toBe('escalas');
       expect(EXERCISE_META[mode].recordsPositionProgress).toBe(false);
@@ -83,7 +86,7 @@ describe('exercises', () => {
 
   it('a trilha Acordes tem os dois modos, sem progresso de posição nem Foco', () => {
     const modes = ['chord-name', 'chord-play'] as const;
-    expect(TRACKS.find((t) => t.id === 'acordes')!.modes).toEqual(modes);
+    expect(TRACKS.find((t) => t.id === 'acordes')!.modes).toEqual([...modes, 'guide-tones', 'ii-v-i']);
     for (const mode of modes) {
       expect(EXERCISE_META[mode].track).toBe('acordes');
       expect(EXERCISE_META[mode].recordsPositionProgress).toBe(false);
@@ -91,6 +94,19 @@ describe('exercises', () => {
     }
     expect(EXERCISE_META['chord-name'].label).toBe('Nome do acorde');
     expect(EXERCISE_META['chord-play'].label).toBe('Monte o acorde');
+  });
+
+  it('os modos do M7 entram em trilhas existentes, sem progresso de posição nem Foco', () => {
+    expect(TRACKS.find((t) => t.id === 'escalas')!.modes).toEqual(['scale-degree', 'scale-play', 'arpeggio']);
+    expect(TRACKS.find((t) => t.id === 'acordes')!.modes).toEqual(['chord-name', 'chord-play', 'guide-tones', 'ii-v-i']);
+    const tracks = { 'guide-tones': 'acordes', arpeggio: 'escalas', 'ii-v-i': 'acordes' } as const;
+    const labels = { 'guide-tones': 'Notas-guia', arpeggio: 'Arpejo no desenho', 'ii-v-i': 'ii–V–I' } as const;
+    for (const mode of ['guide-tones', 'arpeggio', 'ii-v-i'] as const) {
+      expect(EXERCISE_META[mode].track).toBe(tracks[mode]);
+      expect(EXERCISE_META[mode].label).toBe(labels[mode]);
+      expect(EXERCISE_META[mode].recordsPositionProgress).toBe(false);
+      expect(EXERCISE_META[mode].usesFocus).toBe(false);
+    }
   });
 
   it('rótulos', () => {

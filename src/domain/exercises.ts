@@ -138,6 +138,33 @@ export const EXERCISE_META: Record<QuizMode, ExerciseMeta> = {
     recordsPositionProgress: false,
     usesFocus: false,
   },
+  'guide-tones': {
+    mode: 'guide-tones',
+    track: 'acordes',
+    label: 'Notas-guia',
+    description:
+      'O braço mostra o desenho de um acorde de sétima e o nome dele. Toque as notas-guia: a 3ª e a 7ª. Tocar a fundamental ou a 5ª encerra a pergunta. Só no violão.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
+  arpeggio: {
+    mode: 'arpeggio',
+    track: 'escalas',
+    label: 'Arpejo no desenho',
+    description:
+      'O app pede o arpejo do acorde da tônica num desenho da escala, como Am7 na pentatônica menor de Lá, e marca as tônicas. Toque as outras notas do acorde no desenho. Uma nota fora do acorde encerra a pergunta.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
+  'ii-v-i': {
+    mode: 'ii-v-i',
+    track: 'acordes',
+    label: 'ii–V–I',
+    description:
+      'O braço mostra um acorde do ii–V–I com as notas-guia marcadas. Toque as notas-guia do acorde seguinte, as mais perto: a 7ª desce meio tom e vira a 3ª; a 3ª fica e vira a 7ª. Só no violão.',
+    recordsPositionProgress: false,
+    usesFocus: false,
+  },
 };
 
 export const QUIZ_MODES: QuizMode[] = [
@@ -155,13 +182,16 @@ export const QUIZ_MODES: QuizMode[] = [
   'harmony-quality',
   'chord-name',
   'chord-play',
+  'guide-tones',
+  'arpeggio',
+  'ii-v-i',
 ];
 
 export const TRACKS: { id: TrackId; label: string; modes: QuizMode[] }[] = [
   { id: 'braco', label: 'Braço', modes: ['position-to-note', 'note-to-position', 'flashcard'] },
   { id: 'ouvido', label: 'Ouvido', modes: ['ear', 'ear-interval', 'ear-degree'] },
   { id: 'teoria', label: 'Teoria', modes: ['interval'] },
-  { id: 'escalas', label: 'Escalas', modes: ['scale-degree', 'scale-play'] },
+  { id: 'escalas', label: 'Escalas', modes: ['scale-degree', 'scale-play', 'arpeggio'] },
   { id: 'harmonia', label: 'Harmonia', modes: ['harmony-chord', 'harmony-degree', 'harmony-quality'] },
-  { id: 'acordes', label: 'Acordes', modes: ['chord-name', 'chord-play'] },
+  { id: 'acordes', label: 'Acordes', modes: ['chord-name', 'chord-play', 'guide-tones', 'ii-v-i'] },
 ];

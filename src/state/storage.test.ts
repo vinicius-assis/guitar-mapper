@@ -221,6 +221,12 @@ describe('history level', () => {
     expect(loadActive(v2Raw({ mode: 'harmony-chord' })).settings.mode).toBe('harmony-chord');
   });
 
+  it('accepts the M7 modes, without a level on their history entries', () => {
+    expect(load([{ ...base, mode: 'arpeggio' }])[0]).toMatchObject({ mode: 'arpeggio' });
+    expect(load([{ ...base, mode: 'arpeggio' }])[0]).not.toHaveProperty('level');
+    expect(loadActive(v2Raw({ mode: 'ii-v-i' })).settings.mode).toBe('ii-v-i');
+  });
+
   it('accepts the chord modes, without a level on their history entries', () => {
     expect(load([{ ...base, mode: 'chord-name' }])[0]).toMatchObject({ mode: 'chord-name' });
     expect(load([{ ...base, mode: 'chord-name' }])[0]).not.toHaveProperty('level');
@@ -735,5 +741,32 @@ describe('M6 item keys', () => {
     const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
     const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
     expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+});
+
+describe('M7 item keys', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps guide and arpeggio keys and old ones, drops malformed ones', () => {
+    const good = ['guide:g7:7', 'arp:dorian:2:3', 'chordplay:e-7:4', 'scaleplay:blues:3:2'];
+    const bad = ['guide:c:0', 'arp:blues:0:6'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+
+  it('keeps ii-V-I keys, drops malformed ones', () => {
+    const good = ['iivi:5:2:v-i'];
+    const bad = ['iivi:1:1:ii-v'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+
+  it('does not rewrite a v2 save without the new keys', () => {
+    const raw = v2Raw({}, { items: { 'chordplay:e-7:4': entry } });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: raw });
+    loadData(storage);
+    expect(storage.dump()[STORAGE_KEY]).toBe(raw);
   });
 });

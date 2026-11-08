@@ -652,7 +652,7 @@ describe('Study: header menu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('lists the 14 exercises with the current one checked', () => {
+  it('lists the 17 exercises with the current one checked', () => {
     setup({ mode: 'flashcard', filter: THREE });
     fireEvent.click(menuButton());
     expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
@@ -667,16 +667,22 @@ describe('Study: header menu', () => {
       'Intervalos',
       'Grau no desenho',
       'Toque a escala',
+      'Arpejo no desenho',
       'Acorde do grau',
       'Grau do acorde',
       'Qualidade do acorde',
       'Nome do acorde',
       'Monte o acorde',
+      'Notas-guia',
+      'ii–V–I',
     ]);
     expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual([
       'false',
       'false',
       'true',
+      'false',
+      'false',
+      'false',
       'false',
       'false',
       'false',
@@ -710,10 +716,10 @@ describe('Study: header menu', () => {
     expect(labels('Braço')).toEqual(['Posição → nota', 'Nota → posição', 'Flashcard']);
     expect(labels('Ouvido')).toEqual(['Ouvido', 'Ouvir intervalos', 'Ouvir graus']);
     expect(labels('Teoria')).toEqual(['Intervalos']);
-    expect(labels('Escalas')).toEqual(['Grau no desenho', 'Toque a escala']);
+    expect(labels('Escalas')).toEqual(['Grau no desenho', 'Toque a escala', 'Arpejo no desenho']);
     expect(labels('Harmonia')).toEqual(['Acorde do grau', 'Grau do acorde', 'Qualidade do acorde']);
-    expect(labels('Acordes')).toEqual(['Nome do acorde', 'Monte o acorde']);
-    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(14);
+    expect(labels('Acordes')).toEqual(['Nome do acorde', 'Monte o acorde', 'Notas-guia', 'ii–V–I']);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(17);
     const braco = within(menu).getByRole('group', { name: 'Braço' });
     expect(braco.querySelector('p.menu__group')).toHaveTextContent('Braço');
   });
@@ -803,7 +809,7 @@ describe('Study: desktop layout', () => {
   afterEach(() => viewport.restore());
   const exercises = () => screen.queryByRole('group', { name: 'Exercício' });
 
-  it('shows the 14 exercises as buttons instead of the menu, and no logo in the header', () => {
+  it('shows the 17 exercises as buttons instead of the menu, and no logo in the header', () => {
     setup({ filter: THREE });
     const group = exercises()!;
     expect(
@@ -820,11 +826,14 @@ describe('Study: desktop layout', () => {
       'Intervalos',
       'Grau no desenho',
       'Toque a escala',
+      'Arpejo no desenho',
       'Acorde do grau',
       'Grau do acorde',
       'Qualidade do acorde',
       'Nome do acorde',
       'Monte o acorde',
+      'Notas-guia',
+      'ii–V–I',
     ]);
     expect(within(group).getByRole('button', { name: 'Posição → nota' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'Menu de exercícios' })).not.toBeInTheDocument();
@@ -1763,6 +1772,150 @@ describe('Study: acordes', () => {
     setup({ mode });
     start();
     fireEvent.click(document.querySelector(selector) as HTMLElement);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    const next = screen.queryByRole('button', { name: 'Próxima' });
+    if (next) fireEvent.click(next);
+    else await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
+    expect(screen.getByText(/^Pergunta 2 de/)).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
+
+describe('Study: M7', () => {
+  const BASS_MSG = 'Acordes são só para violão. Troque para Violão em Ajustes.';
+  const pressed = (group: string, name: string) =>
+    expect(within(screen.getByRole('group', { name: group })).getByRole('button', { name })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+  function setupBass(settings: Partial<Settings>, forced: { string: number; fret: number } | null = null) {
+    const storage = seededStorage({
+      instrument: 'bass',
+      settings: { notation: 'cifra', instrument: 'bass', soundEnabled: false, ...settings },
+    });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Study forced={forced} />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    return storage;
+  }
+
+  it('Notas-guia: shapes selector only, no Acordes group, no Foco', () => {
+    const storage = setup({ mode: 'guide-tones' });
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Acordes' })).not.toBeInTheDocument();
+    pressed('Formas', 'Abertas');
+    expect(screen.getByText('Sessão de 11 perguntas')).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Formas' })).getByRole('button', { name: 'Pestana' }));
+    expect(readRawSettings(storage).chordShapes).toBe('barre');
+    expect(screen.getByText('Sessão de 20 perguntas')).toBeInTheDocument();
+  });
+
+  it('ii–V–I: no option groups and a 16-question session', () => {
+    setup({ mode: 'ii-v-i' });
+    expect(screen.queryByRole('group', { name: 'Formas' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Acordes' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Foco' })).not.toBeInTheDocument();
+    expect(screen.getByText('Sessão de 16 perguntas')).toBeInTheDocument();
+  });
+
+  it.each(['guide-tones', 'ii-v-i'] as const)('%s on the bass: message, disabled Iniciar, no session count', (mode) => {
+    setupBass({ mode });
+    expect(screen.getByText(BASS_MSG)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+    expect(screen.queryByText(/Sessão de/)).not.toBeInTheDocument();
+  });
+
+  it.each(['guide-tones', 'ii-v-i'] as const)('%s on the bass: a forced position does not start', (mode) => {
+    setupBass({ mode }, { string: 3, fret: 7 });
+    expect(screen.queryByText(/Pergunta 1 de/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+  });
+
+  it('switching from bass to guitar enables Iniciar on Notas-guia', () => {
+    function Switch() {
+      const { updateSettings } = useAppState();
+      return (
+        <button type="button" onClick={() => updateSettings({ instrument: 'guitar' })}>
+          trocar
+        </button>
+      );
+    }
+    const storage = seededStorage({
+      instrument: 'bass',
+      settings: { notation: 'cifra', instrument: 'bass', mode: 'guide-tones' },
+    });
+    render(
+      <AppProvider storage={storage}>
+        <ConfirmProvider>
+          <SoundProvider player={fakePlayer()}>
+            <Switch />
+            <Study />
+          </SoundProvider>
+        </ConfirmProvider>
+      </AppProvider>,
+    );
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'trocar' }));
+    expect(screen.queryByText(BASS_MSG)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+    expect(screen.getByText('Sessão de 11 perguntas')).toBeInTheDocument();
+  });
+
+  it('Arpejo no desenho on the bass: starts with a 4-string board', () => {
+    setupBass({ mode: 'arpeggio' });
+    expect(screen.getByRole('button', { name: /Iniciar/ })).toBeEnabled();
+    expect(screen.getByText('Sessão de 12 perguntas')).toBeInTheDocument();
+    start();
+    expect(screen.getByText('Toque o arpejo')).toBeInTheDocument();
+    // the visible fret window depends on the random item, so no fixed fret here
+    expect(screen.getAllByTestId(/^cell-4-\d+$/).length).toBeGreaterThan(0);
+    expect(screen.queryAllByTestId(/^cell-5-\d+$/)).toHaveLength(0);
+  });
+
+  it('runs an ii–V–I session with the sound off, records iivi: progress and a history entry without level', async () => {
+    const storage = setup({ mode: 'ii-v-i', soundEnabled: false });
+    start();
+    expect(screen.getByText('Pergunta 1 de 16')).toBeInTheDocument();
+    const root = document.querySelector('g.mark--root') as SVGElement;
+    const [s, f] = root.getAttribute('data-pos')!.split('-');
+    fireEvent.click(screen.getByRole('button', { name: `Corda ${s}, casa ${f}` })); // a fundamental nunca é nota-guia
+    const keys = Object.keys(readSaved(storage).itemProgress);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].startsWith('iivi:')).toBe(true);
+    await finalize();
+    const entry = readSaved(storage).history[0];
+    expect(entry).toMatchObject({ mode: 'ii-v-i' });
+    expect(entry).not.toHaveProperty('level');
+  });
+
+  const tapPos = (pos: string) => {
+    const [s, f] = pos.split('-');
+    fireEvent.click(screen.getByRole('button', { name: `Corda ${s}, casa ${f}` }));
+  };
+
+  it.each(['guide-tones', 'arpeggio', 'ii-v-i'] as const)('%s: the next question is remounted and clears the answer', async (mode) => {
+    setup({ mode });
+    start();
+    if (mode === 'ii-v-i') {
+      tapPos(document.querySelector('g.mark--root')!.getAttribute('data-pos')!);
+    } else if (mode === 'guide-tones') {
+      for (const g of [...document.querySelectorAll('g.mark--chord')]) {
+        if (screen.queryByRole('status')) break;
+        tapPos(g.getAttribute('data-pos')!);
+      }
+    } else {
+      for (const t of screen.getAllByRole('button', { name: /^Corda \d+, casa \d+$/ })) {
+        if (screen.queryByRole('status')) break;
+        fireEvent.click(t);
+      }
+    }
     expect(screen.getByRole('status')).toBeInTheDocument();
     const next = screen.queryByRole('button', { name: 'Próxima' });
     if (next) fireEvent.click(next);
