@@ -57,6 +57,14 @@ describe('backup', () => {
     expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
   });
 
+  it('round-trips dictation keys and level', () => {
+    const d = createDefaultData();
+    const entry: PositionProgress = { box: 2, correct: 1, wrong: 0, lastReview: 1, nextReview: 2 };
+    d.instruments.bass.items = { 'dict:pent-minor:9:4': entry };
+    d.settings.dictationLevel = 'medium';
+    expect(parseImport(serializeData(d))).toEqual({ ok: true, data: d });
+  });
+
   it('names the file with the local date', () => {
     expect(exportFilename(new Date(2026, 10, 7, 23, 30))).toBe('guitar-mapper-2026-11-07.json');
   });

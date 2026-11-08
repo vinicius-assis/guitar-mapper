@@ -770,3 +770,30 @@ describe('M7 item keys', () => {
     expect(storage.dump()[STORAGE_KEY]).toBe(raw);
   });
 });
+
+describe('M8', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps dictation keys and old ones, drops malformed ones', () => {
+    const good = ['dict:major:0:6', 'arp:dorian:2:3'];
+    const bad = ['dict:dorian:0:6'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+
+  it('sanitizes dictationLevel', () => {
+    const level = (settings: unknown) =>
+      loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw(settings) })).data.settings.dictationLevel;
+    expect(level({ dictationLevel: 'hard' })).toBe('hard');
+    expect(level({ dictationLevel: 'x' })).toBe('easy');
+    expect(level({})).toBe('easy');
+  });
+
+  it('does not rewrite a v2 save without the new fields', () => {
+    const raw = v2Raw({}, { items: { 'arp:dorian:2:3': entry } });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: raw });
+    loadData(storage);
+    expect(storage.dump()[STORAGE_KEY]).toBe(raw);
+  });
+});

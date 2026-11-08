@@ -24,6 +24,7 @@ import { CHORD_KIND_SETTINGS, CHORD_SHAPE_SETTINGS, isChordNameKey, isChordPlayK
 import { isGuideKey } from '../domain/guideTones';
 import { isArpeggioKey } from '../domain/arpeggio';
 import { isIiViKey } from '../domain/progressions';
+import { isDictationKey } from '../domain/dictation';
 import { isScaleId, type ScaleId } from '../domain/scales';
 import { QUIZ_MODES } from '../domain/exercises';
 import { LEVELED_MODES } from '../domain/session';
@@ -46,7 +47,8 @@ export interface InstrumentData {
    * Harmonia (`hchord:<campo>:<tônica>:<grau>`, `hdeg:<campo>:<tônica>:<grau>`,
    * `hqual:<campo>:<triad|seventh>:<grau>`) e de Acordes (`chordname:<forma>:<tônica>`,
    * `chordplay:<forma>:<tônica>`) e de notas-guia/arpejos (`guide:<forma>:<tônica>`,
-   * `arp:<escala>:<tônica>:<desenho>`, `iivi:<tom>:<forma>:<passo>`). */
+   * `arp:<escala>:<tônica>:<desenho>`, `iivi:<tom>:<forma>:<passo>`) e de ditado
+   * (`dict:<escala>:<tônica>:<4|6|8>`). */
   items: ProgressMap;
 }
 
@@ -61,6 +63,7 @@ export interface GlobalSettings {
   earIntervalLevel: EarLevel;
   earIntervalDirection: EarDirectionSetting;
   degreeLevel: EarLevel;
+  dictationLevel: EarLevel;
   instrument: InstrumentId;
   intervals: IntervalId[];
   intervalAdvance: IntervalAdvance;
@@ -123,6 +126,7 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   earIntervalLevel: 'easy',
   earIntervalDirection: 'up',
   degreeLevel: 'easy',
+  dictationLevel: 'easy',
   instrument: 'guitar',
   intervals: [...DEFAULT_INTERVALS],
   intervalAdvance: 'manual',
@@ -242,6 +246,9 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     degreeLevel: EAR_LEVELS.includes(source.degreeLevel as EarLevel)
       ? (source.degreeLevel as EarLevel)
       : DEFAULT_SETTINGS.degreeLevel,
+    dictationLevel: EAR_LEVELS.includes(source.dictationLevel as EarLevel)
+      ? (source.dictationLevel as EarLevel)
+      : DEFAULT_SETTINGS.dictationLevel,
     instrument: INSTRUMENTS.some((i) => i.id === source.instrument)
       ? (source.instrument as InstrumentId)
       : DEFAULT_SETTINGS.instrument,
@@ -321,6 +328,7 @@ function isItemKey(key: string): boolean {
   if (isHarmonyChordKey(key) || isHarmonyDegreeKey(key) || isQualityKey(key)) return true;
   if (isChordNameKey(key) || isChordPlayKey(key)) return true;
   if (isGuideKey(key) || isArpeggioKey(key) || isIiViKey(key)) return true;
+  if (isDictationKey(key)) return true;
   const match = INTERVAL_ITEM_KEY.exec(key);
   return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
 }
