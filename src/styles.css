@@ -298,7 +298,7 @@ main { display: flex; flex-direction: column; }
 .menu__group { grid-column: 1 / -1; margin: 0; padding: 12px 4px 0; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .menu button { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: none; text-align: left; font-size: 0.9375rem; line-height: 1.2; }
 .menu button[aria-checked='true'] { color: var(--accent); border-color: var(--accent); font-weight: 700; }
-.menu button > [aria-hidden='true'] { display: none; }
+.menu button > span[aria-hidden='true'] { display: none; }
 .overlay-backdrop { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 .session-start > .primary { position: relative; z-index: 8; }
 .static-value { font-size: 1rem; font-weight: 700; color: var(--text); }

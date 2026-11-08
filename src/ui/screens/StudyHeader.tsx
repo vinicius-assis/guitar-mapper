@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { modeLabel } from '../modeLabels';
 import { EXERCISE_META, TRACKS } from '../../domain/exercises';
 import { InstrumentBadge } from '../InstrumentBadge';
@@ -55,7 +56,8 @@ export function StudyHeader({
           <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </button>
-      {menuOpen && (
+      {menuOpen &&
+        createPortal(
         <div className="menu" role="menu" aria-label="Exercícios">
           <div className="menu__bar">
             <span className="menu__title">Exercícios</span>
@@ -87,7 +89,8 @@ export function StudyHeader({
               ))}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
