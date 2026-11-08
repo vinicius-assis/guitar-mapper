@@ -4,6 +4,7 @@ import { INSTRUMENTS } from '../../domain/instruments';
 import { useAppState } from '../../state/AppState';
 import { IMPORT_ERROR, exportFilename, parseImport, serializeData } from '../../state/backup';
 import { useConfirm } from '../ConfirmDialog';
+import { Metronome } from '../Metronome';
 
 function readText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -162,6 +163,8 @@ export function Settings() {
         </select>
       </label>
       <p className="hint">Dias por semana em que você quer terminar ao menos uma sessão.</p>
+
+      <Metronome />
 
       <section aria-labelledby="data-title">
         <h3 id="data-title">Dados</h3>

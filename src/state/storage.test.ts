@@ -227,6 +227,13 @@ describe('history level', () => {
     expect(loadActive(v2Raw({ mode: 'ii-v-i' })).settings.mode).toBe('ii-v-i');
   });
 
+  it('accepts dictation with its level, defaulting to easy', () => {
+    expect(load([{ ...base, mode: 'dictation', level: 'hard' }])[0].level).toBe('hard');
+    expect(load([{ ...base, mode: 'dictation', level: 'x' }])[0].level).toBe('easy');
+    expect(load([{ ...base, mode: 'dictation' }])[0].level).toBe('easy');
+    expect(loadActive(v2Raw({ mode: 'dictation' })).settings.mode).toBe('dictation');
+  });
+
   it('accepts the chord modes, without a level on their history entries', () => {
     expect(load([{ ...base, mode: 'chord-name' }])[0]).toMatchObject({ mode: 'chord-name' });
     expect(load([{ ...base, mode: 'chord-name' }])[0]).not.toHaveProperty('level');
@@ -768,5 +775,60 @@ describe('M7 item keys', () => {
     const storage = createMemoryStorage({ [STORAGE_KEY]: raw });
     loadData(storage);
     expect(storage.dump()[STORAGE_KEY]).toBe(raw);
+  });
+});
+
+describe('M8', () => {
+  const entry: PositionProgress = { box: 3, correct: 2, wrong: 1, lastReview: 10, nextReview: 20 };
+
+  it('keeps dictation keys and old ones, drops malformed ones', () => {
+    const good = ['dict:major:0:6', 'arp:dorian:2:3'];
+    const bad = ['dict:dorian:0:6'];
+    const items = Object.fromEntries([...good, ...bad].map((k) => [k, entry]));
+    const { data } = loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw({}, { items }) }));
+    expect(Object.keys(data.instruments.guitar.items).sort()).toEqual([...good].sort());
+  });
+
+  it('sanitizes dictationLevel', () => {
+    const level = (settings: unknown) =>
+      loadData(createMemoryStorage({ [STORAGE_KEY]: v2Raw(settings) })).data.settings.dictationLevel;
+    expect(level({ dictationLevel: 'hard' })).toBe('hard');
+    expect(level({ dictationLevel: 'x' })).toBe('easy');
+    expect(level({})).toBe('easy');
+  });
+
+  it('does not rewrite a v2 save without the new fields', () => {
+    const raw = v2Raw({}, { items: { 'arp:dorian:2:3': entry } });
+    const storage = createMemoryStorage({ [STORAGE_KEY]: raw });
+    loadData(storage);
+    expect(storage.dump()[STORAGE_KEY]).toBe(raw);
+  });
+});
+
+describe('M8 metronome settings', () => {
+  const loadSettings = (settings: Record<string, unknown>) => loadActive(v2Raw(settings)).settings;
+
+  it('keeps a valid metronomeBpm', () => {
+    expect(loadSettings({ metronomeBpm: 150 }).metronomeBpm).toBe(150);
+  });
+
+  it.each([39, 221, 80.5, '90'])('falls back to 80 for metronomeBpm %j', (value) => {
+    expect(loadSettings({ metronomeBpm: value }).metronomeBpm).toBe(80);
+  });
+
+  it.each([3, 6])('keeps metronomeBeats %d', (value) => {
+    expect(loadSettings({ metronomeBeats: value }).metronomeBeats).toBe(value);
+  });
+
+  it.each([5, 0])('falls back to 4 for metronomeBeats %d', (value) => {
+    expect(loadSettings({ metronomeBeats: value }).metronomeBeats).toBe(4);
+  });
+
+  it('defaults to 80 and 4 when absent', () => {
+    const s = loadSettings({});
+    expect(s.metronomeBpm).toBe(80);
+    expect(s.metronomeBeats).toBe(4);
+    expect(DEFAULT_SETTINGS.metronomeBpm).toBe(80);
+    expect(DEFAULT_SETTINGS.metronomeBeats).toBe(4);
   });
 });

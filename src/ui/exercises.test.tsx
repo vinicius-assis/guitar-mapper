@@ -25,6 +25,7 @@ import { chordPool, isChordNameKey, isChordPlayKey, type ChordNameQuestion } fro
 import { arpeggioKey, isArpeggioKey } from '../domain/arpeggio';
 import { guideKey, isGuideKey } from '../domain/guideTones';
 import { iiViKey, isIiViKey } from '../domain/progressions';
+import { dictationKey, dictationPool, isDictationKey, type DictationQuestion } from '../domain/dictation';
 import { intervalItems } from '../domain/intervals';
 import {
   scaleDegreeKey,
@@ -711,5 +712,71 @@ describe('M7', () => {
     const sound = { preparePitches } as unknown as Parameters<Exercise['prepareSound']>[0];
     iv().prepareSound(sound, [{ key: 0, grip: 1, step: 'ii-v' }], GUITAR);
     expect(preparePitches).toHaveBeenLastCalledWith([50, 53, 60, 43, 53, 59]);
+  });
+});
+
+describe('M8', () => {
+  const dc = () => exerciseFor('dictation');
+  const BASS_CTX = (settings: Partial<Settings> = {}): ExerciseContext => ({ ...makeCtx(settings), instrument: BASS });
+  const AM: DictationQuestion = { scale: 'pent-minor', root: 9, length: 4, box: 1, pitches: [57, 60, 62, 64] };
+
+  it('questionCount por nível, igual no baixo', () => {
+    expect(dc().questionCount(makeCtx({ dictationLevel: 'easy' }))).toBe(24);
+    expect(dc().questionCount(makeCtx({ dictationLevel: 'medium' }))).toBe(24);
+    expect(dc().questionCount(makeCtx({ dictationLevel: 'hard' }))).toBe(84);
+    expect(dc().questionCount(BASS_CTX({ dictationLevel: 'easy' }))).toBe(24);
+    expect(dc().questionCount(BASS_CTX({ dictationLevel: 'medium' }))).toBe(24);
+    expect(dc().questionCount(BASS_CTX({ dictationLevel: 'hard' }))).toBe(84);
+  });
+
+  it('startBlockers: só o som, e uma posição forçada não inicia', () => {
+    expect(dc().startBlockers(makeCtx({ soundEnabled: false }))).toEqual([
+      'Ligue o Som em Ajustes para treinar de ouvido.',
+    ]);
+    expect(dc().startBlockers(makeCtx({ soundEnabled: true }))).toEqual([]);
+    expect(dc().startsFromPosition(makeCtx())).toBe(false);
+  });
+
+  it.each([
+    ['guitar', makeCtx],
+    ['bass', BASS_CTX],
+  ] as const)('buildQueue no difícil (%s): 20 perguntas distintas, válidas e dentro de EAR_RANGE', (_name, make) => {
+    const ctx = { ...make({ dictationLevel: 'hard' }), progress: {}, limit: 20, now: 0 };
+    const queue = dc().buildQueue(ctx);
+    const got = queue.map((q) => dc().itemKey(q, ctx.instrument));
+    const [lo, hi] = earRange(ctx.instrument);
+    expect(queue).toHaveLength(20);
+    expect(new Set(got).size).toBe(20);
+    expect(got.every(isDictationKey)).toBe(true);
+    for (const q of queue as DictationQuestion[]) {
+      for (const pitch of q.pitches) {
+        expect(pitch).toBeGreaterThanOrEqual(lo);
+        expect(pitch).toBeLessThanOrEqual(hi);
+      }
+    }
+  });
+
+  it('a revisão prioriza os vencidos', () => {
+    const pool = dictationPool('easy');
+    const due = pool.slice(0, 5).map(dictationKey);
+    const progress: ProgressMap = {};
+    for (const item of pool) {
+      const k = dictationKey(item);
+      progress[k] = due.includes(k)
+        ? { box: 1, correct: 0, wrong: 1, lastReview: 0, nextReview: -1000 }
+        : { box: 1, correct: 1, wrong: 0, lastReview: 0, nextReview: 10 ** 12 };
+    }
+    const queue = dc().buildQueue({ ...makeCtx({ dictationLevel: 'easy' }), progress, limit: 20, now: 0 });
+    const got = queue.map((q) => dc().itemKey(q, GUITAR));
+    for (const k of due) expect(got).toContain(k);
+  });
+
+  it('chave do item, histórico e prepareSound', () => {
+    expect(dc().itemKey(AM, GUITAR)).toBe('dict:pent-minor:9:4');
+    expect(dc().historyLevel!({ ...makeCtx().settings, dictationLevel: 'medium' })).toBe('medium');
+    const preparePitches = vi.fn();
+    const sound = { preparePitches } as unknown as Parameters<Exercise['prepareSound']>[0];
+    dc().prepareSound(sound, [AM], GUITAR);
+    expect(preparePitches).toHaveBeenLastCalledWith([57, 60, 62, 64]);
   });
 });

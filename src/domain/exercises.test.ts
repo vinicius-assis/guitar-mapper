@@ -21,6 +21,7 @@ describe('exercises', () => {
       'guide-tones',
       'arpeggio',
       'ii-v-i',
+      'dictation',
     ]);
   });
 
@@ -41,8 +42,8 @@ describe('exercises', () => {
     expect(EXERCISE_META.interval.recordsPositionProgress).toBe(false);
   });
 
-  it('a trilha Ouvido tem os três modos, em ordem', () => {
-    expect(TRACKS.find((t) => t.id === 'ouvido')!.modes).toEqual(['ear', 'ear-interval', 'ear-degree']);
+  it('a trilha Ouvido tem os quatro modos, em ordem', () => {
+    expect(TRACKS.find((t) => t.id === 'ouvido')!.modes).toEqual(['ear', 'ear-interval', 'ear-degree', 'dictation']);
   });
 
   it('os modos novos de ouvido não registram posição nem usam Foco', () => {
@@ -107,6 +108,13 @@ describe('exercises', () => {
       expect(EXERCISE_META[mode].recordsPositionProgress).toBe(false);
       expect(EXERCISE_META[mode].usesFocus).toBe(false);
     }
+  });
+
+  it('o ditado melódico entra na trilha Ouvido, sem progresso de posição nem Foco', () => {
+    expect(EXERCISE_META.dictation.track).toBe('ouvido');
+    expect(EXERCISE_META.dictation.label).toBe('Ditado melódico');
+    expect(EXERCISE_META.dictation.recordsPositionProgress).toBe(false);
+    expect(EXERCISE_META.dictation.usesFocus).toBe(false);
   });
 
   it('rótulos', () => {

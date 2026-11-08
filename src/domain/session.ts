@@ -7,7 +7,7 @@ import type { EarLevel, QuizMode } from './quiz';
 export const HISTORY_LIMIT = 20;
 
 /** Modos de Ouvido: a sessão guarda o nível no histórico. */
-export const LEVELED_MODES: readonly QuizMode[] = ['ear', 'ear-interval', 'ear-degree'];
+export const LEVELED_MODES: readonly QuizMode[] = ['ear', 'ear-interval', 'ear-degree', 'dictation'];
 
 export interface SessionResult {
   correct: boolean;

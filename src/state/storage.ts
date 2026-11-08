@@ -4,6 +4,7 @@ import {
   parsePositionKey,
   type Filter,
 } from '../domain/fretboard';
+import { BEATS_DEFAULT, BEATS_OPTIONS, BPM_DEFAULT, BPM_MAX, BPM_MIN } from '../audio/metronomeClock';
 import {
   GUITAR,
   INSTRUMENTS,
@@ -24,6 +25,7 @@ import { CHORD_KIND_SETTINGS, CHORD_SHAPE_SETTINGS, isChordNameKey, isChordPlayK
 import { isGuideKey } from '../domain/guideTones';
 import { isArpeggioKey } from '../domain/arpeggio';
 import { isIiViKey } from '../domain/progressions';
+import { isDictationKey } from '../domain/dictation';
 import { isScaleId, type ScaleId } from '../domain/scales';
 import { QUIZ_MODES } from '../domain/exercises';
 import { LEVELED_MODES } from '../domain/session';
@@ -46,7 +48,8 @@ export interface InstrumentData {
    * Harmonia (`hchord:<campo>:<tônica>:<grau>`, `hdeg:<campo>:<tônica>:<grau>`,
    * `hqual:<campo>:<triad|seventh>:<grau>`) e de Acordes (`chordname:<forma>:<tônica>`,
    * `chordplay:<forma>:<tônica>`) e de notas-guia/arpejos (`guide:<forma>:<tônica>`,
-   * `arp:<escala>:<tônica>:<desenho>`, `iivi:<tom>:<forma>:<passo>`). */
+   * `arp:<escala>:<tônica>:<desenho>`, `iivi:<tom>:<forma>:<passo>`) e de ditado
+   * (`dict:<escala>:<tônica>:<4|6|8>`). */
   items: ProgressMap;
 }
 
@@ -61,6 +64,7 @@ export interface GlobalSettings {
   earIntervalLevel: EarLevel;
   earIntervalDirection: EarDirectionSetting;
   degreeLevel: EarLevel;
+  dictationLevel: EarLevel;
   instrument: InstrumentId;
   intervals: IntervalId[];
   intervalAdvance: IntervalAdvance;
@@ -76,6 +80,9 @@ export interface GlobalSettings {
   /** Formas e tipos de acorde do módulo Acordes. */
   chordShapes: ChordShapeSetting;
   chordKinds: ChordKindSetting;
+  /** Metrônomo de Ajustes: andamento (40–220) e tempos por compasso (1, 2, 3, 4 ou 6). */
+  metronomeBpm: number;
+  metronomeBeats: number;
 }
 
 /** Visão das configurações para o instrumento ativo (globais + filtro dele). */
@@ -123,6 +130,7 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   earIntervalLevel: 'easy',
   earIntervalDirection: 'up',
   degreeLevel: 'easy',
+  dictationLevel: 'easy',
   instrument: 'guitar',
   intervals: [...DEFAULT_INTERVALS],
   intervalAdvance: 'manual',
@@ -134,6 +142,8 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   harmonyKeys: 'easy',
   chordShapes: 'open',
   chordKinds: 'triads',
+  metronomeBpm: BPM_DEFAULT,
+  metronomeBeats: BEATS_DEFAULT,
 };
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -242,6 +252,9 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     degreeLevel: EAR_LEVELS.includes(source.degreeLevel as EarLevel)
       ? (source.degreeLevel as EarLevel)
       : DEFAULT_SETTINGS.degreeLevel,
+    dictationLevel: EAR_LEVELS.includes(source.dictationLevel as EarLevel)
+      ? (source.dictationLevel as EarLevel)
+      : DEFAULT_SETTINGS.dictationLevel,
     instrument: INSTRUMENTS.some((i) => i.id === source.instrument)
       ? (source.instrument as InstrumentId)
       : DEFAULT_SETTINGS.instrument,
@@ -271,6 +284,15 @@ function sanitizeSettings(raw: unknown): GlobalSettings {
     chordKinds: CHORD_KIND_SETTINGS.includes(source.chordKinds as ChordKindSetting)
       ? (source.chordKinds as ChordKindSetting)
       : DEFAULT_SETTINGS.chordKinds,
+    metronomeBpm:
+      Number.isInteger(source.metronomeBpm) &&
+      (source.metronomeBpm as number) >= BPM_MIN &&
+      (source.metronomeBpm as number) <= BPM_MAX
+        ? (source.metronomeBpm as number)
+        : DEFAULT_SETTINGS.metronomeBpm,
+    metronomeBeats: BEATS_OPTIONS.includes(source.metronomeBeats as number)
+      ? (source.metronomeBeats as number)
+      : DEFAULT_SETTINGS.metronomeBeats,
   };
 }
 
@@ -321,6 +343,7 @@ function isItemKey(key: string): boolean {
   if (isHarmonyChordKey(key) || isHarmonyDegreeKey(key) || isQualityKey(key)) return true;
   if (isChordNameKey(key) || isChordPlayKey(key)) return true;
   if (isGuideKey(key) || isArpeggioKey(key) || isIiViKey(key)) return true;
+  if (isDictationKey(key)) return true;
   const match = INTERVAL_ITEM_KEY.exec(key);
   return match !== null && Number(match[1]) <= 11 && isIntervalId(match[2]);
 }
